@@ -10,6 +10,11 @@ import { GoogleGenAI } from "@google/genai";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 const PORT = 3000;
@@ -36,6 +41,25 @@ function sanitizeString(str: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;')
     .replace(/\//g, '&#x2F;');
+}
+
+// Solid HTML sanitization for rich text fields to prevent executable XSS injections
+function sanitizeHtml(html: string): string {
+  if (!html) return '';
+  // 1. Remove script blocks entirely
+  let clean = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  
+  // 2. Remove inline event handlers like onclick, onload, onerror, etc. and javascript: links
+  clean = clean.replace(/\bon[a-z]+\s*=\s*(['"])(.*?)\1/gi, '');
+  clean = clean.replace(/\bon[a-z]+\s*=\s*(#[a-zA-Z0-9_\-]+|[^>]*?)(?=\s|>)/gi, '');
+  clean = clean.replace(/href\s*=\s*(["'])\s*javascript:[^"']*\1/gi, 'href="#"');
+  
+  // 3. Remove flash/iframe/object tags that can run arbitrary code unless they are safe embeds (like youtube embeds)
+  clean = clean.replace(/<iframe\b(?![^>]*youtube\.com\/embed\/)[^>]*>.*?<\/iframe>/gi, '');
+  clean = clean.replace(/<(object|embed|form|link|meta|style|applet)\b[^>]*>.*?<\/\1>/gi, '');
+  clean = clean.replace(/<(object|embed|form|link|meta|style|applet)\b[^>]*>/gi, '');
+  
+  return clean;
 }
 
 // Database JSON path
@@ -673,6 +697,68 @@ let db = {
   mediaItems: defaultMediaItems as any[]
 };
 
+// Global Supabase Client for automated cloud data sync
+const supabaseUrl = process.env.SUPABASE_URL || "https://rrfldkxgwbcclpchuyxef.supabase.co";
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyZmxka3hnd2JjbHBjaHV5eGVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4Njg2MTMsImV4cCI6MjA5NTQ0NDYxM30.NXfxKJMAtwX90CqPRu-wg_PLqxaMGrvfUPloJkTD9I4";
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+async function saveDbToSupabase() {
+  try {
+    const { error } = await supabase
+      .from("options")
+      .upsert({
+        id: "opt-database-backup",
+        option_name: "cms_database_backup",
+        option_value: db
+      }, { onConflict: "option_name" });
+
+    if (error) {
+      console.warn("[SUPABASE BACKUP] Bỏ qua sao lưu đám mây (Có thể chưa chạy file SQL khởi tạo bảng):", error.message);
+    } else {
+      console.log("[SUPABASE BACKUP] Đã đồng bộ an toàn dữ liệu CMS mới nhất lên máy chủ đám mây Supabase!");
+    }
+  } catch (err: any) {
+    console.error("[SUPABASE BACKUP] Sập kết nối đồng bộ đám mây:", err.message);
+  }
+}
+
+async function loadDbFromSupabase() {
+  try {
+    console.log("[SUPABASE SYNC] Đang kéo bản sao dữ liệu cao cấp từ điện toán đám mây Supabase...");
+    const { data, error } = await supabase
+      .from("options")
+      .select("option_value")
+      .eq("option_name", "cms_database_backup")
+      .maybeSingle();
+
+    if (error) {
+      console.warn("[SUPABASE SYNC] Bảng options chưa tồn tại hoặc trống trên Supabase. Sử dụng dữ liệu db.json cục bộ.", error.message);
+      return;
+    }
+
+    if (data && data.option_value) {
+      const parsed = data.option_value as any;
+      db.users = parsed.users || db.users;
+      db.posts = parsed.posts || db.posts;
+      db.terms = parsed.terms || db.terms;
+      db.options = parsed.options || db.options;
+      db.submissions = parsed.submissions || db.submissions;
+      db.videos = parsed.videos || db.videos;
+      db.perspectives = parsed.perspectives || db.perspectives;
+      db.mediaFolders = parsed.mediaFolders || db.mediaFolders;
+      db.mediaItems = parsed.mediaItems || db.mediaItems;
+
+      fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), "utf-8");
+      console.log("[SUPABASE SYNC] Thành công: Khôi phục toàn bộ trạng thái bài viết và cấu hình từ đám mây Supabase về máy chủ!");
+    } else {
+      console.log("[SUPABASE SYNC] Không tìm thấy bản lưu cũ. Tiến hành đồng bộ bản gốc đầu tiên lên Supabase...");
+      await saveDbToSupabase();
+    }
+  } catch (err: any) {
+    console.warn("[SUPABASE SYNC] Bỏ qua khôi phục đám mây (Hệ thống chạy ngoại tuyến với db.json cục bộ):", err.message);
+  }
+}
+
 function readDb() {
   try {
     if (fs.existsSync(DB_PATH)) {
@@ -705,31 +791,106 @@ function readDb() {
 function writeDb() {
   try {
     fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), "utf-8");
+    // Async push backend changes to cloud without locking request thread
+    saveDbToSupabase().catch(err => console.error("Không thể ghi file sang Supabase:", err));
   } catch (err) {
     console.error("Lỗi ghi file db.json", err);
   }
 }
 
-// Read database at start
+// Read database at start (local cache first)
 readDb();
+
+// Load & Sync from Supabase Cloud on boot asynchronously
+loadDbFromSupabase().catch(err => console.error("Lỗi khởi tạo Supabase:", err));
 
 app.use(express.json({ limit: '15mb' }));
 app.use("/uploads", express.static(path.join(process.cwd(), "data", "uploads")));
 
-// Auth Middleware: Simple Bearer token
+// JWT Secret - load from env, or fallback safely to a secure local secret key
+const JWT_SECRET = process.env.JWT_SECRET || "pentair-secret-key-high-entropy-2026-fallback";
+
+// Rate limiting state in-memory
+interface RateLimitRecord {
+  count: number;
+  resetTime: number;
+}
+const ipLimits: Record<string, RateLimitRecord> = {};
+
+// Clean in-memory rate limiting implementation to mitigate brute force
+function createRateLimiter(maxRequests: number, windowMs: number, errorMessage: string) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const ip = (req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || 'unknown-ip').split(',')[0].trim();
+    const now = Date.now();
+    
+    // Purge expired IP limits
+    if (!ipLimits[ip] || now > ipLimits[ip].resetTime) {
+      ipLimits[ip] = {
+        count: 1,
+        resetTime: now + windowMs
+      };
+      return next();
+    }
+    
+    if (ipLimits[ip].count >= maxRequests) {
+      return res.status(429).json({ error: errorMessage });
+    }
+    
+    ipLimits[ip].count++;
+    next();
+  };
+}
+
+// Global protection middleware to prevent data/ leak or direct access attempts
+app.use((req, res, next) => {
+  const urlLower = req.url.toLowerCase();
+  if (urlLower.includes("/data") || urlLower.includes("db.json") || urlLower.includes(".env")) {
+    return res.status(403).json({ error: "Truy cập bị từ chối." });
+  }
+  next();
+});
+
+// App-wide Custom Security Headers with smart iframe compatibility
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer-when-downgrade");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  next();
+});
+
+// Safe helper to extract user from dynamic auth tokens (JWT) without blocking
+function getUserFromRequest(req: Request): any | null {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return null;
+    }
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+    return db.users.find(u => u.id === decoded.userId) || null;
+  } catch {
+    return null;
+  }
+}
+
+// Auth Middleware: Secure Cryptographically-Signed JWT
 function authMiddleware(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Không được phép truy cập. Thiếu Token xác thực." });
   }
   const token = authHeader.split(" ")[1];
-  const user = db.users.find(u => u.id === token);
-  if (!user) {
-    return res.status(401).json({ error: "Token không hợp lệ hoặc đã hết hạn." });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string, role: string };
+    const user = db.users.find(u => u.id === decoded.userId);
+    if (!user) {
+      return res.status(401).json({ error: "Người dùng liên kết với token này không tồn tại." });
+    }
+    (req as any).user = user;
+    next();
+  } catch (err: any) {
+    return res.status(401).json({ error: "Phiên làm việc đã hết hạn hoặc token không hợp lệ." });
   }
-  // Inject user to request
-  (req as any).user = user;
-  next();
 }
 
 // Role authorization
@@ -745,36 +906,147 @@ function requireRole(role: 'administrator' | 'editor') {
   };
 }
 
-// API Endpoints: AUTHENTICATION
-app.post("/api/auth/login", (req, res) => {
+// Helper to send 2FA OTP Email
+async function send2FAEmail(toEmail: string, username: string, otpCode: string) {
+  const optionsObj = db.options.find(o => o.optionName === 'email_settings');
+  const smtp: any = optionsObj?.optionValue || {};
+  
+  const isMock = !smtp.host || smtp.host.includes("sandbox") || smtp.password === "testpassword" || !smtp.password;
+  
+  const emailSubject = `[Xác Thực 2FA] Mã đăng nhập bảo mật Pentair Vietnam CMS`;
+  const emailHtml = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+      <h2 style="color: #0c3471; border-bottom: 2px solid #0c3471; padding-bottom: 10px; margin-top: 0;">Pentair Vietnam CMS</h2>
+      <p>Xin chào <strong>${username}</strong>,</p>
+      <p>Hệ thống ghi nhận yêu cầu đăng nhập vào tài khoản quản trị của bạn yêu cầu xác minh hai lớp (2FA).</p>
+      <div style="background-color: #f8fafc; border-left: 4px solid #0c3471; padding: 15px; margin: 20px 0; text-align: center;">
+        <span style="font-size: 28px; font-weight: bold; letter-spacing: 4px; color: #0c3471;">${otpCode}</span>
+        <p style="font-size: 11px; color: #64748b; margin: 5px 0 0 0;">(Mã OTP này chỉ có hiệu lực trong vòng 5 phút)</p>
+      </div>
+      <p style="color: #ef4444; font-size: 12px;">Cảnh báo an toàn: Nếu không phải bạn thực hiện yêu cầu đăng nhập này, vui lòng đổi mật khẩu ngay lập tức!</p>
+      <div style="text-align: center; border-top: 1px solid #f1f5f9; padding-top: 15px; font-size: 11px; color: #94a3b8; line-height: 1.5; margin-top: 20px;">
+        Thư này được hệ thống bảo mật tự động gửi đi. Vui lòng không trả lời trực tiếp email này.
+      </div>
+    </div>
+  `;
+
+  try {
+    const finalFromName = (smtp.from_name && smtp.from_name !== "undefined") ? smtp.from_name : "Pentair Vietnam CMS Security";
+    const finalFromEmail = (smtp.from_email && smtp.from_email !== "undefined") ? smtp.from_email : (smtp.username || "security@pentairvn.com");
+
+    if (isMock) {
+      console.log(`[SIMULATED 2FA SMTP] Gửi mã OTP xác thực tới ${toEmail}: Code dùng để đăng nhập là [${otpCode}]`);
+      return;
+    }
+
+    const isSmtpSecured = smtp.port == 465 || smtp.encryption === "SSL";
+    const transporter = nodemailer.createTransport({
+      host: smtp.host,
+      port: Number(smtp.port),
+      secure: isSmtpSecured,
+      auth: {
+        user: smtp.username,
+        pass: smtp.password,
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+
+    await transporter.sendMail({
+      from: `"${finalFromName}" <${finalFromEmail}>`,
+      to: toEmail,
+      subject: emailSubject,
+      html: emailHtml
+    });
+    console.log(`[SECURITY] Đã gửi email OTP xác thực 2FA thành công tới ${toEmail}`);
+  } catch (err) {
+    console.error("Lỗi xảy ra trong quá trình gửi Email SMTP 2FA thực tế:", err);
+  }
+}
+
+// API Endpoints: AUTHENTICATION (With Rate Limiting against Brute-Force to avoid credential-stuffing)
+app.post("/api/auth/login", createRateLimiter(5, 15 * 60 * 1000, "Phát hiện quá nhiều yêu cầu đăng nhập từ IP này. Vui lòng dừng lại và thử lại sau 15 phút."), (req, res) => {
   const { username, password, twoFactorCode } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: "Vui lòng nhập đầy đủ Tài khoản & Mật khẩu." });
   }
 
-  const user = db.users.find(u => u.username === username);
+  const user: any = db.users.find(u => u.username.trim().toLowerCase() === username.trim().toLowerCase());
   if (!user) {
     return res.status(400).json({ error: "Tài khoản hoặc mật khẩu không chính xác." });
   }
 
-  const hash = crypto.createHash('sha256').update(password).digest('hex');
-  if (user.passwordHash !== hash) {
+  // Backward Compatible, Robust Password Checking & Automated Migration to Bcrypt
+  let isPasswordCorrect = false;
+  const isLegacySha256 = user.passwordHash.length === 64 && !user.passwordHash.startsWith("$");
+  
+  if (isLegacySha256) {
+    const legacyCalculatedHash = crypto.createHash('sha256').update(password).digest('hex');
+    if (user.passwordHash === legacyCalculatedHash) {
+      isPasswordCorrect = true;
+      // Upgrade hash securely to high-entropy bcrypt on-the-fly!
+      user.passwordHash = bcrypt.hashSync(password, 10);
+      writeDb();
+      console.log(`[SECURITY] Đã tự động nâng cấp mật khẩu của tài khoản "${user.username}" từ SHA-256 lên Bcrypt thành công!`);
+    }
+  } else {
+    isPasswordCorrect = bcrypt.compareSync(password, user.passwordHash);
+  }
+
+  if (!isPasswordCorrect) {
     return res.status(400).json({ error: "Tài khoản hoặc mật khẩu không chính xác." });
   }
 
-  // 2FA Security check (WordPress 2FA flow mock)
+  // 2FA Smart security checker (No bypass "123456"!)
   if (user.twoFactorEnabled) {
     if (!twoFactorCode) {
-      return res.json({ require2FA: true, userId: user.id });
+      // Create dynamically random 6-digit OTP code with expiration
+      const dynamicOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      user.temp2FACode = dynamicOtp;
+      // Valid for exactly 5 minutes
+      user.temp2FAExpires = Date.now() + 5 * 60 * 1000;
+      writeDb();
+
+      console.log(`[SECURITY 2FA] Đã tạo mã đăng nhập OTP cho tài khoản "${user.username}": ${dynamicOtp}`);
+      
+      // Send code in the background
+      send2FAEmail(user.email, user.username, dynamicOtp).catch(err => {
+        console.error("Lỗi gửi mail OTP 2FA:", err);
+      });
+
+      return res.json({ 
+        require2FA: true, 
+        userId: user.id,
+        message: "Mã xác thực 2FA vừa được gửi vào email của bạn. Hãy nhập mã để tiếp tục."
+      });
     }
-    // Simple secure check against static secret for demonstration
-    if (twoFactorCode !== "123456" && twoFactorCode !== user.twoFactorSecret) {
-      return res.status(400).json({ error: "Mã bảo mật 2FA không chính xác." });
+
+    // Dynamic verification only
+    const hasExpired = !user.temp2FACode || Date.now() > (user.temp2FAExpires || 0);
+    if (hasExpired) {
+      return res.status(400).json({ error: "Mã xác thực 2FA đã hết hạn. Vui lòng đăng nhập lại." });
     }
+
+    if (twoFactorCode !== user.temp2FACode && twoFactorCode !== user.twoFactorSecret) {
+      return res.status(400).json({ error: "Mã xác thực 2FA không chính xác." });
+    }
+
+    // Clear session-level 2FA credentials on successful flow
+    delete user.temp2FACode;
+    delete user.temp2FAExpires;
+    writeDb();
   }
 
+  // Secure cryptographically signed token (expires in 24 hours)
+  const token = jwt.sign(
+    { userId: user.id, username: user.username, role: user.role },
+    JWT_SECRET,
+    { expiresIn: "24h" }
+  );
+
   return res.json({
-    token: user.id, // Direct token reference for the applet duration
+    token: token,
     user: {
       id: user.id,
       username: user.username,
@@ -790,11 +1062,16 @@ app.post("/api/auth/setup-2fa", authMiddleware, (req, res) => {
   const user = (req as any).user;
   const { enabled } = req.body;
   
-  const dbUser = db.users.find(u => u.id === user.id);
+  const dbUser: any = db.users.find(u => u.id === user.id);
   if (dbUser) {
     dbUser.twoFactorEnabled = !!enabled;
     if (enabled) {
-      dbUser.twoFactorSecret = "PENTAIR-2FA-" + crypto.randomBytes(4).toString('hex').toUpperCase();
+      // Secure generate 2FA backup/recovery static secret
+      dbUser.twoFactorSecret = "PENTAIR-2FA-" + crypto.randomBytes(6).toString('hex').toUpperCase();
+    } else {
+      delete dbUser.twoFactorSecret;
+      delete dbUser.temp2FACode;
+      delete dbUser.temp2FAExpires;
     }
     writeDb();
     return res.json({ success: true, twoFactorEnabled: dbUser.twoFactorEnabled, secret: dbUser.twoFactorSecret });
@@ -819,7 +1096,7 @@ app.post("/api/admin/users", authMiddleware, requireRole('administrator'), (req,
     return res.status(400).json({ error: "Tên tài khoản này đã được sử dụng." });
   }
 
-  const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+  const passwordHash = bcrypt.hashSync(password, 10);
   const newUser = {
     id: "usr-" + crypto.randomBytes(4).toString('hex'),
     username: normalizedUsername,
@@ -853,7 +1130,7 @@ app.put("/api/admin/users/:id", authMiddleware, requireRole('administrator'), (r
   if (role) dbUser.role = role as 'administrator' | 'editor';
   
   if (password && password.trim() !== "") {
-    dbUser.passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+    dbUser.passwordHash = bcrypt.hashSync(password.trim(), 10);
   }
 
   writeDb();
@@ -885,8 +1162,8 @@ app.delete("/api/admin/users/:id", authMiddleware, requireRole('administrator'),
   res.json({ success: true, message: "Đã xóa tài khoản quản trị viên thành công." });
 });
 
-// API Endpoints: CONTENT OPTIONS / MAIN CONFIG
-app.get("/api/supabase/config", (req, res) => {
+// API Endpoints: CONTENT OPTIONS / MAIN CONFIG (Secured Behind Administrator Authorization)
+app.get("/api/supabase/config", authMiddleware, requireRole('administrator'), (req, res) => {
   const supabaseUrl = process.env.SUPABASE_URL || "https://rrfldkxgwbcclpchuyxef.supabase.co";
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyZmxka3hnd2JjbHBjaHV5eGVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4Njg2MTMsImV4cCI6MjA5NTQ0NDYxM30.NXfxKJMAtwX90CqPRu-wg_PLqxaMGrvfUPloJkTD9I4";
   
@@ -898,7 +1175,7 @@ app.get("/api/supabase/config", (req, res) => {
   });
 });
 
-app.post("/api/supabase/test-connection", async (req, res) => {
+app.post("/api/supabase/test-connection", authMiddleware, requireRole('administrator'), async (req, res) => {
   const supabaseUrl = process.env.SUPABASE_URL || "https://rrfldkxgwbcclpchuyxef.supabase.co";
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyZmxka3hnd2JjbHBjaHV5eGVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4Njg2MTMsImV4cCI6MjA5NTQ0NDYxM30.NXfxKJMAtwX90CqPRu-wg_PLqxaMGrvfUPloJkTD9I4";
   
@@ -1004,10 +1281,19 @@ app.get("/api/posts", (req, res) => {
   res.json(list);
 });
 
-// GET Single Post
+// GET Single Post (Secured from Draft/Private data exposure)
 app.get("/api/posts/:id", (req, res) => {
   const post = db.posts.find(p => p.id === req.params.id);
   if (!post) return res.status(404).json({ error: "Không tìm thấy nội dung." });
+  
+  const isPublic = post.status === 'publish' || post.status === 'published' || post.status === 'active';
+  if (!isPublic) {
+    const user = getUserFromRequest(req);
+    if (!user || (user.id !== post.authorId && user.role !== 'administrator')) {
+      return res.status(403).json({ error: "Từ chối truy cập: Bạn không có quyền xem nội dung nháp hoặc riêng tư này." });
+    }
+  }
+  
   res.json(post);
 });
 
@@ -1025,15 +1311,16 @@ app.post("/api/posts", authMiddleware, (req, res) => {
     return res.status(400).json({ error: "Đường dẫn Slug đã tồn tại. Vui lòng chọn slug khác." });
   }
 
-  // Security clean input content with manual safe HTML parsing
+  // Security clean input content with manual safe HTML and string sanitization
   const cleanTitle = sanitizeString(title);
   const cleanExcerpt = sanitizeString(excerpt || '');
+  const cleanContent = content !== undefined ? sanitizeHtml(content) : '';
 
   const newPost = {
     id: "post-" + Date.now(),
     title: cleanTitle,
     slug: slug.toLowerCase().replace(/[^a-z0-9-_]/g, '-'),
-    content: content || '',
+    content: cleanContent,
     excerpt: cleanExcerpt,
     type: type || 'post',
     status: status || 'draft',
@@ -1051,8 +1338,9 @@ app.post("/api/posts", authMiddleware, (req, res) => {
   res.status(201).json(newPost);
 });
 
-// UPDATE Post
+// UPDATE Post (Secured with Ownership validations)
 app.put("/api/posts/:id", authMiddleware, (req, res) => {
+  const user = (req as any).user;
   const { title, slug, content, excerpt, status, featuredImage, menuOrder, meta, terms } = req.body;
   const postIdx = db.posts.findIndex(p => p.id === req.params.id);
   
@@ -1062,6 +1350,11 @@ app.put("/api/posts/:id", authMiddleware, (req, res) => {
 
   const existingPost = db.posts[postIdx];
 
+  // Role validation & Ownership verification
+  if (existingPost.authorId !== user.id && user.role !== 'administrator') {
+    return res.status(403).json({ error: "Từ chối truy cập: Bạn không có quyền chỉnh sửa bài viết của tác giả khác." });
+  }
+
   // Check unique slug (excluding self)
   if (slug && slug !== existingPost.slug && db.posts.some(p => p.slug === slug)) {
     return res.status(400).json({ error: "Sự cố: Đường dẫn Slug này đã bị trùng lặp." });
@@ -1069,12 +1362,13 @@ app.put("/api/posts/:id", authMiddleware, (req, res) => {
 
   const cleanTitle = title ? sanitizeString(title) : existingPost.title;
   const cleanExcerpt = excerpt !== undefined ? sanitizeString(excerpt) : existingPost.excerpt;
+  const cleanContent = content !== undefined ? sanitizeHtml(content) : existingPost.content;
 
   db.posts[postIdx] = {
     ...existingPost,
     title: cleanTitle,
     slug: slug ? slug.toLowerCase().replace(/[^a-z0-9-_]/g, '-') : existingPost.slug,
-    content: content !== undefined ? content : existingPost.content,
+    content: cleanContent,
     excerpt: cleanExcerpt,
     status: status || existingPost.status,
     featuredImage: featuredImage !== undefined ? featuredImage : existingPost.featuredImage,
@@ -1088,11 +1382,20 @@ app.put("/api/posts/:id", authMiddleware, (req, res) => {
   res.json(db.posts[postIdx]);
 });
 
-// DELETE Post
+// DELETE Post (Secured with Ownership validations)
 app.delete("/api/posts/:id", authMiddleware, (req, res) => {
+  const user = (req as any).user;
   const postIdx = db.posts.findIndex(p => p.id === req.params.id);
+  
   if (postIdx === -1) {
     return res.status(404).json({ error: "Bài viết không tồn tại." });
+  }
+
+  const existingPost = db.posts[postIdx];
+
+  // Role validation & Ownership verification
+  if (existingPost.authorId !== user.id && user.role !== 'administrator') {
+    return res.status(403).json({ error: "Từ chối truy cập: Bạn không có quyền xóa bài viết của tác giả khác." });
   }
 
   db.posts.splice(postIdx, 1);

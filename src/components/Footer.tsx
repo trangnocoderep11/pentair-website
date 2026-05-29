@@ -19,9 +19,10 @@ interface FooterProps {
   policies: { title: string; content: string }[];
   showrooms: { name: string; address: string; phone: string }[];
   onNavigate: (url: string) => void;
+  onOpenAdmin?: () => void;
 }
 
-export default function Footer({ brandSettings, policies, showrooms, onNavigate }: FooterProps) {
+export default function Footer({ brandSettings, policies, showrooms, onNavigate, onOpenAdmin }: FooterProps) {
   const [activePolicyIdx, setActivePolicyIdx] = React.useState<number | null>(null);
 
   return (
@@ -155,12 +156,23 @@ export default function Footer({ brandSettings, policies, showrooms, onNavigate 
 
       {/* Bottom Bar Credit */}
       <div className="bg-pentair-dark py-4 text-center text-xs text-blue-300/60 border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2">
-          <span>
-            © 2026 Pentair PLC. Bản quyền thương hiệu và giải pháp thuộc về Pentair Inc. Hoa Kỳ.
-          </span>
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span>
+              © 2026 Pentair PLC. Bản quyền thương hiệu và giải pháp thuộc về Pentair Inc. Hoa Kỳ.
+            </span>
+            {onOpenAdmin && (
+              <button
+                onClick={onOpenAdmin}
+                className="text-blue-200 hover:text-white transition-colors duration-150 flex items-center gap-1 font-semibold text-xs py-0.5 px-2 bg-white/5 hover:bg-white/10 rounded border border-white/10 cursor-pointer"
+                id="btn-footer-admin-portal"
+              >
+                <span>⚙ Cổng Quản Trị (CMS Admin)</span>
+              </button>
+            )}
+          </div>
           <span className="text-[10px] text-blue-300/40 font-mono">
-            Vietnam Custom hand-coded CMS (Self-developed, Anti WordPress DB fallback, dynamic caching)
+            Vietnam Custom hand-coded CMS (Self-developed, Anti WordPress DB fallback, digital synched)
           </span>
         </div>
       </div>

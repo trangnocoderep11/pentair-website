@@ -88,13 +88,13 @@ export default function App() {
     setDataError('');
     try {
       const headers: Record<string, string> = {};
-      const token = localStorage.getItem('cms_token');
+      let token = localStorage.getItem('cms_token');
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
       // Load all dynamic sitemap data from Express backend parallelly
-      const [postsRes, termsRes, optionsRes, submissionsRes, videosRes, perspectivesRes] = await Promise.all([
+      let [postsRes, termsRes, optionsRes, submissionsRes, videosRes, perspectivesRes] = await Promise.all([
         fetch('/api/posts' + (token ? '?status=all' : ''), { headers }),
         fetch('/api/terms', { headers }),
         fetch('/api/options', { headers }),
@@ -102,6 +102,32 @@ export default function App() {
         fetch(token ? '/api/admin/videos' : '/api/videos', { headers }),
         fetch(token ? '/api/admin/perspectives' : '/api/perspectives', { headers })
       ]);
+
+      // If any core authorization was rejected, silently fallback to guest mode instead of throwing a blocking error
+      if (
+        postsRes.status === 401 || 
+        termsRes.status === 401 || 
+        optionsRes.status === 401 || 
+        (submissionsRes && submissionsRes.status === 401) ||
+        (videosRes && videosRes.status === 401) ||
+        (perspectivesRes && perspectivesRes.status === 401)
+      ) {
+        console.warn("CMS session token was invalid or expired. Silently clearing storage and loading guest public content.");
+        localStorage.removeItem('cms_token');
+        localStorage.removeItem('cms_user');
+        setCurrentUser(null);
+        token = null;
+
+        // Fetch public content parallelly
+        [postsRes, termsRes, optionsRes, videosRes, perspectivesRes] = await Promise.all([
+          fetch('/api/posts'),
+          fetch('/api/terms'),
+          fetch('/api/options'),
+          fetch('/api/videos'),
+          fetch('/api/perspectives')
+        ]);
+        submissionsRes = null;
+      }
 
       if (!postsRes.ok || !termsRes.ok || !optionsRes.ok) {
         throw new Error("Lỗi tải thông tin cơ sở dữ liệu CMS từ máy chủ.");
@@ -118,14 +144,22 @@ export default function App() {
       if (submissionsRes && submissionsRes.ok) {
         const subsData = await submissionsRes.json();
         setSubmissions(subsData);
+      } else {
+        setSubmissions([]);
       }
+
       if (videosRes && videosRes.ok) {
         const vData = await videosRes.json();
         setVideos(vData);
+      } else {
+        setVideos([]);
       }
+
       if (perspectivesRes && perspectivesRes.ok) {
         const pData = await perspectivesRes.json();
         setPerspectives(pData);
+      } else {
+        setPerspectives([]);
       }
     } catch (err: any) {
       console.error(err);
@@ -393,6 +427,7 @@ export default function App() {
             policies={footerPoliciesValue}
             showrooms={showroomListValue}
             onNavigate={handleVirtualNavigate}
+            onOpenAdmin={() => setShowAdminCMS(true)}
           />
 
           <ShoppingCart 

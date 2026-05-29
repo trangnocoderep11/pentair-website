@@ -8,7 +8,7 @@ import {
   BarChart3, FileText, ShoppingBag, FolderTree, MessageSquare, Settings2, 
   Database, ShieldCheck, KeyRound, UserCheck, Plus, Pencil, Trash2, 
   Eye, FileCode, CheckCircle, AlertTriangle, Save, LogOut, ArrowRight, Download, Upload, Shield, RefreshCw, Server,
-  Mail, Video, LayoutTemplate, Image, Search, ChevronDown
+  Mail, Video, LayoutTemplate, Image, Search, ChevronDown, X
 } from 'lucide-react';
 import { Post, Term, FormSubmission, CMSBackup } from '../types';
 import MediaLibrary from './MediaLibrary';
@@ -137,6 +137,11 @@ export default function AdminCMS({
   const [tempGalleryInput, setTempGalleryInput] = React.useState('');
   const [tempProductGalleryInput, setTempProductGalleryInput] = React.useState('');
   const [postSearchQuery, setPostSearchQuery] = React.useState('');
+
+  // MEDIA SELECTOR MODAL STATE
+  const [activeMediaSelector, setActiveMediaSelector] = React.useState<{
+    target: 'post_featured' | 'video_thumbnail' | 'perspective_featured' | 'perspective_gallery' | 'perspective_product_gallery';
+  } | null>(null);
 
   // USER MANAGEMENT STATES
   const [usersList, setUsersList] = React.useState<any[]>([]);
@@ -2091,13 +2096,23 @@ export default function AdminCMS({
 
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-gray-700 block uppercase">Ảnh tiêu biểu (Featured Image URL)</label>
-                      <input 
-                        type="text" 
-                        value={postForm.featuredImage}
-                        onChange={e => setPostForm({ ...postForm, featuredImage: e.target.value })}
-                        className="w-full px-3.5 py-2.5 text-xs rounded-lg border border-gray-200 focus:outline-none text-gray-800 font-mono"
-                        id="form-featured-image"
-                      />
+                      <div className="flex gap-2">
+                        <input 
+                          type="text" 
+                          value={postForm.featuredImage}
+                          onChange={e => setPostForm({ ...postForm, featuredImage: e.target.value })}
+                          className="flex-grow px-3.5 py-2.5 text-xs rounded-lg border border-gray-200 focus:outline-none text-gray-800 font-mono"
+                          id="form-featured-image"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setActiveMediaSelector({ target: 'post_featured' })}
+                          className="px-3 py-2 text-xs font-semibold bg-slate-900 border hover:bg-slate-800 text-white rounded-lg cursor-pointer transition-colors shrink-0 flex items-center gap-1 shadow-sm font-sans"
+                        >
+                          <Image className="w-3.5 h-3.5" />
+                          Chọn từ kho ảnh
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-1">
@@ -3873,14 +3888,24 @@ export default function AdminCMS({
 
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-gray-500 block uppercase">Ảnh thumbnail đại diện (Image URL) *</label>
-                    <input 
-                      type="url" 
-                      required
-                      placeholder="https://images.unsplash.com/..."
-                      value={videoForm.thumbnail}
-                      onChange={e => setVideoForm({...videoForm, thumbnail: e.target.value})}
-                      className="w-full px-3 py-2 text-xs border rounded-lg focus:outline-none font-mono"
-                    />
+                    <div className="flex gap-2">
+                      <input 
+                        type="url" 
+                        required
+                        placeholder="https://images.unsplash.com/..."
+                        value={videoForm.thumbnail}
+                        onChange={e => setVideoForm({...videoForm, thumbnail: e.target.value})}
+                        className="flex-grow px-3 py-2 text-xs border rounded-lg focus:outline-none font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setActiveMediaSelector({ target: 'video_thumbnail' })}
+                        className="px-3 py-2 text-xs font-semibold bg-slate-900 border hover:bg-slate-800 text-white rounded-lg cursor-pointer transition-colors shrink-0 flex items-center gap-1 shadow-sm font-sans"
+                      >
+                        <Image className="w-3.5 h-3.5" />
+                        Chọn tệp
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-1 md:col-span-2">
@@ -4178,18 +4203,38 @@ export default function AdminCMS({
 
                   <div className="space-y-1 md:col-span-2">
                     <label className="text-[10px] font-bold text-gray-500 block uppercase">Ảnh đại diện chính biệt thự (Featured Image URL) *</label>
-                    <input 
-                      type="url" 
-                      required
-                      placeholder="https://images.unsplash.com/photo-..."
-                      value={perspectiveForm.featuredImage}
-                      onChange={e => setPerspectiveForm({...perspectiveForm, featuredImage: e.target.value})}
-                      className="w-full px-3 py-2 text-xs border rounded-lg focus:outline-none font-mono"
-                    />
+                    <div className="flex gap-2">
+                      <input 
+                        type="url" 
+                        required
+                        placeholder="https://images.unsplash.com/photo-..."
+                        value={perspectiveForm.featuredImage}
+                        onChange={e => setPerspectiveForm({...perspectiveForm, featuredImage: e.target.value})}
+                        className="flex-grow px-3 py-2 text-xs border rounded-lg focus:outline-none font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setActiveMediaSelector({ target: 'perspective_featured' })}
+                        className="px-3 py-2 text-xs font-semibold bg-slate-900 border hover:bg-slate-800 text-white rounded-lg cursor-pointer transition-colors shrink-0 flex items-center gap-1 shadow-sm font-sans"
+                      >
+                        <Image className="w-3.5 h-3.5" />
+                        Chọn từ kho ảnh
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-1 md:col-span-2">
-                    <label className="text-[10px] font-bold text-gray-500 block uppercase">Danh sách thư viện ảnh phụ chi tiết / Bản vẽ (Gallery Image URLs, cách nhau bởi dấu phẩy) *</label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold text-gray-500 block uppercase">Danh sách thư viện ảnh phụ chi tiết / Bản vẽ (Gallery Image URLs, cách nhau bởi dấu phẩy) *</label>
+                      <button
+                        type="button"
+                        onClick={() => setActiveMediaSelector({ target: 'perspective_gallery' })}
+                        className="px-2 py-1 text-[10px] font-extrabold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-150 rounded-md cursor-pointer transition-colors flex items-center gap-1 font-sans"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Thêm ảnh từ kho tư liệu
+                      </button>
+                    </div>
                     <textarea 
                       rows={3}
                       placeholder="https://images.unsplash.com/photo1, https://images.unsplash.com/photo2"
@@ -4200,7 +4245,17 @@ export default function AdminCMS({
                   </div>
 
                   <div className="space-y-1 md:col-span-2 bg-blue-50/40 p-4 rounded-xl border border-blue-100">
-                    <label className="text-[10px] font-black text-blue-800 block uppercase tracking-wide">Hình ảnh sản phẩm thực tế trong không gian (Product Images In Space, cách nhau bởi dấu phẩy)</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[10px] font-black text-blue-800 block uppercase tracking-wide">Hình ảnh sản phẩm thực tế trong không gian (Product Images In Space, cách nhau bởi dấu phẩy)</label>
+                      <button
+                        type="button"
+                        onClick={() => setActiveMediaSelector({ target: 'perspective_product_gallery' })}
+                        className="px-2.5 py-1 text-[10px] font-extrabold bg-blue-600 text-white hover:bg-blue-700 rounded-md cursor-pointer transition-colors flex items-center gap-1 font-sans shadow-xs"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Chọn từ kho ảnh
+                      </button>
+                    </div>
                     <p className="text-[10px] text-gray-500 font-sans mb-2">Thêm liên kết hình ảnh chụp cận cảnh các sản phẩm lọc nước lắp đặt tại không gian thực tế này để trưng bày dạng slide/gallery sản phẩm:</p>
                     <textarea 
                       rows={3}
@@ -4643,6 +4698,61 @@ export default function AdminCMS({
               >
                 Xác nhận đã duyệt (Đóng)
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MEDIA SELECTOR MODAL DOCK */}
+      {activeMediaSelector && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-[99999] animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl max-w-6xl w-full h-[90vh] overflow-hidden shadow-2xl flex flex-col">
+            <div className="p-5 border-b border-slate-850 flex items-center justify-between bg-slate-950">
+              <div>
+                <h3 className="font-sans font-black text-sm uppercase tracking-wider text-slate-100 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Biên tập & Lựa chọn tệp từ Thư viện Hình ảnh
+                </h3>
+                <p className="text-[10px] text-slate-400 font-sans mt-0.5">
+                  Dễ dàng duyệt tìm thư mục, tệp tin và click nút "Chọn hình ảnh này" để điền trực tiếp vào biểu mẫu.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveMediaSelector(null)}
+                className="p-1 px-2.5 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white flex items-center gap-1.5 text-xs font-mono font-bold transition-all cursor-pointer"
+              >
+                HỦY BỎ <X className="w-5 h-5 bg-slate-900 rounded-full p-1" />
+              </button>
+            </div>
+
+            <div className="flex-grow overflow-hidden flex flex-col bg-slate-900">
+              <MediaLibrary 
+                onSelect={(url) => {
+                  const target = activeMediaSelector.target;
+                  if (target === 'post_featured') {
+                    setPostForm(prev => ({ ...prev, featuredImage: url }));
+                  } else if (target === 'video_thumbnail') {
+                    setVideoForm(prev => ({ ...prev, thumbnail: url }));
+                  } else if (target === 'perspective_featured') {
+                    setPerspectiveForm(prev => ({ ...prev, featuredImage: url }));
+                  } else if (target === 'perspective_gallery') {
+                    setTempGalleryInput(prev => {
+                      const trimmed = prev.trim();
+                      if (!trimmed) return url;
+                      return trimmed.endsWith(',') ? `${trimmed} ${url}` : `${trimmed}, ${url}`;
+                    });
+                  } else if (target === 'perspective_product_gallery') {
+                    setTempProductGalleryInput(prev => {
+                      const trimmed = prev.trim();
+                      if (!trimmed) return url;
+                      return trimmed.endsWith(',') ? `${trimmed} ${url}` : `${trimmed}, ${url}`;
+                    });
+                  }
+                  setActiveMediaSelector(null);
+                }}
+                selectButtonText="XÁC NHẬN CHỌN HÌNH ẢNH NÀY"
+              />
             </div>
           </div>
         </div>

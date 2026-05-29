@@ -6,7 +6,13 @@ import {
 } from 'lucide-react';
 import { MediaFolder, MediaItem } from '../types';
 
-export default function MediaLibrary() {
+export default function MediaLibrary({
+  onSelect,
+  selectButtonText = 'Chọn hình ảnh này'
+}: {
+  onSelect?: (url: string) => void;
+  selectButtonText?: string;
+} = {}) {
   const [folders, setFolders] = React.useState<MediaFolder[]>([]);
   const [items, setItems] = React.useState<MediaItem[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -751,6 +757,19 @@ export default function MediaLibrary() {
                               >
                                 {copiedId === item.id ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                               </button>
+
+                              {onSelect && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelect(item.url);
+                                  }}
+                                  className="p-1 px-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 border border-emerald-500 flex items-center gap-1"
+                                  title={selectButtonText}
+                                >
+                                  <Check className="w-3 h-3" />
+                                </button>
+                              )}
                             </div>
 
                             {/* MIME type label */}
@@ -836,6 +855,17 @@ export default function MediaLibrary() {
                 </button>
               </div>
             </div>
+
+            {onSelect && (
+              <button
+                type="button"
+                onClick={() => onSelect(selectedItem.url)}
+                className="w-full py-2.5 mb-4 bg-emerald-600 hover:bg-emerald-505 text-white rounded-xl text-xs font-bold transition-all shadow-md select-none cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-500"
+              >
+                <Check className="w-4 h-4 text-emerald-200" />
+                {selectButtonText}
+              </button>
+            )}
 
             {/* Editing attributes details */}
             <form onSubmit={handleSaveItemEdit} className="space-y-4">
