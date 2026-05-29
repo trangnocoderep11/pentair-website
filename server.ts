@@ -6,7 +6,6 @@
 import express, { Request, Response, NextFunction } from "express";
 import path from "path";
 import fs from "fs";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
@@ -44,8 +43,12 @@ const DATA_DIR = path.join(process.cwd(), "data");
 const DB_PATH = path.join(DATA_DIR, "db.json");
 
 // Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+} catch (err) {
+  console.warn("Could not create data directory, using default/in-memory system. This is normal in read-only/serverless environments like Vercel.", err);
 }
 
 // Pre-seeded / bootstrap data
@@ -1604,8 +1607,12 @@ app.post("/api/admin/media/upload", authMiddleware, (req, res) => {
   }
 
   const UPLOADS_DIR = path.join(process.cwd(), "data", "uploads");
-  if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  try {
+    if (!fs.existsSync(UPLOADS_DIR)) {
+      fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+    }
+  } catch (err) {
+    console.error("Could not create uploads directory", err);
   }
 
   // Tên hiển thị (title) phải trùng khớp 100% với tên ảnh trên thiết bị (filename gốc)
@@ -2003,6 +2010,7 @@ app.get("/robots.txt", (req, res) => {
 // Vite server boot connection / Static Server in Production
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -2016,9 +2024,13 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server Pentair running dynamic endpoints on http://localhost:${PORT}`);
-  });
+  if (process.env.VERCEL) {
+    console.log("Running in Vercel Serverless environment. Skip app.listen().");
+  } else {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server Pentair running dynamic endpoints on http://localhost:${PORT}`);
+    });
+  }
 }
 
 startServer();
