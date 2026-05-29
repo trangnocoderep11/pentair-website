@@ -2016,7 +2016,9 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (!process.env.VERCEL) {
+    // Only serve static files via Express in non-Vercel production environments (self-hosted / Docker / standard node environment).
+    // On Vercel, the ultra-fast Vercel Edge CDN serves all static files in the build output natively, avoiding dynamic Node overhead.
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
