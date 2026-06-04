@@ -5,10 +5,10 @@
 
 import React from 'react';
 import { 
-  BarChart3, FileText, ShoppingBag, FolderTree, MessageSquare, Settings2, 
+  BarChart3, FileText, ShoppingBag, FolderTree, MessageSquare, Settings2, Sliders,
   Database, ShieldCheck, KeyRound, UserCheck, Plus, Pencil, Trash2, 
   Eye, FileCode, CheckCircle, AlertTriangle, Save, LogOut, ArrowRight, Download, Upload, Shield, RefreshCw, Server,
-  Mail, Video, LayoutTemplate, Image, Search, ChevronDown, X, Layout, Link, GripVertical, ChevronUp, Youtube, Loader2
+  Mail, Video, LayoutTemplate, Image, Search, ChevronDown, X, Layout, Link, GripVertical, ChevronUp, Youtube, Loader2, MapPin
 } from 'lucide-react';
 import { Post, Term, FormSubmission, CMSBackup } from '../types';
 import MediaLibrary from './MediaLibrary';
@@ -176,7 +176,8 @@ export default function AdminCMS({
 
   // MEDIA SELECTOR MODAL STATE
   const [activeMediaSelector, setActiveMediaSelector] = React.useState<{
-    target: 'post_featured' | 'video_thumbnail' | 'perspective_featured' | 'perspective_gallery' | 'perspective_product_gallery' | 'logo_image' | 'post_content_editor';
+    target: 'post_featured' | 'video_thumbnail' | 'perspective_featured' | 'perspective_gallery' | 'perspective_product_gallery' | 'logo_image' | 'footer_logo_image' | 'post_content_editor' | 'softener_slide';
+    slideIndex?: number;
   } | null>(null);
 
   // USER MANAGEMENT STATES
@@ -895,12 +896,11 @@ export default function AdminCMS({
   const [editingTermId, setEditingTermId] = React.useState<string | null>(null);
   const [selectedInspectTermId, setSelectedInspectTermId] = React.useState<string | null>(null);
 
-  // BRAND & SEO SETTINGS OPTIONS FORM
   const [brandForm, setBrandForm] = React.useState({
     siteName: 'Pentair Việt Nam',
     tagline: 'Tinh Hoa Lọc Nước Từ Mỹ',
     phone: '1800 8134',
-    email: 'contact@pentairvn.com',
+    email: 'pentairvn@gmail.com',
     address: '90 Đ. Đinh Thị Thi, Khu đô Thị Vạn Phúc, Thủ Đức, Hồ Chí Minh',
     facebook: 'https://www.facebook.com/PentairVietNamOfficial',
     youtube: 'https://www.youtube.com/@PentairVietNamOfficial'
@@ -929,6 +929,9 @@ export default function AdminCMS({
     topBarHotline: '1800 8134',
     topBarAddress: '90 Đinh Thị Thi, Vạn Phúc City, Thủ Đức',
     topBarTagline: 'Pentair USA - Leading the Water Revolution',
+    footerLogoText: 'P',
+    footerLogoImageUrl: '',
+    footerLogoTextFull: 'PENTAIR VN',
   });
   const [homepageSettings, setHomepageSettings] = React.useState({
     heroTitle: 'GIẢI PHÁP XỬ LÝ NƯỚC HÀNG ĐẦU CHÂU ÂU & BẮC MỸ',
@@ -955,11 +958,34 @@ export default function AdminCMS({
     { title: 'Chính sách đổi trả', content: 'Đổi mới 1-1 trong 30 ngày.' },
     { title: 'Chính sách bảo mật', content: 'Tuyệt đối an tâm.' },
   ]);
+ 
+  // SOFTENER SLIDES STATE
+  interface SoftenerSlide {
+    image: string;
+    title: string;
+    subtitle: string;
+    badge: string;
+  }
+  const defaultSoftenerSlides: SoftenerSlide[] = [
+    { image: 'https://images.unsplash.com/photo-1585837575652-267c0ee1228b?auto=format&fit=crop&w=800&q=80', title: 'Giải Pháp Làm Mềm Nước', subtitle: 'Công nghệ trao đổi ion loại bỏ hoàn toàn độ cứng của nước, bảo vệ hệ thống ống nước & thiết bị.', badge: 'CÔNG NGHỆ USA' },
+    { image: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80', title: 'Bảo Vệ Thiết Bị', subtitle: 'Ngăn ngừa cặn can xi bám vào máy giặt, máy nước nóng và các thiết bị gia dụng quan trọng.', badge: 'TIÊU CHUẨN WQA' },
+    { image: 'https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=800&q=80', title: 'Nước Mềm Mại Mỗi Ngày', subtitle: 'Da dẻ mịn màng hơn, tóc óng ả hơn và cảm giác sạch hoàn toàn sau mỗi lần tắm.', badge: 'NSF CERTIFIED' },
+  ];
+  const [softenerSlides, setSoftenerSlides] = React.useState<SoftenerSlide[]>(defaultSoftenerSlides);
+  const [softenerSlideUploading, setSoftenerSlideUploading] = React.useState<number | null>(null);
+  const [softenerSaving, setSoftenerSaving] = React.useState(false);
+ 
   const [hfMenuEditIdx, setHfMenuEditIdx] = React.useState<number | null>(null);
   const [hfMenuEditItem, setHfMenuEditItem] = React.useState({ label: '', url: '' });
   const [hfPolicyEditIdx, setHfPolicyEditIdx] = React.useState<number | null>(null);
   const [hfPolicyEditItem, setHfPolicyEditItem] = React.useState({ title: '', content: '' });
-  const [hfSubTab, setHfSubTab] = React.useState<'logo' | 'menu' | 'footer'>('logo');
+  const [hfShowroomEditIdx, setHfShowroomEditIdx] = React.useState<number | null>(null);
+  const [hfShowroomEditItem, setHfShowroomEditItem] = React.useState({ name: '', address: '', phone: '' });
+  const [hfSubTab, setHfSubTab] = React.useState<'logo' | 'menu' | 'footer' | 'showrooms'>('logo');
+  const [hpSubTab, setHpSubTab] = React.useState<'hero' | 'intro' | 'softener'>('hero');
+  const [heroImageUploading, setHeroImageUploading] = React.useState(false);
+
+  const [introImageUploading, setIntroImageUploading] = React.useState(false);
   const [hfSaving, setHfSaving] = React.useState(false);
   const [hfStatusMsg, setHfStatusMsg] = React.useState('');
   const [hfErrorMsg, setHfErrorMsg] = React.useState('');
@@ -1008,6 +1034,10 @@ export default function AdminCMS({
       }
       if (homeSettings) {
         setHomepageSettings(prev => ({ ...prev, ...homeSettings }));
+      }
+      const softenerSlidesOpt = options.find(o => o.optionName === 'softener_slides')?.optionValue;
+      if (softenerSlidesOpt && Array.isArray(softenerSlidesOpt) && softenerSlidesOpt.length > 0) {
+        setSoftenerSlides(softenerSlidesOpt);
       }
     }
   }, [options]);
@@ -1368,6 +1398,145 @@ export default function AdminCMS({
     }
   };
 
+  // SAVE SOFTENER SLIDES
+  const handleSaveSoftenerSlides = async () => {
+    setSoftenerSaving(true);
+    try {
+      const payload = [
+        { id: 'opt-softener-slides', optionName: 'softener_slides', optionValue: softenerSlides },
+      ];
+      const res = await fetch('/api/options', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('Lỗi khi lưu danh sách Softener Slides.');
+      await onRefreshData();
+      triggerToast('Đã cập nhật ảnh Water Softening carousel thành công!');
+    } catch (err: any) {
+      triggerToast(err.message, true);
+    } finally {
+      setSoftenerSaving(false);
+    }
+  };
+
+  // UPLOAD SOFTENER SLIDE IMAGE (base64 upload)
+  const handleSoftenerSlideUpload = async (slideIdx: number, file: File) => {
+    setSoftenerSlideUploading(slideIdx);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        try {
+          const base64Data = (ev.target?.result as string).split(',')[1];
+          const res = await fetch('/api/admin/media/upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+            },
+            body: JSON.stringify({
+              filename: file.name,
+              mimeType: file.type,
+              base64Data,
+              folderId: undefined
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Upload thất bại.');
+          setSoftenerSlides(prev => prev.map((s, i) => i === slideIdx ? { ...s, image: data.url } : s));
+          triggerToast('Đã tải lên ảnh slide thành công!');
+        } catch (err: any) {
+          triggerToast(err.message || 'Lỗi upload ảnh.', true);
+        } finally {
+          setSoftenerSlideUploading(null);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      triggerToast(err.message || 'Lỗi đọc file.', true);
+      setSoftenerSlideUploading(null);
+    }
+  };
+
+  // UPLOAD HERO IMAGE
+  const handleHeroImageUpload = async (file: File) => {
+    setHeroImageUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        try {
+          const base64Data = (ev.target?.result as string).split(',')[1];
+          const res = await fetch('/api/admin/media/upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+            },
+            body: JSON.stringify({
+              filename: file.name,
+              mimeType: file.type,
+              base64Data,
+              folderId: undefined
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Upload thất bại.');
+          setHomepageSettings(prev => ({ ...prev, heroImage: data.url }));
+          triggerToast('Đã tải lên ảnh Hero thành công!');
+        } catch (err: any) {
+          triggerToast(err.message || 'Lỗi upload ảnh.', true);
+        } finally {
+          setHeroImageUploading(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      triggerToast(err.message || 'Lỗi đọc file.', true);
+      setHeroImageUploading(false);
+    }
+  };
+
+  // UPLOAD INTRO IMAGE
+  const handleIntroImageUpload = async (file: File) => {
+    setIntroImageUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        try {
+          const base64Data = (ev.target?.result as string).split(',')[1];
+          const res = await fetch('/api/admin/media/upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+            },
+            body: JSON.stringify({
+              filename: file.name,
+              mimeType: file.type,
+              base64Data,
+              folderId: undefined
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Upload thất bại.');
+          setHomepageSettings(prev => ({ ...prev, introImage: data.url }));
+          triggerToast('Đã tải lên ảnh Intro thành công!');
+        } catch (err: any) {
+          triggerToast(err.message || 'Lỗi upload ảnh.', true);
+        } finally {
+          setIntroImageUploading(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      triggerToast(err.message || 'Lỗi đọc file.', true);
+      setIntroImageUploading(false);
+    }
+  };
+
   // SAVE HEADER & FOOTER CONFIGS
   const handleSaveHeaderFooter = async () => {
     setHfSaving(true);
@@ -1378,6 +1547,7 @@ export default function AdminCMS({
         { id: 'opt-header-settings', optionName: 'header_settings', optionValue: headerSettings },
         { id: 'opt-header-menu', optionName: 'header_menu', optionValue: headerMenuItems },
         { id: 'opt-footer-policies', optionName: 'footer_policies', optionValue: footerPolicies },
+        { id: 'opt-showrooms', optionName: 'showrooms', optionValue: showroomList },
       ];
 
       const res = await fetch('/api/options', {
@@ -5001,6 +5171,7 @@ export default function AdminCMS({
                 { key: 'logo', label: 'Logo & Top Bar', icon: <Image className="w-4 h-4" /> },
                 { key: 'menu', label: 'Menu Điều Hướng', icon: <Link className="w-4 h-4" /> },
                 { key: 'footer', label: 'Chính Sách Footer', icon: <Layout className="w-4 h-4" /> },
+                { key: 'showrooms', label: 'Hệ Thống Showroom', icon: <MapPin className="w-4 h-4" /> },
               ] as const).map(tab => (
                 <button
                   key={tab.key}
@@ -5038,52 +5209,115 @@ export default function AdminCMS({
                     Logo &amp; Thanh Top Bar
                   </h3>
 
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">URL Ảnh Logo</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={headerSettings.logoImageUrl}
-                        onChange={e => setHeaderSettings(prev => ({ ...prev, logoImageUrl: e.target.value }))}
-                        placeholder="https://... (để trống sẽ dùng chữ logo)"
-                        className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                        id="input-logo-image-url"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setActiveMediaSelector({ target: 'logo_image' })}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-lg transition-all cursor-pointer shrink-0 whitespace-nowrap"
-                        id="btn-logo-pick-media"
-                        title="Chọn ảnh từ Thư Viện Media"
-                      >
-                        <Image className="w-3.5 h-3.5" />
-                        Thư Viện
-                      </button>
-                      {headerSettings.logoImageUrl && (
+                  {/* LOGO HEADER */}
+                  <div className="space-y-4 border-b border-gray-100 pb-4">
+                    <h4 className="text-xs font-bold uppercase text-indigo-600">Logo Trên Header</h4>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">URL Ảnh Logo Header</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={headerSettings.logoImageUrl}
+                          onChange={e => setHeaderSettings(prev => ({ ...prev, logoImageUrl: e.target.value }))}
+                          placeholder="https://... (để trống sẽ dùng chữ logo)"
+                          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          id="input-logo-image-url"
+                        />
                         <button
                           type="button"
-                          onClick={() => setHeaderSettings(prev => ({ ...prev, logoImageUrl: '' }))}
-                          className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"
-                          title="Xóa ảnh logo"
+                          onClick={() => setActiveMediaSelector({ target: 'logo_image' })}
+                          className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-lg transition-all cursor-pointer shrink-0 whitespace-nowrap"
+                          id="btn-logo-pick-media"
                         >
-                          <X className="w-4 h-4" />
+                          <Image className="w-3.5 h-3.5" />
+                          Thư Viện
                         </button>
-                      )}
+                        {headerSettings.logoImageUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setHeaderSettings(prev => ({ ...prev, logoImageUrl: '' }))}
+                            className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-[10px] text-gray-400">Nếu có URL, logo ảnh sẽ thay thế chữ logo. Khuyến nghị PNG nền trong suốt, kích thước 120x40px.</p>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Chữ Logo Header (khi không có ảnh)</label>
+                      <input
+                        type="text"
+                        value={headerSettings.logoText}
+                        onChange={e => setHeaderSettings(prev => ({ ...prev, logoText: e.target.value }))}
+                        placeholder="P"
+                        maxLength={3}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                        id="input-logo-text"
+                      />
+                    </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Chữ Logo (khi không có ảnh)</label>
-                    <input
-                      type="text"
-                      value={headerSettings.logoText}
-                      onChange={e => setHeaderSettings(prev => ({ ...prev, logoText: e.target.value }))}
-                      placeholder="P"
-                      maxLength={3}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                      id="input-logo-text"
-                    />
+                  {/* LOGO FOOTER */}
+                  <div className="space-y-4 border-b border-gray-100 pb-4 pt-2">
+                    <h4 className="text-xs font-bold uppercase text-indigo-600">Logo Dưới Footer</h4>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">URL Ảnh Logo Footer</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={headerSettings.footerLogoImageUrl || ''}
+                          onChange={e => setHeaderSettings(prev => ({ ...prev, footerLogoImageUrl: e.target.value }))}
+                          placeholder="https://... (để trống sẽ dùng chữ logo)"
+                          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          id="input-footer-logo-image-url"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setActiveMediaSelector({ target: 'footer_logo_image' })}
+                          className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-lg transition-all cursor-pointer shrink-0 whitespace-nowrap"
+                          id="btn-footer-logo-pick-media"
+                        >
+                          <Image className="w-3.5 h-3.5" />
+                          Thư Viện
+                        </button>
+                        {headerSettings.footerLogoImageUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setHeaderSettings(prev => ({ ...prev, footerLogoImageUrl: '' }))}
+                            className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Ký tự Logo viết tắt</label>
+                        <input
+                          type="text"
+                          value={headerSettings.footerLogoText || ''}
+                          onChange={e => setHeaderSettings(prev => ({ ...prev, footerLogoText: e.target.value }))}
+                          placeholder="P"
+                          maxLength={3}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          id="input-footer-logo-text"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Tên thương hiệu đầy đủ</label>
+                        <input
+                          type="text"
+                          value={headerSettings.footerLogoTextFull || ''}
+                          onChange={e => setHeaderSettings(prev => ({ ...prev, footerLogoTextFull: e.target.value }))}
+                          placeholder="PENTAIR VN"
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          id="input-footer-logo-text-full"
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-1">
@@ -5474,6 +5708,163 @@ export default function AdminCMS({
               </div>
             )}
 
+            {/* ---- TAB 4: SHOWROOMS ---- */}
+            {hfSubTab === 'showrooms' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Showroom list */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+                   <div className="flex justify-between items-center border-b pb-3">
+                     <h3 className="text-sm font-black uppercase text-gray-800 flex items-center gap-2">
+                       <MapPin className="w-4 h-4 text-indigo-500" />
+                       Hệ Thống Showroom ({showroomList.length} showroom)
+                     </h3>
+                     <button
+                       onClick={() => {
+                         setHfShowroomEditIdx(showroomList.length);
+                         setHfShowroomEditItem({ name: '', address: '', phone: '' });
+                       }}
+                       className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white text-[11px] font-bold rounded-lg hover:bg-indigo-700 transition-all cursor-pointer"
+                       id="btn-hf-add-showroom"
+                     >
+                       <Plus className="w-3.5 h-3.5" />
+                       Thêm Showroom
+                     </button>
+                   </div>
+
+                   <div className="space-y-2">
+                     {showroomList.map((show, idx) => (
+                       <div key={idx} className="p-3 bg-gray-50 rounded-xl border border-gray-100 group">
+                         <div className="flex items-start justify-between gap-2">
+                           <div className="flex-1 min-w-0">
+                             <div className="text-xs font-bold text-gray-800">{show.name}</div>
+                             <div className="text-[10px] text-gray-500 mt-0.5 leading-relaxed">{show.address}</div>
+                             <div className="text-[10px] text-indigo-600 mt-0.5 font-semibold">📞 SĐT: {show.phone}</div>
+                           </div>
+                           <div className="flex gap-1 shrink-0">
+                             <button
+                               onClick={() => {
+                                 setHfShowroomEditIdx(idx);
+                                 setHfShowroomEditItem({ name: show.name || '', address: show.address || '', phone: show.phone || '' });
+                               }}
+                               className="p-1 text-indigo-500 hover:bg-indigo-50 rounded cursor-pointer"
+                               title="Sửa"
+                             >
+                               <Pencil className="w-3.5 h-3.5" />
+                             </button>
+                             <button
+                               onClick={() => {
+                                 if (window.confirm(`Xóa showroom "${show.name}"?`)) {
+                                   setShowroomList(prev => prev.filter((_, i) => i !== idx));
+                                 }
+                               }}
+                               className="p-1 text-rose-500 hover:bg-rose-50 rounded cursor-pointer"
+                               title="Xóa"
+                             >
+                               <Trash2 className="w-3.5 h-3.5" />
+                             </button>
+                           </div>
+                         </div>
+                       </div>
+                     ))}
+                     {showroomList.length === 0 && (
+                       <p className="text-xs text-center text-gray-400 py-6">Chưa có showroom nào.</p>
+                     )}
+                   </div>
+                </div>
+
+                {/* Edit form */}
+                <div className="space-y-4">
+                  {hfShowroomEditIdx !== null ? (
+                    <div className="bg-white rounded-2xl border border-indigo-200 shadow-sm p-6 space-y-4">
+                      <h3 className="text-sm font-black uppercase text-indigo-700 border-b pb-2">
+                        {hfShowroomEditIdx === showroomList.length ? '➕ Thêm showroom mới' : `✏️ Sửa showroom #${hfShowroomEditIdx + 1}`}
+                      </h3>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Tên Showroom *</label>
+                        <input
+                          type="text"
+                          value={hfShowroomEditItem.name}
+                          onChange={e => setHfShowroomEditItem(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Ví dụ: Showroom Thủ Đức (Vạn Phúc City)"
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          id="input-showroom-name"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Địa chỉ Showroom *</label>
+                        <input
+                          type="text"
+                          value={hfShowroomEditItem.address}
+                          onChange={e => setHfShowroomEditItem(prev => ({ ...prev, address: e.target.value }))}
+                          placeholder="Ví dụ: 90 Đ. Đinh Thị Thi, Khu đô thị Vạn Phúc..."
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          id="input-showroom-address"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Số điện thoại *</label>
+                        <input
+                          type="text"
+                          value={hfShowroomEditItem.phone}
+                          onChange={e => setHfShowroomEditItem(prev => ({ ...prev, phone: e.target.value }))}
+                          placeholder="Ví dụ: 1800 8134"
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          id="input-showroom-phone"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            if (!hfShowroomEditItem.name.trim() || !hfShowroomEditItem.address.trim() || !hfShowroomEditItem.phone.trim()) return;
+                            const next = [...showroomList];
+                            if (hfShowroomEditIdx === showroomList.length) {
+                              next.push(hfShowroomEditItem);
+                            } else {
+                              next[hfShowroomEditIdx] = hfShowroomEditItem;
+                            }
+                            setShowroomList(next);
+                            setHfShowroomEditIdx(null);
+                            setHfShowroomEditItem({ name: '', address: '', phone: '' });
+                          }}
+                          className="flex-1 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-all cursor-pointer flex items-center justify-center gap-1"
+                          id="btn-hf-save-showroom-item"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          {hfShowroomEditIdx === showroomList.length ? 'Thêm Showroom' : 'Cập nhật'}
+                        </button>
+                        <button
+                          onClick={() => { setHfShowroomEditIdx(null); setHfShowroomEditItem({ name: '', address: '', phone: '' }); }}
+                          className="px-4 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-lg hover:bg-gray-200 transition-all cursor-pointer"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-[#0C3471]/5 border border-[#0C3471]/10 rounded-2xl p-5 text-xs text-[#0C3471] font-sans space-y-2">
+                      <strong className="block text-[11px] uppercase">💡 Quản lý Showroom:</strong>
+                      <p>Hệ thống showroom sẽ hiển thị ở chân trang (Footer) và các trang liên quan để Khách hàng tiện theo dõi, liên hệ.</p>
+                    </div>
+                  )}
+
+                  {/* Footer showroom preview */}
+                  <div className="bg-[#0C3471] rounded-2xl p-4 space-y-2 text-white">
+                    <h4 className="text-[11px] font-black uppercase text-blue-300">Xem trước Footer Showrooms</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {showroomList.map((show, idx) => (
+                        <div key={idx} className="bg-white/5 p-2 rounded border border-white/5 text-[10px]">
+                          <div className="font-bold text-white">{show.name}</div>
+                          <div className="text-blue-200 mt-0.5 line-clamp-1">{show.address}</div>
+                          <div className="text-blue-100 font-semibold mt-0.5">SĐT: {show.phone}</div>
+                        </div>
+                      ))}
+                      {showroomList.length === 0 && <p className="text-blue-300/50 text-[11px] col-span-2">Chưa có showroom</p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* SAVE BUTTON */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col sm:flex-row justify-between items-center gap-4">
               <div className="text-xs text-gray-500 font-sans">
@@ -5493,6 +5884,706 @@ export default function AdminCMS({
                 {hfSaving ? 'Đang lưu...' : 'Lưu tất cả thay đổi Header & Footer'}
               </button>
             </div>
+
+          </div>
+        )}
+
+        {/* ==========================================
+            HOMEPAGE SETTINGS PANEL (Water Softening Carousel)
+            ========================================== */}
+        {activeTab === 'homepage' && (
+          <div className="space-y-6 animate-fadeIn" id="panel-homepage-settings">
+
+            {/* Header Banner */}
+            <div className="bg-gradient-to-r from-orange-500 to-amber-600 p-6 rounded-2xl text-white shadow-lg">
+              <div className="flex items-center gap-3 mb-1">
+                <Image className="w-6 h-6 text-orange-200" />
+                <h2 className="text-lg font-black uppercase tracking-tight">Cài Đặt Trang Chủ</h2>
+              </div>
+              <p className="text-orange-100 text-xs font-sans">Quản lý hình ảnh, nội dung cho Banner chính (Hero), phần Giới thiệu (Intro) và phần Water Softening Solution trên trang chủ.</p>
+            </div>
+
+            {/* Sub-tab Selection */}
+            <div className="flex border-b border-gray-200 bg-white rounded-xl p-1 shadow-xs gap-1">
+              <button
+                type="button"
+                onClick={() => setHpSubTab('hero')}
+                className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer text-center ${
+                  hpSubTab === 'hero'
+                    ? 'border-orange-600 text-orange-600 font-extrabold'
+                    : 'border-transparent text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                Hero Banner (Ảnh & Chữ đầu trang)
+              </button>
+              <button
+                type="button"
+                onClick={() => setHpSubTab('intro')}
+                className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer text-center ${
+                  hpSubTab === 'intro'
+                    ? 'border-orange-600 text-orange-600 font-extrabold'
+                    : 'border-transparent text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                Giới thiệu (Ảnh & Chữ phần thân)
+              </button>
+              <button
+                type="button"
+                onClick={() => setHpSubTab('softener')}
+                className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer text-center ${
+                  hpSubTab === 'softener'
+                    ? 'border-orange-600 text-orange-600 font-extrabold'
+                    : 'border-transparent text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                Làm mềm nước (Softener Carousel)
+              </button>
+            </div>
+
+            {/* HERO BANNER TAB */}
+            {hpSubTab === 'hero' && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
+                <div className="border-b pb-4">
+                  <h3 className="text-sm font-black uppercase text-gray-800 flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-orange-500" />
+                    Cấu Hình Hero Banner (Bên Phải Là Hình Ảnh Vòi Nước/Phòng Tắm)
+                  </h3>
+                  <p className="text-[10px] text-gray-400 font-sans mt-0.5">Thay đổi nội dung tiêu đề, phụ đề và hình ảnh đại diện nổi bật phía bên phải của Banner trang chủ.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                  {/* Left Column: text inputs */}
+                  <div className="md:col-span-7 space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-gray-500 block">Tiêu đề Hero chính</label>
+                      <input
+                        type="text"
+                        value={homepageSettings.heroTitle}
+                        onChange={e => setHomepageSettings(prev => ({ ...prev, heroTitle: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-orange-300"
+                        placeholder="GIẢI PHÁP XỬ LÝ NƯỚC HÀNG ĐẦU CHÂU ÂU & BẮC MỸ"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-gray-500 block">Tiêu đề phụ / Subtitle</label>
+                      <textarea
+                        rows={3}
+                        value={homepageSettings.heroSubtitle}
+                        onChange={e => setHomepageSettings(prev => ({ ...prev, heroSubtitle: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-orange-300 resize-none"
+                        placeholder="Khởi nguồn từ di sản công nghệ..."
+                      />
+                    </div>
+
+                    <div className="border-t pt-4 mt-4 space-y-4">
+                      <h4 className="text-xs font-black uppercase text-gray-650">Thông tin thẻ thông tin đè lên ảnh (Card Info overlay)</h4>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-gray-500 block">Nhãn thẻ (VD: "USA CERTIFIED")</label>
+                          <input
+                            type="text"
+                            value={homepageSettings.heroImageTag}
+                            onChange={e => setHomepageSettings(prev => ({ ...prev, heroImageTag: e.target.value }))}
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-orange-300"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-gray-500 block">Tiêu đề thẻ (VD: "Pentair Smart...")</label>
+                          <input
+                            type="text"
+                            value={homepageSettings.heroImageTitle}
+                            onChange={e => setHomepageSettings(prev => ({ ...prev, heroImageTitle: e.target.value }))}
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-orange-300"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase text-gray-500 block">Mô tả ngắn của thẻ</label>
+                        <textarea
+                          rows={2}
+                          value={homepageSettings.heroImageDesc}
+                          onChange={e => setHomepageSettings(prev => ({ ...prev, heroImageDesc: e.target.value }))}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-orange-300 resize-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: image settings */}
+                  <div className="md:col-span-5 space-y-4">
+                    <label className="text-[10px] font-bold uppercase text-gray-500 block">Hình ảnh Banner bên phải</label>
+                    
+                    <div className="relative aspect-[3/4] rounded-xl overflow-hidden border-2 border-dashed border-gray-200 bg-gray-100 group flex items-center justify-center">
+                      {homepageSettings.heroImage ? (
+                        <>
+                          <img 
+                            src={homepageSettings.heroImage} 
+                            alt="Hero preview"
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <label 
+                              className="px-3 py-1.5 bg-white text-gray-800 text-[11px] font-bold rounded-lg cursor-pointer hover:bg-gray-100 transition-colors flex items-center gap-1.5"
+                              htmlFor="hero-image-file-input"
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              Đổi ảnh
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setActiveMediaSelector({ target: 'homepage_hero_image' })}
+                              className="px-3 py-1.5 bg-blue-600 text-white text-[11px] font-bold rounded-lg cursor-pointer hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+                            >
+                              <Image className="w-3.5 h-3.5" />
+                              Media
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <label 
+                          htmlFor="hero-image-file-input"
+                          className="flex flex-col items-center justify-center h-full gap-2 cursor-pointer hover:bg-gray-150 transition-colors p-4"
+                        >
+                          {heroImageUploading ? (
+                            <Loader2 className="w-8 h-8 text-orange-400 animate-spin" />
+                          ) : (
+                            <>
+                              <Upload className="w-8 h-8 text-gray-300" />
+                              <span className="text-[11px] text-gray-400 font-sans text-center">Tải ảnh lên hoặc chọn từ thư viện</span>
+                            </>
+                          )}
+                        </label>
+                      )}
+                      {heroImageUploading && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl">
+                          <Loader2 className="w-10 h-10 text-white animate-spin" />
+                        </div>
+                      )}
+                    </div>
+
+                    <input
+                      type="file"
+                      id="hero-image-file-input"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handleHeroImageUpload(file);
+                        e.target.value = '';
+                      }}
+                    />
+
+                    <div className="flex gap-2">
+                      <label
+                        htmlFor="hero-image-file-input"
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white text-[11px] font-bold rounded-lg cursor-pointer transition-colors"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        Tải ảnh lên
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setActiveMediaSelector({ target: 'homepage_hero_image' })}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg cursor-pointer transition-colors"
+                      >
+                        <Image className="w-3.5 h-3.5" />
+                        Thư viện ảnh
+                      </button>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold uppercase text-gray-400 block">Địa chỉ liên kết ảnh (URL)</label>
+                      <input
+                        type="text"
+                        value={homepageSettings.heroImage || ''}
+                        onChange={e => setHomepageSettings(prev => ({ ...prev, heroImage: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-[10px] font-mono focus:outline-none focus:ring-2 focus:ring-orange-300"
+                        placeholder="https://..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t flex items-center justify-between">
+                  <p className="text-[11px] text-gray-400 font-sans">Sau khi lưu, thay đổi của bạn sẽ được hiển thị ngay lập tức trên trang chủ ở đầu trang.</p>
+                  <button
+                    type="button"
+                    onClick={handleSaveHomepageSettings}
+                    disabled={hfSaving}
+                    className={`flex items-center gap-2 px-6 py-2.5 text-xs font-black uppercase rounded-xl transition-all cursor-pointer shadow-md ${hfSaving ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700 text-white shadow-orange-200'}`}
+                  >
+                    {hfSaving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    {hfSaving ? 'Đang lưu...' : 'Lưu cài đặt Hero Banner'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* INTRO SECTION TAB */}
+            {hpSubTab === 'intro' && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
+                <div className="border-b pb-4">
+                  <h3 className="text-sm font-black uppercase text-gray-800 flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-orange-500" />
+                    Cấu Hình Phần Giới Thiệu (Thân Trang Chủ)
+                  </h3>
+                  <p className="text-[10px] text-gray-400 font-sans mt-0.5">Quản lý tiêu đề, mô tả và hình ảnh giới thiệu công nghệ lọc nước Pentair Hoa Kỳ.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                  {/* Left Column: text inputs */}
+                  <div className="md:col-span-7 space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-gray-500 block">Tiêu đề chính giới thiệu</label>
+                      <input
+                        type="text"
+                        value={homepageSettings.introTitle}
+                        onChange={e => setHomepageSettings(prev => ({ ...prev, introTitle: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-orange-300"
+                        placeholder="HƠN 60 NĂM KINH NGHIỆM TRONG NGÀNH XỬ LÝ NƯỚC"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-gray-500 block">Nội dung giới thiệu chi tiết</label>
+                      <textarea
+                        rows={5}
+                        value={homepageSettings.introBody}
+                        onChange={e => setHomepageSettings(prev => ({ ...prev, introBody: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-orange-300 resize-y"
+                        placeholder="Pentair là thương hiệu hàng đầu từ Mỹ..."
+                      />
+                    </div>
+
+                    <div className="border-t pt-4 space-y-4">
+                      <h4 className="text-xs font-black uppercase text-gray-650">Thẻ mô tả đè lên ảnh giới thiệu</h4>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-gray-500 block">Nhãn thẻ (VD: "Villa Penthouse Integration")</label>
+                          <input
+                            type="text"
+                            value={homepageSettings.introImageTag}
+                            onChange={e => setHomepageSettings(prev => ({ ...prev, introImageTag: e.target.value }))}
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-orange-300"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-gray-500 block">Mô tả thẻ</label>
+                          <input
+                            type="text"
+                            value={homepageSettings.introImageDesc}
+                            onChange={e => setHomepageSettings(prev => ({ ...prev, introImageDesc: e.target.value }))}
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-orange-300"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Features section (3 items) */}
+                    <div className="border-t pt-4 space-y-4">
+                      <h4 className="text-xs font-black uppercase text-gray-650">3 Đặc Điểm Nổi Bật Nhanh (Dưới đoạn mô tả)</h4>
+                      
+                      {/* Feature 1 */}
+                      <div className="p-3 bg-gray-55 rounded-xl border border-gray-150 space-y-2">
+                        <span className="text-[9px] font-mono uppercase text-orange-600 font-bold">Đặc điểm #1</span>
+                        <div className="grid grid-cols-3 gap-2">
+                          <input
+                            type="text"
+                            value={homepageSettings.introFeature1Title}
+                            onChange={e => setHomepageSettings(prev => ({ ...prev, introFeature1Title: e.target.value }))}
+                            className="col-span-1 border border-gray-200 rounded-lg px-2 py-1 text-xs font-sans bg-white focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            placeholder="Mỹ Quốc"
+                          />
+                          <input
+                            type="text"
+                            value={homepageSettings.introFeature1Desc}
+                            onChange={e => setHomepageSettings(prev => ({ ...prev, introFeature1Desc: e.target.value }))}
+                            className="col-span-2 border border-gray-200 rounded-lg px-2 py-1 text-xs font-sans bg-white focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            placeholder="Sáng lập từ năm 1966 tại Minnesota..."
+                          />
+                        </div>
+                      </div>
+
+                      {/* Feature 2 */}
+                      <div className="p-3 bg-gray-55 rounded-xl border border-gray-150 space-y-2">
+                        <span className="text-[9px] font-mono uppercase text-orange-600 font-bold">Đặc điểm #2</span>
+                        <div className="grid grid-cols-3 gap-2">
+                          <input
+                            type="text"
+                            value={homepageSettings.introFeature2Title}
+                            onChange={e => setHomepageSettings(prev => ({ ...prev, introFeature2Title: e.target.value }))}
+                            className="col-span-1 border border-gray-200 rounded-lg px-2 py-1 text-xs font-sans bg-white focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            placeholder="Tiêu chuẩn"
+                          />
+                          <input
+                            type="text"
+                            value={homepageSettings.introFeature2Desc}
+                            onChange={e => setHomepageSettings(prev => ({ ...prev, introFeature2Desc: e.target.value }))}
+                            className="col-span-2 border border-gray-200 rounded-lg px-2 py-1 text-xs font-sans bg-white focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            placeholder="Đạt kiểm định NSF & WQA..."
+                          />
+                        </div>
+                      </div>
+
+                      {/* Feature 3 */}
+                      <div className="p-3 bg-gray-55 rounded-xl border border-gray-150 space-y-2">
+                        <span className="text-[9px] font-mono uppercase text-orange-600 font-bold">Đặc điểm #3</span>
+                        <div className="grid grid-cols-3 gap-2">
+                          <input
+                            type="text"
+                            value={homepageSettings.introFeature3Title}
+                            onChange={e => setHomepageSettings(prev => ({ ...prev, introFeature3Title: e.target.value }))}
+                            className="col-span-1 border border-gray-200 rounded-lg px-2 py-1 text-xs font-sans bg-white focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            placeholder="Chăm sóc sâu"
+                          />
+                          <input
+                            type="text"
+                            value={homepageSettings.introFeature3Desc}
+                            onChange={e => setHomepageSettings(prev => ({ ...prev, introFeature3Desc: e.target.value }))}
+                            className="col-span-2 border border-gray-200 rounded-lg px-2 py-1 text-xs font-sans bg-white focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            placeholder="Tái tạo cấu trúc bảo vệ da tóc..."
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: image settings */}
+                  <div className="md:col-span-5 space-y-4">
+                    <label className="text-[10px] font-bold uppercase text-gray-500 block">Hình ảnh giới thiệu</label>
+                    
+                    <div className="relative aspect-[4/3] rounded-xl overflow-hidden border-2 border-dashed border-gray-200 bg-gray-100 group flex items-center justify-center">
+                      {homepageSettings.introImage ? (
+                        <>
+                          <img 
+                            src={homepageSettings.introImage} 
+                            alt="Intro preview"
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <label 
+                              className="px-3 py-1.5 bg-white text-gray-800 text-[11px] font-bold rounded-lg cursor-pointer hover:bg-gray-100 transition-colors flex items-center gap-1.5"
+                              htmlFor="intro-image-file-input"
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              Đổi ảnh
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setActiveMediaSelector({ target: 'homepage_intro_image' })}
+                              className="px-3 py-1.5 bg-blue-600 text-white text-[11px] font-bold rounded-lg cursor-pointer hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+                            >
+                              <Image className="w-3.5 h-3.5" />
+                              Media
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <label 
+                          htmlFor="intro-image-file-input"
+                          className="flex flex-col items-center justify-center h-full gap-2 cursor-pointer hover:bg-gray-150 transition-colors p-4"
+                        >
+                          {introImageUploading ? (
+                            <Loader2 className="w-8 h-8 text-orange-400 animate-spin" />
+                          ) : (
+                            <>
+                              <Upload className="w-8 h-8 text-gray-300" />
+                              <span className="text-[11px] text-gray-400 font-sans text-center">Tải ảnh lên hoặc chọn từ thư viện</span>
+                            </>
+                          )}
+                        </label>
+                      )}
+                      {introImageUploading && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl">
+                          <Loader2 className="w-10 h-10 text-white animate-spin" />
+                        </div>
+                      )}
+                    </div>
+
+                    <input
+                      type="file"
+                      id="intro-image-file-input"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handleIntroImageUpload(file);
+                        e.target.value = '';
+                      }}
+                    />
+
+                    <div className="flex gap-2">
+                      <label
+                        htmlFor="intro-image-file-input"
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white text-[11px] font-bold rounded-lg cursor-pointer transition-colors"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        Tải ảnh lên
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setActiveMediaSelector({ target: 'homepage_intro_image' })}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg cursor-pointer transition-colors"
+                      >
+                        <Image className="w-3.5 h-3.5" />
+                        Thư viện ảnh
+                      </button>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold uppercase text-gray-400 block">Địa chỉ liên kết ảnh (URL)</label>
+                      <input
+                        type="text"
+                        value={homepageSettings.introImage || ''}
+                        onChange={e => setHomepageSettings(prev => ({ ...prev, introImage: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-[10px] font-mono focus:outline-none focus:ring-2 focus:ring-orange-300"
+                        placeholder="https://..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t flex items-center justify-between">
+                  <p className="text-[11px] text-gray-400 font-sans">Sau khi lưu, thay đổi của bạn sẽ được hiển thị ngay lập tức trên phần giới thiệu giới thiệu ở trang chủ.</p>
+                  <button
+                    type="button"
+                    onClick={handleSaveHomepageSettings}
+                    disabled={hfSaving}
+                    className={`flex items-center gap-2 px-6 py-2.5 text-xs font-black uppercase rounded-xl transition-all cursor-pointer shadow-md ${hfSaving ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700 text-white shadow-orange-200'}`}
+                  >
+                    {hfSaving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    {hfSaving ? 'Đang lưu...' : 'Lưu cài đặt Giới Thiệu'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* SOFTENER SLIDES MANAGER */}
+            {hpSubTab === 'softener' && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
+                <div className="flex items-center justify-between border-b pb-4">
+                <div>
+                  <h3 className="text-sm font-black uppercase text-gray-800 flex items-center gap-2">
+                    <Image className="w-4 h-4 text-orange-500" />
+                    Carousel Ảnh "Water Softening Solution" ({softenerSlides.length} slides)
+                  </h3>
+                  <p className="text-[10px] text-gray-400 font-sans mt-0.5">Mỗi slide hiển thị một hình ảnh, tiêu đề, phụ đề và nhãn badge. Click "Chọn Ảnh" hoặc kéo thả file để tải lên.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSoftenerSlides(prev => [...prev, { image: '', title: 'Tiêu đề slide mới', subtitle: 'Mô tả ngắn về tính năng của sản phẩm Pentair.', badge: 'PENTAIR USA' }])}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-orange-600 text-white text-[11px] font-bold rounded-lg hover:bg-orange-700 transition-all cursor-pointer"
+                  id="btn-add-softener-slide"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Thêm slide
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {softenerSlides.map((slide, idx) => (
+                  <div key={idx} className="border border-gray-150 rounded-2xl overflow-hidden bg-gray-50/50">
+                    {/* Slide header */}
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-gray-100/70 border-b border-gray-150">
+                      <span className="text-[11px] font-black uppercase text-gray-600 tracking-wider">Slide #{idx + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!window.confirm(`Xóa slide #${idx + 1}?`)) return;
+                          setSoftenerSlides(prev => prev.filter((_, i) => i !== idx));
+                        }}
+                        className="p-1 text-rose-500 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                        title="Xóa slide này"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4">
+                      {/* Image preview + upload */}
+                      <div className="md:col-span-5 space-y-3">
+                        <label className="text-[10px] font-bold uppercase text-gray-500 block">Hình ảnh slide</label>
+                        
+                        {/* Image preview */}
+                        <div className="relative aspect-[16/10] rounded-xl overflow-hidden border-2 border-dashed border-gray-200 bg-gray-100 group">
+                          {slide.image ? (
+                            <>
+                              <img 
+                                src={slide.image} 
+                                alt={`Slide ${idx + 1}`}
+                                className="w-full h-full object-cover"
+                                referrerPolicy="no-referrer"
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <label 
+                                  className="px-3 py-1.5 bg-white text-gray-800 text-[11px] font-bold rounded-lg cursor-pointer hover:bg-gray-100 transition-colors flex items-center gap-1.5"
+                                  htmlFor={`softener-upload-${idx}`}
+                                >
+                                  <Upload className="w-3.5 h-3.5" />
+                                  Đổi ảnh
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveMediaSelector({ target: 'softener_slide', slideIndex: idx })}
+                                  className="px-3 py-1.5 bg-blue-600 text-white text-[11px] font-bold rounded-lg cursor-pointer hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+                                >
+                                  <Image className="w-3.5 h-3.5" />
+                                  Media
+                                </button>
+                              </div>
+                            </>
+                          ) : (
+                            <label 
+                              htmlFor={`softener-upload-${idx}`}
+                              className="flex flex-col items-center justify-center h-full gap-2 cursor-pointer hover:bg-gray-150 transition-colors"
+                            >
+                              {softenerSlideUploading === idx ? (
+                                <Loader2 className="w-8 h-8 text-orange-400 animate-spin" />
+                              ) : (
+                                <>
+                                  <Upload className="w-8 h-8 text-gray-300" />
+                                  <span className="text-[11px] text-gray-400 font-sans text-center px-4">Nhấn để chọn ảnh hoặc kéo thả file vào đây</span>
+                                  <span className="text-[10px] text-gray-300 font-sans">JPG, PNG, WEBP &lt;5MB</span>
+                                </>
+                              )}
+                            </label>
+                          )}
+                          {softenerSlideUploading === idx && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl">
+                              <Loader2 className="w-10 h-10 text-white animate-spin" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Hidden file input */}
+                        <input
+                          type="file"
+                          id={`softener-upload-${idx}`}
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) handleSoftenerSlideUpload(idx, file);
+                            e.target.value = '';
+                          }}
+                        />
+
+                        {/* Upload actions */}
+                        <div className="flex gap-2">
+                          <label
+                            htmlFor={`softener-upload-${idx}`}
+                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white text-[11px] font-bold rounded-lg cursor-pointer transition-colors"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            Tải ảnh lên
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setActiveMediaSelector({ target: 'softener_slide', slideIndex: idx })}
+                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg cursor-pointer transition-colors"
+                          >
+                            <Image className="w-3.5 h-3.5" />
+                            Thư viện ảnh
+                          </button>
+                        </div>
+
+                        {slide.image && (
+                          <div className="text-[9px] text-gray-400 font-mono truncate bg-white border border-gray-100 rounded px-2 py-1.5" title={slide.image}>
+                            📎 {slide.image.length > 50 ? slide.image.slice(0, 50) + '...' : slide.image}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Text fields */}
+                      <div className="md:col-span-7 space-y-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-gray-500 block">Badge / Nhãn (VD: "CÔNG NGHỆ USA")</label>
+                          <input
+                            type="text"
+                            value={slide.badge}
+                            onChange={e => setSoftenerSlides(prev => prev.map((s, i) => i === idx ? { ...s, badge: e.target.value } : s))}
+                            placeholder="CÔNG NGHỆ USA"
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-orange-300"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-gray-500 block">Tiêu đề chính</label>
+                          <input
+                            type="text"
+                            value={slide.title}
+                            onChange={e => setSoftenerSlides(prev => prev.map((s, i) => i === idx ? { ...s, title: e.target.value } : s))}
+                            placeholder="Giải Pháp Làm Mềm Nước"
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-orange-300"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-gray-500 block">Phụ đề / Mô tả</label>
+                          <textarea
+                            rows={3}
+                            value={slide.subtitle}
+                            onChange={e => setSoftenerSlides(prev => prev.map((s, i) => i === idx ? { ...s, subtitle: e.target.value } : s))}
+                            placeholder="Mô tả ngắn về tính năng..."
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-orange-300 resize-none"
+                          />
+                        </div>
+
+                        {/* Preview badge */}
+                        <div className="bg-gradient-to-br from-[#0C3471] to-blue-900 rounded-xl p-3 text-white text-xs space-y-1.5">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-blue-200">Xem trước:</span>
+                          <div className="inline-block px-2 py-0.5 bg-white/20 text-white rounded-full text-[9px] font-bold uppercase">{slide.badge || 'BADGE'}</div>
+                          <div className="font-black text-sm leading-tight">{slide.title || 'Tiêu đề slide'}</div>
+                          <div className="text-blue-200 text-[10px] font-sans leading-snug line-clamp-2">{slide.subtitle || 'Mô tả...'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {softenerSlides.length === 0 && (
+                  <div className="text-center py-10 text-gray-400 font-sans text-sm border-2 border-dashed border-gray-150 rounded-2xl">
+                    Chưa có slide nào. Nhấn "Thêm slide" ở trên để bắt đầu.
+                  </div>
+                )}
+              </div>
+
+              {/* Save button */}
+              <div className="pt-4 border-t flex items-center justify-between">
+                <p className="text-[11px] text-gray-400 font-sans">Sau khi lưu, ảnh mới sẽ hiển thị ngay trên website công cộng tại phần <strong>Water Softening Solution</strong>.</p>
+                <button
+                  type="button"
+                  onClick={handleSaveSoftenerSlides}
+                  disabled={softenerSaving}
+                  className={`flex items-center gap-2 px-6 py-2.5 text-xs font-black uppercase rounded-xl transition-all cursor-pointer shadow-md ${softenerSaving ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700 text-white shadow-orange-200'}`}
+                  id="btn-save-softener-slides"
+                >
+                  {softenerSaving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  {softenerSaving ? 'Đang lưu...' : 'Lưu thay đổi Carousel'}
+                </button>
+              </div>
+            </div>
+            )}
 
           </div>
         )}
@@ -5790,6 +6881,17 @@ export default function AdminCMS({
                     });
                   } else if (target === 'logo_image') {
                     setHeaderSettings(prev => ({ ...prev, logoImageUrl: url }));
+                  } else if (target === 'footer_logo_image') {
+                    setHeaderSettings(prev => ({ ...prev, footerLogoImageUrl: url }));
+                  } else if (target === 'softener_slide') {
+                    const slideIdx = activeMediaSelector?.slideIndex;
+                    if (slideIdx !== undefined) {
+                      setSoftenerSlides(prev => prev.map((s, i) => i === slideIdx ? { ...s, image: url } : s));
+                    }
+                  } else if (target === 'homepage_hero_image') {
+                    setHomepageSettings(prev => ({ ...prev, heroImage: url }));
+                  } else if (target === 'homepage_intro_image') {
+                    setHomepageSettings(prev => ({ ...prev, introImage: url }));
                   } else if (target === 'post_content_editor') {
                     if ((window as any).onPostContentEditorImageSelect) {
                       (window as any).onPostContentEditorImageSelect(url);

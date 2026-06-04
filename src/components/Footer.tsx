@@ -20,10 +20,33 @@ interface FooterProps {
   showrooms: { name: string; address: string; phone: string }[];
   onNavigate: (url: string) => void;
   onOpenAdmin?: () => void;
+  logoText?: string;
+  logoImageUrl?: string;
+  logoTextFull?: string;
 }
 
-export default function Footer({ brandSettings, policies, showrooms, onNavigate, onOpenAdmin }: FooterProps) {
+export default function Footer({ 
+  brandSettings, 
+  policies, 
+  showrooms, 
+  onNavigate, 
+  onOpenAdmin,
+  logoText = 'P',
+  logoImageUrl = '',
+  logoTextFull = 'PENTAIR VN'
+}: FooterProps) {
   const [activePolicyIdx, setActivePolicyIdx] = React.useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = React.useState('');
+
+  const filteredShowrooms = React.useMemo(() => {
+    if (!searchQuery.trim()) return showrooms;
+    const query = searchQuery.toLowerCase().trim();
+    return showrooms.filter(show => 
+      (show.name && show.name.toLowerCase().includes(query)) ||
+      (show.address && show.address.toLowerCase().includes(query)) ||
+      (show.phone && show.phone.includes(query))
+    );
+  }, [showrooms, searchQuery]);
 
   return (
     <footer className="bg-pentair text-white font-sans mt-auto border-t-4 border-pentair-light" id="main-footer">
@@ -64,11 +87,19 @@ export default function Footer({ brandSettings, policies, showrooms, onNavigate,
         
         {/* Brand Column */}
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded bg-white text-pentair flex items-center justify-center font-black text-base">
-              P
-            </div>
-            <span className="text-xl font-bold tracking-tight uppercase">PENTAIR VN</span>
+          <div className="flex items-center gap-2.5">
+            {logoImageUrl ? (
+              <img 
+                src={logoImageUrl} 
+                alt={logoTextFull || brandSettings.siteName} 
+                className="h-8 object-contain brightness-0 invert" 
+              />
+            ) : (
+              <div className="w-8 h-8 rounded bg-white text-pentair flex items-center justify-center font-black text-base">
+                {logoText}
+              </div>
+            )}
+            <span className="text-xl font-bold tracking-tight uppercase">{logoTextFull}</span>
           </div>
           <p className="text-xs text-blue-200 leading-relaxed">
             Pentair mang giải pháp lọc tổng thông minh chuẩn Mỹ. Kiến tạo sức mạnh lọc nước đỉnh cao bảo vệ trọn vẹn gia đình từ 1966.
@@ -90,21 +121,57 @@ export default function Footer({ brandSettings, policies, showrooms, onNavigate,
         </div>
 
         {/* Showroom Columns */}
-        <div className="space-y-4 lg:col-span-2">
-          <h5 className="text-sm font-bold tracking-wider uppercase border-b border-white/10 pb-2 text-blue-300">
-            Hệ Thống Showroom Ủy Quyền
-          </h5>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {showrooms.map((show, idx) => (
-              <div key={idx} className="bg-white/5 p-3 rounded-lg border border-white/5 space-y-1 hover:bg-white/10 transition-colors">
-                <h6 className="text-xs font-bold text-white">{show.name}</h6>
-                <p className="text-[11px] text-blue-200 leading-relaxed">{show.address}</p>
-                <p className="text-[11px] text-blue-100 font-semibold flex items-center gap-1">
-                  <Phone className="w-3 h-3 text-blue-300" />
-                  SĐT: {show.phone}
-                </p>
-              </div>
-            ))}
+        <div className="space-y-4 lg:col-span-2 flex flex-col">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-white/10 pb-2">
+            <h5 className="text-sm font-bold tracking-wider uppercase text-blue-300">
+              Hệ Thống Showroom Ủy Quyền ({filteredShowrooms.length})
+            </h5>
+            {/* Search Input Box */}
+            <div className="relative w-full sm:w-56 shrink-0">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Tìm showroom, tỉnh thành..."
+                className="w-full bg-white/10 border border-white/10 rounded px-2.5 py-1 text-[11px] text-white placeholder-blue-200/40 focus:outline-none focus:bg-white/20 focus:border-white/30 transition-all font-sans"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-blue-300 hover:text-white text-xs font-bold font-sans"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Scrollable grid container */}
+          <div 
+            className="max-h-[300px] overflow-y-auto pr-1 space-y-3 mt-2 scrollbar-thin"
+            style={{ 
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'rgba(255, 255, 255, 0.15) transparent' 
+            }}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {filteredShowrooms.map((show, idx) => (
+                <div key={idx} className="bg-white/5 p-3 rounded-lg border border-white/5 space-y-1 hover:bg-white/10 transition-colors">
+                  <h6 className="text-xs font-bold text-white flex items-start gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 mt-1.5" />
+                    <span>{show.name}</span>
+                  </h6>
+                  <p className="text-[10px] text-blue-200/90 leading-relaxed min-h-[30px]">{show.address}</p>
+                  <p className="text-[10px] text-blue-100 font-semibold flex items-center gap-1 mt-1">
+                    <Phone className="w-3 h-3 text-blue-300 shrink-0" />
+                    SĐT: {show.phone}
+                  </p>
+                </div>
+              ))}
+            </div>
+            {filteredShowrooms.length === 0 && (
+              <p className="text-xs text-center text-blue-300/40 py-8 italic font-sans">Không tìm thấy showroom phù hợp.</p>
+            )}
           </div>
         </div>
 

@@ -29,13 +29,13 @@ export default function HeroSection({ bannerTitle, bannerSubTitle, onNavigate, h
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: 'easeOut' }}
-            className="lg:col-span-8 space-y-8"
+            className="lg:col-span-6 space-y-8"
           >
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 shadow-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-[#E6C073] animate-pulse" />
@@ -79,37 +79,19 @@ export default function HeroSection({ bannerTitle, bannerSubTitle, onNavigate, h
             </div>
           </motion.div>
 
-          {/* Luxury Column showcasing elite product tower */}
+          {/* Luxury Column showcasing elite product image - fully visible, no crop */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
-            className="lg:col-span-4 hidden lg:block"
+            className="lg:col-span-6 hidden lg:flex items-center justify-center"
           >
-            <div className="p-1 bg-gradient-to-tr from-white/10 via-white/5 to-transparent rounded-2xl">
-              <div className="p-6 bg-[#07162E]/80 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl relative overflow-hidden group">
-                <span className="absolute top-4 right-4 text-[9px] font-mono text-[#E6C073] bg-[#E6C073]/10 border border-[#E6C073]/20 px-2 py-0.5 rounded font-black uppercase tracking-wider">
-                  {homepageSettings.heroImageTag || 'USA Certified'}
-                </span>
-                
-                <div className="aspect-[4/5] rounded-xl overflow-hidden shadow-inner bg-slate-930 relative">
-                  <img 
-                    src={homepageSettings.heroImage || "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80"} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 pointer-events-none" 
-                    alt={homepageSettings.heroImageTitle || "Pentair Tower"} 
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#07162E] via-transparent to-transparent opacity-60" />
-                </div>
-
-                <div className="mt-4 space-y-1">
-                  <h3 className="text-xs font-mono text-[#E6C073] tracking-widest uppercase">Elite Showcase</h3>
-                  <h4 className="text-sm font-bold uppercase tracking-wide text-white">{homepageSettings.heroImageTitle || 'Pentair Smart Water System'}</h4>
-                  <p className="text-[11px] text-slate-400 font-sans font-light leading-relaxed">
-                    {homepageSettings.heroImageDesc || 'Kiệt tác nâng tầm giá trị sống dòng biệt thự đơn lập, lâu đài vĩnh cửu.'}
-                  </p>
-                </div>
-              </div>
-            </div>
+            <img 
+              src={homepageSettings.heroImage || "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80"} 
+              className="w-full h-auto object-contain drop-shadow-2xl transition-transform duration-700 pointer-events-none rounded-xl" 
+              alt={homepageSettings.heroImageTitle || "Pentair Tower"} 
+              style={{ maxHeight: '80vh' }}
+            />
           </motion.div>
 
         </div>

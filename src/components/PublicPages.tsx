@@ -175,7 +175,7 @@ export default function PublicPages({
       if (h2Match) {
          flushList(index);
          renderedElements.push(
-           <h2 key={index} className="text-sm md:text-lg font-black text-[#0C3471] uppercase tracking-tight mt-6 mb-3 border-b pb-2 flex items-center gap-2">
+           <h2 key={index} className="text-[26px] font-black text-[#0C3471] uppercase tracking-tight mt-6 mb-3 border-b pb-2 flex items-center gap-2">
              <span className="w-1.5 h-4 bg-blue-600 rounded shrink-0"></span>
              <span>{h2Match[1]}</span>
            </h2>
@@ -188,7 +188,7 @@ export default function PublicPages({
       if (h3Match) {
          flushList(index);
          renderedElements.push(
-           <h3 key={index} className="text-xs md:text-sm font-extrabold text-slate-800 tracking-tight mt-5 mb-2 flex items-center gap-1.5">
+           <h3 key={index} className="text-[24px] font-extrabold text-slate-800 tracking-tight mt-5 mb-2 flex items-center gap-1.5">
              <span className="w-1 h-3.5 bg-sky-500 rounded-sm shrink-0"></span>
              <span>{h3Match[1]}</span>
            </h3>
@@ -256,7 +256,7 @@ export default function PublicPages({
   const [isSoftenerPaused, setIsSoftenerPaused] = React.useState(false);
   const softenerResumeTimerRef = React.useRef<any>(null);
 
-  const softenerSlides = [
+  const defaultSoftenerSlides = [
     {
       id: "slide-1",
       url: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1200&q=80",
@@ -278,6 +278,14 @@ export default function PublicPages({
       caption: "Người phụ nữ đang gội đầu sảng khoái dưới làn nước mềm mại, nuôi dưỡng suối tóc suôn mượt."
     }
   ];
+
+  // Build softenerSlides from CMS options (softener_slides) if available, otherwise use defaults
+  const cmsSlides: any[] = (homepageSettings as any)?.softener_slides || [];
+  const softenerSlides = (cmsSlides.length > 0 ? cmsSlides.map((s: any, i: number) => ({
+    id: `cms-slide-${i}`,
+    url: s.image || '',
+    caption: s.subtitle || s.title || ''
+  })) : defaultSoftenerSlides).filter((s: any) => s.url);
 
   React.useEffect(() => {
     let intervalId: any;
@@ -426,21 +434,42 @@ export default function PublicPages({
               <img 
                 src={product.featuredImage} 
                 alt={product.title} 
-                className="w-full h-[400px] object-cover hover:scale-[1.02] transition-transform duration-500"
+                className="w-full aspect-square object-cover hover:scale-[1.02] transition-transform duration-500"
                 referrerPolicy="no-referrer"
               />
             </div>
             
-            {scenes && scenes.length > 0 && (
-              <div>
-                <h4 className="text-sm font-bold tracking-wider uppercase text-gray-400 mb-3">Hình ảnh lắp đặt thực tế</h4>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {scenes.map((sceneUrl: string, idx: number) => (
-                    <div key={idx} className="h-28 rounded-xl overflow-hidden border border-gray-100 shadow-sm aspect-video bg-gray-50">
-                      <img src={sceneUrl} className="w-full h-full object-cover" alt="Actual Setup" referrerPolicy="no-referrer" />
+            {/* Quick specifications */}
+            {((specs && specs.length > 0) || true) && (
+              <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-100 shadow-sm">
+                <h3 className="text-sm font-black text-pentair uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Thông Số Kỹ Thuật</h3>
+                <div className="divide-y divide-gray-50">
+                  {specs && specs.map((sp: { name: string; value: string }, i: number) => (
+                    <div key={`dyn-${i}`} className="py-2.5 flex justify-between gap-4 text-xs font-sans">
+                      <span className="text-gray-500 font-medium">{sp.name}</span>
+                      <span className="text-gray-900 font-bold text-right">{sp.value}</span>
+                    </div>
+                  ))}
+                  {[
+                    { name: "Thương hiệu", value: "Pentair (Hoa Kỳ)" },
+                    { name: "Tiêu chuẩn kiểm định", value: "NSF/ANSI 44 & 53, WQA Gold Seal" },
+                    { name: "Chế độ bảo hành", value: "5 năm chính hãng (Bảo hành kép)" },
+                    { name: "Hỗ trợ lắp đặt", value: "Khảo sát nguồn nước & lắp ráp trọn gói" },
+                    { name: "Dịch vụ sau bán hàng", value: "Bảo trì định kỳ, linh kiện chính hãng" }
+                  ].filter(addSpec => 
+                    !specs?.some((sp: { name: string }) => sp.name.toLowerCase() === addSpec.name.toLowerCase())
+                  ).map((sp, i) => (
+                    <div key={`add-${i}`} className="py-2.5 flex justify-between gap-4 text-xs font-sans">
+                      <span className="text-gray-500 font-medium">{sp.name}</span>
+                      <span className="text-gray-900 font-bold text-right">{sp.value}</span>
                     </div>
                   ))}
                 </div>
+                {cloneSource && (
+                  <p className="text-[10px] text-gray-400 mt-4 italic">
+                    * {cloneSource}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -489,9 +518,7 @@ export default function PublicPages({
                   </>
                 )}
               </div>
-              <div className="mt-4 border-t border-gray-100 pt-4">
-                {renderRichContent(product.content || product.excerpt)}
-              </div>
+
 
               {/* Premium Cart/Buy actions */}
               <div className="mt-6 pt-5 border-t border-gray-100 flex flex-col sm:flex-row items-center gap-4">
@@ -549,30 +576,10 @@ export default function PublicPages({
               </div>
             )}
 
-            {/* Quick specifications */}
-            {specs && specs.length > 0 && (
-              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                <h3 className="text-sm font-black text-pentair uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Thông Số Kỹ Thuật (thegioiloctong.com)</h3>
-                <div className="divide-y divide-gray-50">
-                  {specs.map((sp: { name: string; value: string }, i: number) => (
-                    <div key={i} className="py-2.5 flex justify-between gap-4 text-xs font-sans">
-                      <span className="text-gray-500 font-medium">{sp.name}</span>
-                      <span className="text-gray-900 font-bold text-right">{sp.value}</span>
-                    </div>
-                  ))}
-                </div>
-                {cloneSource && (
-                  <p className="text-[10px] text-gray-400 mt-4 italic">
-                    * {cloneSource}
-                  </p>
-                )}
-              </div>
-            )}
-
             {/* CTA Consulting Registration */}
             <div className="bg-gradient-to-br from-pentair to-pentair-dark text-white p-6 rounded-2xl shadow-xl shadow-blue-900/10">
-              <h4 className="text-base font-bold uppercase">Nhận Khảo Sát Nguồn Nước Miễn Phí</h4>
-              <p className="text-xs text-blue-200 mt-1 leading-relaxed">Đội ngũ kỹ sư giàu kinh nghiệm của Pentair hỗ trợ đo chỉ số nước và lên thiết kế lắp ráp 3D miễn phí trọn gói.</p>
+              <h4 className="text-base font-bold uppercase">ĐĂNG KÝ TƯ VẤN SẢN PHẨM</h4>
+              <p className="text-xs text-blue-200 mt-1 leading-relaxed">Để lại thông tin liên hệ để nhận tư vấn chi tiết về cấu hình hệ thống lọc nước và giải pháp tối ưu từ chuyên gia Pentair.</p>
               
               <form onSubmit={handleSubmitLead} className="mt-4 space-y-3">
                 <input 
@@ -630,6 +637,18 @@ export default function PublicPages({
 
           </div>
         </div>
+
+        {/* Full-width product description section */}
+        {(product.content || product.excerpt) && (
+          <div className="mt-10 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-10">
+            <h3 className="text-base md:text-lg font-black text-pentair uppercase tracking-wide mb-5 pb-3 border-b border-gray-100">
+              Mô tả sản phẩm
+            </h3>
+            <div className="prose prose-blue max-w-none prose-sm md:prose-base text-gray-700 leading-relaxed">
+              {renderRichContent(product.content || product.excerpt)}
+            </div>
+          </div>
+        )}
 
         {/* Feature Highlights section */}
         {features && features.length > 0 && (
@@ -731,32 +750,56 @@ export default function PublicPages({
     const aboutPage = posts.find(p => p.slug === 've-pentair');
     const { history = '', vision = '', awards = [], certificates = [] } = aboutPage?.meta || {};
 
-    // Standardized timeline milestones for a gorgeous diagram format
+    // Timeline milestones - lịch sử hình thành Pentair chính xác theo thực tế
     const milestones = [
       {
         year: "1966",
-        title: "Bình minh khởi sinh một đế chế",
-        desc: "Thành lập tại Minneapolis, bang Minnesota, Hoa Kỳ bởi nhóm kỹ sư khát khao tạo ra chuẩn mực mới về hệ thống truyền tải và xử lý dòng chảy."
+        label: "KHỞI ĐẦU TỪ TẦM NHÌN CỦA 5 NHÀ SÁNG LẬP",
+        desc: "Pentair được thành lập tại Minnesota, Hoa Kỳ, với định hướng ban đầu là sản xuất bóng bay nghiên cứu tầng cao. Tên thương hiệu thể hiện rõ nguồn gốc: \"penta\" là năm nhà sáng lập, \"air\" là lĩnh vực sản phẩm đầu tiên.",
+        icon: "🏛",
+        isCurrent: false
       },
       {
-        year: "1970s - 1980s",
-        title: "Van Fleck & Bình lọc Pentek huyền thoại",
-        desc: "Sáp nhập Fleck Controls và thiết lập kỷ nguyên cách mạng chế tạo van thông minh tự động hoàn toàn, trở thành sự lựa chọn số một toàn cầu về độ tin cậy cơ học."
+        year: "1968 – 1970s",
+        label: "VƯỢT QUA THỬ THÁCH, MỞ RỘNG SANG NGÀNH GIẤY",
+        desc: "Sau những khó khăn ban đầu, Pentair chuyển hướng bằng việc mua lại các nhà máy giấy như Peavey Paper Mills, đặt nền móng cho giai đoạn tăng trưởng ổn định trong nhiều thập kỷ.",
+        icon: "📄",
+        isCurrent: false
       },
       {
-        year: "1990s",
-        title: "Chinh phục chuẩn mực F&B với Everpure",
-        desc: "Mua lại Everpure - dẫn đầu phát triển màng siêu lọc thế hệ mới. Trở thành bảo chứng nước tinh chất phục vụ cho 90% chuỗi khách sạn và ẩm thực F&B 5 sao quốc tế."
+        year: "1980s",
+        label: "ĐA DẠNG HÓA SẢN XUẤT CÔNG NGHIỆP",
+        desc: "Pentair mở rộng sang công cụ điện, thiết bị công nghiệp và các lĩnh vực sản xuất kỹ thuật, từng bước xây dựng năng lực quản trị và sản xuất quy mô lớn.",
+        icon: "⚙️",
+        isCurrent: false
       },
       {
-        year: "2004",
-        title: "Niêm yết NYSE & Bành trướng toàn cầu",
-        desc: "Đưa cổ phiếu chào sàn NYSE sàn chứng khoán New York, thiết lập vị thế đế chế lọc tổng trung tâm và gia dụng số 1 thế giới với mạng lưới hơn 150 quốc gia."
+        year: "1995",
+        label: "BƯỚC NGOẶT VÀO CÔNG NGHỆ NƯỚC",
+        desc: "Pentair mua lại Fleck Controls, thương hiệu van điều khiển nổi tiếng cho hệ thống xử lý nước, đánh dấu bước tiến quan trọng vào lĩnh vực công nghệ nước.",
+        icon: "💧",
+        isCurrent: false
       },
       {
-        year: "Hiện nay",
-        title: "Kỷ nguyên Net-Zero & Sinh thái thông minh",
-        desc: "Tiên phong công nghệ màng siêu lọc UF màng dẹt, tự động ngắt rửa thông minh tiết kiệm năng lượng, bảo vệ trọn vẹn gia sản sức khoẻ và hành tinh xanh."
+        year: "1999 – 2004",
+        label: "TĂNG TỐC TRỞ THÀNH TẬP ĐOÀN NƯỚC TOÀN CẦU",
+        desc: "Pentair tiếp tục mở rộng danh mục nước và hồ bơi, mua lại Essef năm 1999, Everpure năm 2004 và WICOR Industries năm 2004, đồng thời rút khỏi mảng công cụ điện để tập trung hơn vào giải pháp nước.",
+        icon: "🌐",
+        isCurrent: false
+      },
+      {
+        year: "2012 – 2018",
+        label: "TÁI CẤU TRÚC VÀ TẬP TRUNG VÀO NƯỚC",
+        desc: "Pentair hợp nhất với mảng Flow Control của Tyco năm 2012. Đến năm 2018, công ty tách mảng điện thành nVent, giúp Pentair tập trung rõ hơn vào các giải pháp nước cho dân dụng, thương mại, công nghiệp và hạ tầng.",
+        icon: "🔄",
+        isCurrent: false
+      },
+      {
+        year: "Hiện Nay",
+        label: "THƯƠNG HIỆU CÔNG NGHỆ NƯỚC TOÀN CẦU",
+        desc: "Pentair là tập đoàn công nghệ nước toàn cầu, giao dịch trên sàn NYSE với mã PNR, phục vụ khách hàng tại hơn 150 quốc gia, cung cấp giải pháp cho lọc nước, xử lý nước, hồ bơi, lưu chất và các ứng dụng bền vững.",
+        icon: "🏆",
+        isCurrent: true
       }
     ];
 
@@ -780,50 +823,86 @@ export default function PublicPages({
           </div>
         </div>
 
-        {/* SECTION 1: TIMELINE LỊCH SỬ HÌNH THÀNH HOÀNH TRÁNG */}
-        <section className="bg-white p-6 md:p-10 rounded-3xl border border-gray-100 shadow-sm space-y-8">
-          <div className="max-w-3xl">
-            <span className="text-xs uppercase font-extrabold tracking-wider text-blue-600 block mb-1">
-              Hành Trình Vượt Thời Gian
-            </span>
-            <h2 className="text-2xl md:text-3xl font-black text-slate-900 uppercase tracking-tight">
-              Lịch Sử Vinh Quang Hình Thành
-            </h2>
-            <div className="h-1 w-16 bg-blue-600 rounded-full mt-2 mb-4" />
-            <p className="text-sm text-gray-600 leading-relaxed font-sans">
-              {history || "Pentair thành lập năm 1966 tại Minneapolis, Hoa Kỳ và nhanh chóng vươn mình trở thành thế lực sừng sỏ dẫn dắt ngành công nghiệp lọc nước toàn cầu. Sở hữu những thương hiệu danh giá đi vào lịch sử như van Fleck điều chế tự động lọc, màng lọc Everpure bảo chứng ngành ăn uống F&B quốc tế, lõi lọc Pentek."}
-            </p>
-          </div>
+        {/* SECTION 1: TIMELINE LỊCH SỬ HÌNH THÀNH PENTAIR */}
+        <section className="relative bg-gradient-to-br from-slate-50 via-white to-blue-50/40 rounded-3xl border border-blue-100/60 shadow-sm overflow-hidden">
+          {/* Decorative background elements */}
+          <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-blue-500/5 blur-[80px] pointer-events-none" />
+          <div className="absolute bottom-0 left-10 w-60 h-60 rounded-full bg-blue-300/8 blur-[60px] pointer-events-none" />
 
-          {/* Sơ đồ Timeline các cột mốc */}
-          <div className="relative border-l-2 border-slate-100 ml-4 md:ml-8 pl-6 md:pl-10 space-y-12 py-4">
-            {milestones.map((m, idx) => (
-              <div key={idx} className="relative group">
-                {/* Timeline Dot with Year */}
-                <span className="absolute -left-[53px] md:-left-[61px] top-0 flex items-center justify-center w-10 h-10 rounded-full bg-blue-600 text-white font-mono text-[11px] font-black group-hover:scale-110 group-hover:bg-blue-700 transition-all border-4 border-white shadow-md">
-                  {m.year === "Hiện nay" ? "●" : m.year}
-                </span>
-
-                <div className="space-y-1.5 md:space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {m.year === "Hiện nay" && (
-                      <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100 select-none">
-                        Hiện Tại
-                      </span>
-                    )}
-                    <span className="text-xs font-mono font-bold text-blue-600 tracking-wider">
-                      Cột mốc {m.year}
-                    </span>
-                  </div>
-                  <h3 className="text-base md:text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors uppercase tracking-tight">
-                    {m.title}
-                  </h3>
-                  <p className="text-xs md:text-sm text-gray-500 max-w-4xl leading-relaxed font-sans">
-                    {m.desc}
-                  </p>
-                </div>
+          <div className="relative z-10 p-6 md:p-10 lg:p-14">
+            {/* Section header */}
+            <div className="max-w-3xl mb-10 md:mb-14">
+              <span className="inline-flex items-center gap-2 text-[11px] uppercase font-extrabold tracking-[0.18em] text-blue-600 bg-blue-50 border border-blue-100 px-3.5 py-1.5 rounded-full mb-4">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block animate-pulse" />
+                Hành Trình Phát Triển
+              </span>
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-black text-slate-900 uppercase tracking-tight leading-tight">
+                LỊCH SỬ HÌNH THÀNH THƯƠNG HIỆU PENTAIR
+              </h2>
+              <div className="flex items-center gap-3 mt-3 mb-5">
+                <div className="h-[3px] w-12 bg-blue-600 rounded-full" />
+                <div className="h-[3px] w-4 bg-blue-300 rounded-full" />
+                <div className="h-[3px] w-2 bg-blue-100 rounded-full" />
               </div>
-            ))}
+              <p className="text-sm md:text-[15px] text-gray-600 leading-relaxed font-sans max-w-2xl">
+                Ra đời năm 1966 tại vùng St. Paul, Minnesota, Hoa Kỳ, Pentair được sáng lập bởi 5 nhà sáng lập với ý tưởng ban đầu là sản xuất bóng bay nghiên cứu tầng cao. Tên gọi Pentair kết hợp "penta" – tượng trưng cho 5 nhà sáng lập – và "air" – gắn với sản phẩm đầu tiên của công ty. Từ một doanh nghiệp nhỏ, Pentair từng bước đa dạng hóa, phát triển qua nhiều lĩnh vực trước khi trở thành tập đoàn công nghệ nước toàn cầu, hiện phục vụ khách hàng tại hơn 150 quốc gia.
+              </p>
+            </div>
+
+            {/* Timeline vertical layout */}
+            <div className="relative">
+              {/* Vertical connector line */}
+              <div className="absolute left-[22px] md:left-[26px] top-0 bottom-0 w-[2px] bg-gradient-to-b from-blue-200 via-blue-300 to-emerald-300 rounded-full" />
+
+              <div className="space-y-8 md:space-y-10">
+                {milestones.map((m, idx) => (
+                  <div key={idx} className="relative flex gap-5 md:gap-8 group">
+                    {/* Icon circle */}
+                    <div className={`relative z-10 flex-shrink-0 w-11 h-11 md:w-13 md:h-13 rounded-full flex items-center justify-center text-lg shadow-md border-[3px] transition-all duration-300 group-hover:scale-110 ${
+                      m.isCurrent
+                        ? 'bg-emerald-600 border-emerald-200 shadow-emerald-200/60'
+                        : 'bg-white border-blue-200 shadow-blue-100/80 group-hover:border-blue-400 group-hover:shadow-blue-200'
+                    }`}
+                      style={{ width: '48px', height: '48px', minWidth: '48px' }}
+                    >
+                      <span className="text-xl leading-none select-none">{m.icon}</span>
+                    </div>
+
+                    {/* Content card */}
+                    <div className={`flex-grow pb-2 transition-all duration-300 ${
+                      m.isCurrent ? 'bg-emerald-50/60 border-emerald-200/60' : 'bg-white/70 border-gray-100 group-hover:border-blue-100 group-hover:bg-blue-50/30'
+                    } rounded-2xl border px-5 py-4 md:px-6 md:py-5 shadow-xs backdrop-blur-sm`}>
+                      {/* Year badge */}
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <span className={`inline-block text-xs font-mono font-black tracking-wider px-3 py-1 rounded-full ${
+                          m.isCurrent
+                            ? 'text-white bg-emerald-600 shadow-sm'
+                            : 'text-blue-700 bg-blue-100/80 border border-blue-200'
+                        }`}>
+                          {m.year}
+                        </span>
+                        {m.isCurrent && (
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                            Hiện Tại
+                          </span>
+                        )}
+                      </div>
+                      {/* Milestone title */}
+                      <h3 className={`text-sm md:text-base font-bold uppercase tracking-tight leading-snug mb-2 transition-colors ${
+                        m.isCurrent ? 'text-emerald-800' : 'text-slate-800 group-hover:text-blue-700'
+                      }`}>
+                        {m.label}
+                      </h3>
+                      {/* Description */}
+                      <p className="text-xs md:text-sm text-gray-500 leading-relaxed font-sans">
+                        {m.desc}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 
@@ -852,20 +931,15 @@ export default function PublicPages({
                 </span>
                 <div className="space-y-4">
                   <h3 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">
-                    Để trở thành biểu tượng xử lý nước tinh hoa tối cao thế giới
+                    Trở thành thương hiệu hàng đầu thế giới về các giải pháp xử lý nước
                   </h3>
                   <p className="text-xs md:text-sm text-slate-300 leading-relaxed font-sans">
-                    {vision.split('\n')[0] || "Chúng tôi khát khao định nghĩa lại lối sống thượng lưu tinh tế thông qua tầm nhìn hoàn mỹ về nguồn nước. Pentair liên tục cách tân kỹ nghệ màng siêu lọc thế hệ cao, thiết lập những hệ thống xử lý nước trung tâm thông minh thân thiện môi trường để mọi ngôi nhà đều sở hữu nguồn tài nguyên sống tinh khôi vượt trội chuẩn Mỹ."}
+                    {vision.split('\n')[0] || "Trở thành thương hiệu hàng đầu thế giới về các giải pháp xử lý nước, mang đến cuộc sống tốt đẹp hơn cho khách hàng thông qua công nghệ nước thông minh và đáng tin cậy."}
                   </p>
                 </div>
               </div>
 
-              <div className="border-t border-white/10 pt-6 mt-8 flex items-center justify-between">
-                <span className="text-[10px] font-mono tracking-widest text-slate-400 uppercase">
-                  PENTAIR USA GLOBAL
-                </span>
-                <span className="text-[#bf9b30] font-bold text-xs">★ ★ ★ ★ ★</span>
-              </div>
+
             </div>
 
             {/* Sứ mệnh */}
@@ -880,20 +954,15 @@ export default function PublicPages({
                 </span>
                 <div className="space-y-4">
                   <h3 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tight">
-                    Chăm sóc từng giọt nước sinh hoạt cho sức khỏe gia đình bạn
+                    Giúp mọi người có nguồn nước sạch, an toàn và chất lượng hơn
                   </h3>
                   <p className="text-xs md:text-sm text-gray-600 leading-relaxed font-sans">
-                    {vision.split('\n')[1] || "Mang trong mình trách nhiệm lớn lao, chúng tôi cam kết loại bỏ triệt để các rủi ro tạp chất, vi sinh và hóa học vô hình. Sứ mệnh của Pentair là bảo vệ từng bước chân, làn da, hơi thở của từng thành viên trong gia đình bạn qua dòng nước tắm, nước ăn uống tinh tuyệt đồng thời kiến tạo một cộng đồng sinh hoạt an nhiên, bền lâu."}
+                    {vision.split('\n')[1] || "Giúp mọi người có nguồn nước sạch, an toàn và chất lượng hơn để phục vụ cuộc sống hằng ngày, đồng thời sử dụng tài nguyên nước một cách bền vững cho thế hệ tương lai."}
                   </p>
                 </div>
               </div>
 
-              <div className="border-t border-gray-100 pt-6 mt-8 flex items-center justify-between">
-                <span className="text-[10px] font-mono tracking-widest text-slate-400 uppercase">
-                  VIETNAM PRESTIGE
-                </span>
-                <div className="h-2 w-12 bg-blue-600 rounded-full" />
-              </div>
+
             </div>
           </div>
         </section>
@@ -931,9 +1000,9 @@ export default function PublicPages({
               </div>
 
               {/* Overlays (placed on top of the moving track for uniform cinematic feel) */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#070b14] via-[#070b14]/40 to-[#070b14]/20 z-10 pointer-events-none" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#070b14]/50 via-transparent to-transparent z-10 pointer-events-none" />
-              <div className="absolute inset-0 bg-blue-950/20 mix-blend-overlay z-10 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#070b14] via-[#070b14]/20 to-transparent z-10 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#070b14]/20 via-transparent to-transparent z-10 pointer-events-none" />
+              <div className="absolute inset-0 bg-blue-950/10 mix-blend-overlay z-10 pointer-events-none" />
 
               {/* Unique reflection light element */}
               <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[240px] h-[240px] rounded-full bg-cyan-500/10 blur-[80px] animate-pulse z-15 pointer-events-none" />
@@ -1312,18 +1381,15 @@ export default function PublicPages({
                   {/* Products tags */}
                   <div className="flex flex-wrap gap-1.5 pb-2 border-b border-slate-800/60">
                     <span onClick={() => onNavigate('/san-pham')} className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer transition-colors">
-                      Pentair OM26K POE
-                    </span>
-                    <span onClick={() => onNavigate('/san-pham')} className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer transition-colors">
-                      Pentair Foleo-5800 XTR
+                      Pentair Softena Smart CS Midi
                     </span>
                   </div>
 
                   <ul className="space-y-1.5 text-[11px] text-slate-400 font-sans font-light list-disc list-inside">
-                    <li>Pentair OM26K POE phù hợp căn hộ và gia đình 2–3 phòng tắm</li>
-                    <li>Thiết kế tinh gọn, tiết kiệm diện tích tối ưu</li>
-                    <li>Hỗ trợ xử lý nước cứng, cặn bẩn và Clo dư hiệu quả</li>
-                    <li>Pentair Foleo có thiết kế nhỏ gọn, tối ưu cho nhiều không gian</li>
+                    <li>Thiết kế nhỏ gọn, phù hợp không gian căn hộ chung cư hiện đại</li>
+                    <li>Xử lý nước cứng, cặn bẩn và Clo dư hiệu quả</li>
+                    <li>Tiết kiệm diện tích lắp đặt, vận hành ổn định</li>
+                    <li>Phù hợp gia đình 2–3 phòng tắm</li>
                   </ul>
                 </div>
               </div>
@@ -1367,18 +1433,15 @@ export default function PublicPages({
                   {/* Products tags */}
                   <div className="flex flex-wrap gap-1.5 pb-2 border-b border-slate-800/60">
                     <span onClick={() => onNavigate('/san-pham')} className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer transition-colors">
-                      Pentair OM34K POE
-                    </span>
-                    <span onClick={() => onNavigate('/san-pham')} className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer transition-colors">
-                      WaterTrust Pro Series 2.0
+                      Pentair Softena Smart CS Maxi
                     </span>
                   </div>
 
                   <ul className="space-y-1.5 text-[11px] text-slate-400 font-sans font-light list-disc list-inside">
-                    <li>Pentair OM34K POE phù hợp nhà phố và biệt thự nhỏ</li>
-                    <li>Cung cấp lưu lượng tối ưu cho 3–5 phòng tắm hoạt động</li>
-                    <li>WaterTrust Pro Series phù hợp nhu cầu sử dụng nước cường độ cao</li>
-                    <li>Hỗ trợ xử lý nước tối thâm sâu cho nhiều thiết bị đồng thời</li>
+                    <li>Phù hợp nhà phố với nhu cầu sử dụng nước lớn hơn</li>
+                    <li>Công suất cao, đáp ứng 3–5 phòng tắm hoạt động đồng thời</li>
+                    <li>Xử lý hiệu quả nước cứng, bảo vệ thiết bị gia đình</li>
+                    <li>Thiết kế toàn diện, nâng cao trải nghiệm dùng nước mỗi ngày</li>
                   </ul>
                 </div>
               </div>
@@ -1422,21 +1485,18 @@ export default function PublicPages({
                   {/* Products tags */}
                   <div className="flex flex-wrap gap-1.5 pb-2 border-b border-slate-800/60 font-medium font-sans">
                     <span onClick={() => onNavigate('/san-pham')} className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer transition-colors">
-                      Pentair OM40K POE
+                      Pentair Foleo Pro Max
                     </span>
                     <span onClick={() => onNavigate('/san-pham')} className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer transition-colors">
-                      WaterTrust Pro Series
-                    </span>
-                    <span onClick={() => onNavigate('/san-pham')} className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer transition-colors">
-                      Pro Elite POE Buffer
+                      Pentair Watertrust Series 2.0
                     </span>
                   </div>
 
                   <ul className="space-y-1.5 text-[11px] text-slate-400 font-sans font-light list-disc list-inside">
-                    <li>Pentair OM40K POE phù hợp biệt thự 4–6 phòng tắm</li>
-                    <li>WaterTrust Pro Series dành cho biệt thự và villa cao cấp</li>
-                    <li>Pro Elite POE Buffer Tank phù hợp hệ thống lớn và nhu cầu sử dụng cao</li>
-                    <li>Công nghệ làm mềm nước và lọc đa tầng cao cấp</li>
+                    <li>Pentair Foleo Pro Max phù hợp biệt thự và shophouse cao cấp</li>
+                    <li>Pentair Watertrust Series 2.0 đáp ứng lưu lượng lớn, vận hành 24/7</li>
+                    <li>Công nghệ lọc đa tầng, xử lý toàn diện nguồn nước</li>
+                    <li>Phù hợp không gian sống rộng với nhu cầu sử dụng cao</li>
                   </ul>
                 </div>
               </div>
@@ -1480,10 +1540,10 @@ export default function PublicPages({
               Bảo Chứng Niềm Tin Tuyệt Đối
             </span>
             <h2 className="text-2xl md:text-3xl font-black text-[#004b87] uppercase tracking-tight">
-              Bằng Sáng Chế & Sự Bảo Chứng Toàn Cầu
+              Chứng Nhận Quốc Tế & Công Nghệ Độc Quyền
             </h2>
             <p className="text-xs text-slate-500 font-sans leading-relaxed">
-              Vượt qua những thước đo khắc nghiệt nhất, Pentair tự hào sở hữu những chứng chỉ của các ủy ban kiểm định độc lập uy tín hàng đầu Hoa Kỳ và Châu Âu.
+              Pentair được kiểm định bởi các tổ chức độc lập uy tín hàng đầu Hoa Kỳ, đồng thời sở hữu di sản công nghệ nước lâu đời và bền vững.
             </p>
           </div>
 
@@ -1496,9 +1556,9 @@ export default function PublicPages({
               </h4>
               <ul className="space-y-4">
                 {(certificates && certificates.length > 0 ? certificates : [
-                  "NSF/ANSI Standard 44 - Chứng chỉ xử lý làm mềm nước đỉnh cao Hoa Kỳ.",
-                  "NSF/ANSI Standard 53 - Lọc sạch toàn diện tàn dư kim loại nặng độc hại.",
-                  "Hiệp hội chất lượng nước Quốc tế (WQA) Gold Seal vương miện bảo chứng uy quyền tối thượng."
+                  "NSF/ANSI Standard 44 – Tiêu chuẩn kiểm định làm mềm nước của NSF International, Hoa Kỳ.",
+                  "NSF/ANSI Standard 53 – Tiêu chuẩn lọc giảm chất gây hại sức khỏe, được công nhận toàn cầu.",
+                  "WQA Gold Seal – Con dấu chất lượng vàng của Hiệp hội Chất lượng Nước Quốc tế (Water Quality Association)."
                 ]).map((cert: string, i: number) => (
                   <li key={i} className="flex gap-2.5 text-xs md:text-sm text-gray-650 font-sans leading-relaxed">
                     <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
@@ -1508,23 +1568,25 @@ export default function PublicPages({
               </ul>
             </div>
 
-            {/* Giải thưởng sáng chế */}
+            {/* RIGHT: Công Nghệ Độc Quyền & Di Sản Đổi Mới */}
             <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-100 shadow-sm space-y-4">
               <h4 className="font-bold text-gray-900 uppercase text-xs tracking-wider flex items-center gap-2 border-b pb-3 text-[#bf9b30]">
                 <Award className="w-4.5 h-4.5 text-amber-500 shrink-0" />
-                Giải thưởng danh vọng & Bằng sáng chế độc quyền
+                Công Nghệ Độc Quyền &amp; Di Sản Đổi Mới
               </h4>
               <ul className="space-y-4">
-                {(awards && awards.length > 0 ? awards : [
-                  "Hơn 1230 bằng sáng chế linh kiện van lọc tổng Fleck ứng dụng tự động thông minh.",
-                  "Bình chọn sản phẩm xử lý nước Thân Thiện Sinh Thái xanh của năm (US Green Building Council).",
-                  "Top 10 thương hiệu thiết bị gia dụng siêu cao cấp được thèm khát nhất tại toàn thị trường Châu Mỹ."
-                ]).map((aw: string, i: number) => (
-                  <li key={i} className="flex gap-2.5 text-xs md:text-sm text-gray-650 font-sans leading-relaxed">
-                    <Sparkles className="w-5 h-5 text-amber-500 shrink-0 mt-0.5 animate-pulse" />
-                    <span>{aw}</span>
-                  </li>
-                ))}
+                <li className="flex gap-2.5 text-xs md:text-sm text-gray-650 font-sans leading-relaxed">
+                  <Sparkles className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                  <span>Hơn 60 năm kinh nghiệm phát triển công nghệ nước, từ năm 1966 đến nay.</span>
+                </li>
+                <li className="flex gap-2.5 text-xs md:text-sm text-gray-650 font-sans leading-relaxed">
+                  <Sparkles className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                  <span>Sở hữu nhiều bằng sáng chế trong lĩnh vực xử lý nước và van điều khiển tự động.</span>
+                </li>
+                <li className="flex gap-2.5 text-xs md:text-sm text-gray-650 font-sans leading-relaxed">
+                  <Sparkles className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                  <span>Thương hiệu Fleck – nổi tiếng toàn cầu trong ngành làm mềm nước, được các chuyên gia và nhà lắp đặt tin dùng rộng rãi.</span>
+                </li>
               </ul>
             </div>
           </div>

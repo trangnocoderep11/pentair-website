@@ -25,8 +25,12 @@
   line-height: 1.35;
 }
 
+.rich-text-content h1 {
+  font-size: 32px;
+}
+
 .rich-text-content h2 {
-  font-size: 1.25rem;
+  font-size: 26px;
   border-b: 1px solid #f1f5f9;
   padding-bottom: 0.35rem;
   text-transform: uppercase;
@@ -34,11 +38,11 @@
 }
 
 .rich-text-content h3 {
-  font-size: 1.1rem;
+  font-size: 24px;
 }
 
 .rich-text-content h4 {
-  font-size: 0.95rem;
+  font-size: 18px;
   color: #334155;
 }
 

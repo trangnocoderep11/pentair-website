@@ -333,7 +333,10 @@ export default function App() {
   ];
 
   const headerSettingsValue = options.find(o => o.optionName === 'header_settings')?.optionValue || {};
-  const homepageSettingsValue = options.find(o => o.optionName === 'homepage_settings')?.optionValue || {};
+  const homepageSettingsValue = {
+    ...(options.find(o => o.optionName === 'homepage_settings')?.optionValue || {}),
+    softener_slides: options.find(o => o.optionName === 'softener_slides')?.optionValue || []
+  };
 
   // ----------------------------------------------------
   // DIAGNOSTIC SCREEN FOR CRITICAL ERROR
@@ -438,6 +441,9 @@ export default function App() {
             showrooms={showroomListValue}
             onNavigate={handleVirtualNavigate}
             onOpenAdmin={() => setShowAdminCMS(true)}
+            logoText={headerSettingsValue.footerLogoText}
+            logoImageUrl={headerSettingsValue.footerLogoImageUrl}
+            logoTextFull={headerSettingsValue.footerLogoTextFull}
           />
 
           <ShoppingCart 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Award, ShieldCheck, Heart } from 'lucide-react';
+import { Globe, CheckCircle2, Users } from 'lucide-react';
 
 interface BrandIntroSectionProps {
   introTitle: string;
@@ -27,9 +27,6 @@ export default function BrandIntroSection({ introTitle, introBody, onNavigate, h
             className="space-y-6 md:space-y-8"
           >
             <div className="space-y-2">
-              <span className="text-xs font-mono font-bold text-[#0C3471] tracking-widest uppercase block">
-                Heritage & Innovation
-              </span>
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-sans font-black text-[#0B2144] tracking-tight leading-tight uppercase">
                 {homepageSettings.introTitle || introTitle}
               </h2>
@@ -43,26 +40,26 @@ export default function BrandIntroSection({ introTitle, introBody, onNavigate, h
             <div className="grid grid-cols-3 gap-6 pt-6 border-t border-gray-100">
               <div className="space-y-2">
                 <div className="w-10 h-10 rounded-full bg-[#0c3471]/5 flex items-center justify-center text-[#0C3471]">
-                  <Award className="w-5 h-5" />
+                  <Globe className="w-5 h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-[#0B2144] uppercase tracking-wider">{homepageSettings.introFeature1Title || 'Mỹ Quốc'}</h4>
-                <p className="text-[10px] text-gray-400 font-sans leading-relaxed">{homepageSettings.introFeature1Desc || 'Sáng lập từ năm 1966 tại Minnesota Hoa Kỳ.'}</p>
+                <h4 className="text-sm font-bold text-[#0B2144] uppercase tracking-wider leading-snug">{homepageSettings.introFeature1Title || 'Được tin dùng tại hơn 150 quốc gia'}</h4>
+                <p className="text-xs text-gray-500 font-sans leading-relaxed">{homepageSettings.introFeature1Desc || 'Giải pháp nước hiện diện rộng khắp tại các thị trường phát triển trên toàn thế giới.'}</p>
               </div>
               
               <div className="space-y-2">
                 <div className="w-10 h-10 rounded-full bg-[#0c3471]/5 flex items-center justify-center text-[#0C3471]">
-                  <ShieldCheck className="w-5 h-5" />
+                  <CheckCircle2 className="w-5 h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-[#0B2144] uppercase tracking-wider">{homepageSettings.introFeature2Title || 'Tiêu chuẩn vàng'}</h4>
-                <p className="text-[10px] text-gray-400 font-sans leading-relaxed">{homepageSettings.introFeature2Desc || 'Bộ lọc tối siêu, kiểm định chặt bởi NSF & WQA.'}</p>
+                <h4 className="text-sm font-bold text-[#0B2144] uppercase tracking-wider leading-snug">{homepageSettings.introFeature2Title || 'Chất lượng đã được kiểm chứng'}</h4>
+                <p className="text-xs text-gray-500 font-sans leading-relaxed">{homepageSettings.introFeature2Desc || 'Các giải pháp được phát triển theo tiêu chuẩn quốc tế nhằm đảm bảo hiệu quả vận hành lâu dài.'}</p>
               </div>
 
               <div className="space-y-2">
                 <div className="w-10 h-10 rounded-full bg-[#0c3471]/5 flex items-center justify-center text-[#0C3471]">
-                  <Heart className="w-5 h-5" />
+                  <Users className="w-5 h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-[#0B2144] uppercase tracking-wider">{homepageSettings.introFeature3Title || 'Chăm sóc sâu'}</h4>
-                <p className="text-[10px] text-gray-400 font-sans leading-relaxed">{homepageSettings.introFeature3Desc || 'Tái tạo cấu trúc bảo bọc trọn làn da rạng ngời.'}</p>
+                <h4 className="text-sm font-bold text-[#0B2144] uppercase tracking-wider leading-snug">{homepageSettings.introFeature3Title || 'Được hàng triệu Khách hàng tin dùng'}</h4>
+                <p className="text-xs text-gray-500 font-sans leading-relaxed">{homepageSettings.introFeature3Desc || 'Pentair đã được hàng triệu khách hàng trên thế giới đánh giá cao về chất lượng và hiệu suất.'}</p>
               </div>
             </div>
 
@@ -88,19 +85,13 @@ export default function BrandIntroSection({ introTitle, introBody, onNavigate, h
             {/* Visual champagne-border overlay framing */}
             <div className="absolute top-4 left-14 w-full h-full border border-[#E6C073]/30 rounded-2xl -z-10 pointer-events-none hidden sm:block" />
             
-            <div className="rounded-2xl overflow-hidden aspect-[4/3] sm:aspect-square bg-slate-100 shadow-2xl relative group">
+            <div className="relative group">
               <img 
                 src={homepageSettings.introImage || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80"} 
-                className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-700 pointer-events-none"
+                className="w-full h-auto object-contain rounded-2xl shadow-2xl group-hover:scale-[1.02] transition-transform duration-700 pointer-events-none"
                 alt="Pentair Kitchen Integration"
                 referrerPolicy="no-referrer"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0B2144]/40 to-transparent" />
-              
-              <div className="absolute bottom-6 left-6 right-6 p-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white space-y-1">
-                <span className="text-[9px] font-mono font-bold tracking-widest text-[#E6C073] uppercase">{homepageSettings.introImageTag || 'Villa Penthouse Integration'}</span>
-                <p className="text-xs font-sans font-light">{homepageSettings.introImageDesc || 'Tích hợp giải pháp nước tinh khiết chảy qua các không gian bếp hạng sang bậc nhất châu Âu.'}</p>
-              </div>
             </div>
           </motion.div>
 
