@@ -50,17 +50,17 @@ function sanitizeHtml(html: string): string {
   return clean;
 }
 
-// Database JSON path
+// Data directory for uploaded files only (no more db.json)
 const DATA_DIR = path.join(process.cwd(), "data");
-const DB_PATH = path.join(DATA_DIR, "db.json");
 
-// Ensure data directory exists
+// Ensure uploads directory exists
 try {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  const uploadsDir = path.join(DATA_DIR, "uploads");
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
   }
 } catch (err) {
-  console.warn("Could not create data directory, using default/in-memory system. This is normal in read-only/serverless environments like Vercel.", err);
+  console.warn("Could not create uploads directory.", err);
 }
 
 // Pre-seeded / bootstrap data
@@ -1201,7 +1201,7 @@ async function saveDbToSupabase() {
 
 async function loadDbFromSupabase() {
   if (!postgresPool) {
-    console.log("[POSTGRES SYNC] Chưa cấu hình DATABASE_URL. Sử dụng dữ liệu db.json cục bộ.");
+    console.warn("[POSTGRES SYNC] Chưa cấu hình DATABASE_URL. Server chạy với dữ liệu bootstrap trong bộ nhớ (không lưu trữ).");
     return;
   }
   try {
@@ -1284,7 +1284,6 @@ async function loadDbFromSupabase() {
           if (cloudOpts.length > 0) db.options = cloudOpts;
         }
 
-        fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), "utf-8");
         console.log(`[POSTGRES SYNC] ✅ Khôi phục thành công từ bảng riêng: ${db.posts.length} posts, ${db.terms.length} terms, ${db.users.length} users!`);
       } else {
         // Fallback: thử load từ blob backup
@@ -1305,7 +1304,6 @@ async function loadDbFromSupabase() {
           (db as any).mediaFolders = parsed.mediaFolders || (db as any).mediaFolders;
           (db as any).mediaItems = parsed.mediaItems || (db as any).mediaItems;
 
-          fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), "utf-8");
           console.log("[POSTGRES SYNC] Khôi phục từ blob backup. Đang đẩy lên các bảng riêng...");
           // Đẩy lại vào các bảng riêng để lần sau load nhanh hơn
           await saveDbToSupabase();
@@ -1318,54 +1316,14 @@ async function loadDbFromSupabase() {
       client.release();
     }
   } catch (err: any) {
-    console.warn("[POSTGRES SYNC] Bỏ qua khôi phục đám mây (Hệ thống chạy ngoại tuyến với db.json cục bộ):", err.message);
+    console.warn("[POSTGRES SYNC] Không thể kết nối PostgreSQL. Server chạy với dữ liệu bootstrap trong bộ nhớ (không lưu trữ):", err.message);
   }
 }
 
-function readDb() {
-  try {
-    if (fs.existsSync(DB_PATH)) {
-      const parsed = JSON.parse(fs.readFileSync(DB_PATH, "utf-8"));
-      // Ensure essential arrays remain
-      db.users = parsed.users || bootstrapData.users;
-      db.posts = parsed.posts || bootstrapData.posts;
-      db.terms = parsed.terms || bootstrapData.terms;
-      db.options = parsed.options || bootstrapData.options;
-      db.submissions = parsed.submissions || bootstrapData.submissions;
-      db.videos = parsed.videos || bootstrapData.videos;
-      db.perspectives = parsed.perspectives || bootstrapData.perspectives;
-      db.mediaFolders = parsed.mediaFolders || defaultMediaFolders;
-      db.mediaItems = parsed.mediaItems || defaultMediaItems;
-    } else {
-      writeDb();
-    }
-  } catch (err) {
-    console.error("Lỗi đọc file db.json, khôi phục từ mẫu", err);
-    db = { 
-      ...bootstrapData,
-      videos: [...bootstrapData.videos] as any[],
-      perspectives: [...bootstrapData.perspectives] as any[],
-      mediaFolders: [...defaultMediaFolders] as any[],
-      mediaItems: [...defaultMediaItems] as any[]
-    };
-  }
-}
-
+// writeDb: sync in-memory db to PostgreSQL (fire-and-forget)
 function writeDb() {
-  try {
-    fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), "utf-8");
-    // Async push backend changes to cloud without locking request thread
-    saveDbToSupabase().catch(err => console.error("Không thể ghi file sang Supabase:", err));
-  } catch (err) {
-    console.error("Lỗi ghi file db.json", err);
-  }
+  saveDbToSupabase().catch(err => console.error("[DB] Lỗi sync PostgreSQL:", err));
 }
-
-// Read database at start (local cache first)
-readDb();
-
-// Load & Sync from Supabase Cloud on boot asynchronously
-loadDbFromSupabase().catch(err => console.error("Lỗi khởi tạo Supabase:", err));
 
 app.use(express.json({ limit: '15mb' }));
 app.use("/uploads", express.static(path.join(process.cwd(), "data", "uploads")));
@@ -1929,7 +1887,7 @@ app.post("/api/supabase/test-connection", authMiddleware, requireRole('administr
   }
 });
 
-// Endpoint để đẩy toàn bộ dữ liệu cũ từ db.json lên Supabase
+// Endpoint để đẩy toàn bộ in-memory db lên Supabase (manual sync)
 app.post("/api/supabase/push-data", authMiddleware, requireRole('administrator'), async (req, res) => {
   if (!postgresPool) {
     return res.status(400).json({ 
@@ -3032,6 +2990,11 @@ app.get("/robots.txt", (req, res) => {
 
 // Vite server boot connection / Static Server in Production
 async function startServer() {
+  // Load all data from PostgreSQL before serving any requests
+  console.log("[BOOT] Đang tải dữ liệu từ PostgreSQL...");
+  await loadDbFromSupabase();
+  console.log("[BOOT] Dữ liệu đã sẵn sàng. Khởi động server...");
+
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
@@ -3040,8 +3003,6 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else if (!process.env.VERCEL) {
-    // Only serve static files via Express in non-Vercel production environments (self-hosted / Docker / standard node environment).
-    // On Vercel, the ultra-fast Vercel Edge CDN serves all static files in the build output natively, avoiding dynamic Node overhead.
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
@@ -3053,7 +3014,7 @@ async function startServer() {
     console.log("Running in Vercel Serverless environment. Skip app.listen().");
   } else {
     app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server Pentair running dynamic endpoints on http://localhost:${PORT}`);
+      console.log(`Server Pentair running on http://localhost:${PORT} — 100% PostgreSQL mode`);
     });
   }
 }
