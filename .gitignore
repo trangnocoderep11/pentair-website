@@ -10,3 +10,5 @@ README.md
 PLAN.md
 .gitignore
 .env.example
+_db.json
+_.env
