@@ -1111,6 +1111,8 @@ async function ensureTablesExist(client: any) {
     `ALTER TABLE public.submissions ADD COLUMN IF NOT EXISTS source TEXT`,
     `ALTER TABLE public.submissions ADD COLUMN IF NOT EXISTS product_id TEXT`,
     `ALTER TABLE public.submissions ADD COLUMN IF NOT EXISTS meta JSONB DEFAULT '{}'::jsonb`,
+    // perspectives
+    `ALTER TABLE public.perspectives ADD COLUMN IF NOT EXISTS meta JSONB DEFAULT '{}'::jsonb`,
     // media_items
     `ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS folder_id TEXT`,
     `ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS mime_type TEXT`,
