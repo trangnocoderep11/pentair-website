@@ -96,6 +96,24 @@ export default function ProductVideoSection({
     }
   }, [videos, filteredVideos]);
 
+  // Extract YouTube video ID from any YouTube URL format
+  const getYouTubeThumbnail = (url: string): string => {
+    if (!url) return '';
+    const embedMatch = url.match(/embed\/([^?&/]+)/);
+    if (embedMatch) return `https://i.ytimg.com/vi/${embedMatch[1]}/hqdefault.jpg`;
+    const watchMatch = url.match(/[?&]v=([^?&]+)/);
+    if (watchMatch) return `https://i.ytimg.com/vi/${watchMatch[1]}/hqdefault.jpg`;
+    const shortMatch = url.match(/youtu\.be\/([^?&]+)/);
+    if (shortMatch) return `https://i.ytimg.com/vi/${shortMatch[1]}/hqdefault.jpg`;
+    return '';
+  };
+
+  const getThumb = (vid: VideoItem) => {
+    if (vid.thumbnail) return vid.thumbnail;
+    const rawUrl = (vid as any).videoUrl || (vid as any).url || '';
+    return getYouTubeThumbnail(rawUrl) || 'https://img.youtube.com/vi/default/hqdefault.jpg';
+  };
+
   // Convert standard URL format into perfect YouTube embed target URL
   const getEmbedUrl = (url: string) => {
     if (!url) return '';
@@ -119,8 +137,9 @@ export default function ProductVideoSection({
     return url;
   };
 
-  const finalEmbedUrl = selectedVid 
-    ? getEmbedUrl(selectedVid.videoUrl) + (selectedVid.videoUrl.includes('?') ? '&autoplay=1' : '?autoplay=1')
+  const rawVideoUrl = selectedVid?.videoUrl || (selectedVid as any)?.url || '';
+  const finalEmbedUrl = rawVideoUrl
+    ? getEmbedUrl(rawVideoUrl) + (rawVideoUrl.includes('?') ? '&autoplay=1' : '?autoplay=1')
     : '';
 
   return (
@@ -182,19 +201,19 @@ export default function ProductVideoSection({
                       className="absolute inset-0 cursor-pointer"
                       onClick={() => setIsPlaying(true)}
                     >
-                      <img 
-                        src={selectedVid.thumbnail} 
-                        alt={selectedVid.title} 
+                      <img
+                        src={getThumb(selectedVid)}
+                        alt={selectedVid.title}
                         className="w-full h-full object-cover group-hover:scale-101 transition-transform duration-500"
                         referrerPolicy="no-referrer"
                       />
-                      <div className="absolute inset-0 bg-black/45 flex items-center justify-center group-hover:bg-black/35 duration-300 transition-all" />
-                      
-                      {/* Burning Golden Visual Play button */}
-                      <div className="relative">
-                        <div className="absolute inset-0 bg-amber-500 rounded-full blur-md opacity-30 animate-pulse" />
-                        <div className="w-16 h-16 bg-[#E6C073] hover:bg-amber-400 text-slate-950 rounded-full flex items-center justify-center group-hover:scale-110 duration-300 transition-all shadow-xl">
-                          <Play className="w-6 h-6 fill-current translate-x-0.5" />
+                      <div className="absolute inset-0 bg-black/45 flex items-center justify-center group-hover:bg-black/35 duration-300 transition-all">
+                        {/* Burning Golden Visual Play button */}
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-amber-500 rounded-full blur-md opacity-30 animate-pulse" />
+                          <div className="w-16 h-16 bg-[#E6C073] hover:bg-amber-400 text-slate-950 rounded-full flex items-center justify-center group-hover:scale-110 duration-300 transition-all shadow-xl">
+                            <Play className="w-6 h-6 fill-current translate-x-0.5" />
+                          </div>
                         </div>
                       </div>
 
@@ -269,10 +288,10 @@ export default function ProductVideoSection({
                       >
                         {/* Smaller thumbnail container */}
                         <div className="w-20 aspect-video rounded-lg overflow-hidden relative flex-shrink-0 bg-gray-950 border border-white/10">
-                          <img 
-                            src={vid.thumbnail} 
-                            alt={vid.title} 
-                            className="w-full h-full object-cover" 
+                          <img
+                            src={getThumb(vid)}
+                            alt={vid.title}
+                            className="w-full h-full object-cover"
                             referrerPolicy="no-referrer"
                           />
                           <div className={`absolute inset-0 flex items-center justify-center ${isActive ? 'bg-amber-500/10' : 'bg-black/20'}`}>

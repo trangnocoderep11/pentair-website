@@ -238,9 +238,6 @@ export default function Footer({
               </button>
             )}
           </div>
-          <span className="text-[10px] text-blue-300/40 font-mono">
-            Vietnam Custom hand-coded CMS (Self-developed, Anti WordPress DB fallback, digital synched)
-          </span>
         </div>
       </div>
     </footer>

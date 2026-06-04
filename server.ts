@@ -2398,12 +2398,19 @@ app.put("/api/admin/products/:id", authMiddleware, (req, res) => {
 // FEATURE 3: VIDEO PLAYLIST APIS
 // ==========================================
 app.get("/api/videos", (req, res) => {
-  const publishedVideos = db.videos.filter(v => v.status === 'published' || v.status === 'publish').sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  const publishedVideos = db.videos
+    .filter(v => !v.status || v.status === 'published' || v.status === 'publish')
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+    .map(v => ({ ...v, videoUrl: v.videoUrl || (v as any).url || null }));
   res.json(publishedVideos);
 });
 
 app.get("/api/admin/videos", authMiddleware, (req, res) => {
-  res.json(db.videos.sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0)));
+  res.json(
+    db.videos
+      .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+      .map(v => ({ ...v, videoUrl: v.videoUrl || (v as any).url || null }))
+  );
 });
 
 app.post("/api/admin/videos", authMiddleware, (req, res) => {
