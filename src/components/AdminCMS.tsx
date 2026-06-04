@@ -71,7 +71,7 @@ export default function AdminCMS({
   const [loginLoading, setLoginLoading] = React.useState(false);
 
   // NAVIGATION SUB-MENU
-  type AdminTab = 'dashboard' | 'posts' | 'pages' | 'products' | 'categories' | 'submissions' | 'settings' | 'security' | 'backup' | 'supabase' | 'email-settings' | 'videos' | 'perspectives' | 'media' | 'header-footer';
+  type AdminTab = 'dashboard' | 'posts' | 'pages' | 'products' | 'categories' | 'submissions' | 'settings' | 'security' | 'backup' | 'supabase' | 'email-settings' | 'videos' | 'perspectives' | 'media' | 'header-footer' | 'homepage';
   const [activeTab, setActiveTab] = React.useState<AdminTab>('dashboard');
 
   const buildPostFormSnapshot = (form: Partial<Post>) => JSON.stringify({
@@ -800,7 +800,10 @@ export default function AdminCMS({
 
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+        },
         body: JSON.stringify(payload)
       });
       const data = await res.json();
@@ -927,6 +930,25 @@ export default function AdminCMS({
     topBarAddress: '90 Đinh Thị Thi, Vạn Phúc City, Thủ Đức',
     topBarTagline: 'Pentair USA - Leading the Water Revolution',
   });
+  const [homepageSettings, setHomepageSettings] = React.useState({
+    heroTitle: 'GIẢI PHÁP XỬ LÝ NƯỚC HÀNG ĐẦU CHÂU ÂU & BẮC MỸ',
+    heroSubtitle: 'Khởi nguồn từ di sản công nghệ hơn nửa thế kỷ, Pentair mang tới đẳng cấp lọc nước tinh khiết vượt trội.',
+    heroImage: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80',
+    heroImageTag: 'USA CERTIFIED',
+    heroImageTitle: 'Pentair Smart Water System',
+    heroImageDesc: 'Kiệt tác nâng tầm giá trị sống dòng biệt thự đơn lập, lâu đài vĩnh cửu.',
+    introTitle: 'HƠN 60 NĂM KINH NGHIỆM TRONG NGÀNH XỬ LÝ NƯỚC',
+    introBody: 'Pentair là thương hiệu hàng đầu từ Mỹ với hơn 60 năm kinh nghiệm trong lĩnh vực xử lý nước và giải pháp lọc tổng cao cấp. Các sản phẩm của Pentair đều đạt các chứng nhận uy tín về chất lượng và được tin dùng trên toàn thế giới nhờ công nghệ tiên tiến, độ bền vượt trội kết hợp khả năng xử lý nước thông minh mang lại nguồn nước sạch an toàn cho gia đình.',
+    introImage: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+    introImageTag: 'Villa Penthouse Integration',
+    introImageDesc: 'Tích hợp giải pháp nước tinh khiết chảy qua các không gian bếp hạng sang bậc nhất châu Âu.',
+    introFeature1Title: 'Mỹ Quốc',
+    introFeature1Desc: 'Sáng lập từ năm 1966 tại Minnesota Hoa Kỳ.',
+    introFeature2Title: 'Tiêu chuẩn vàng',
+    introFeature2Desc: 'Bộ lọc tối siêu, kiểm định chặt bởi NSF & WQA.',
+    introFeature3Title: 'Chăm sóc sâu',
+    introFeature3Desc: 'Tái tạo cấu trúc bảo bọc trọn làn da rạng ngời.'
+  });
   const [footerPolicies, setFooterPolicies] = React.useState<{title: string; content: string}[]>([
     { title: 'Chính sách giao hàng', content: 'Cam kết tối đa 24h nội thành.' },
     { title: 'Chính sách bảo hành', content: 'Cam kết bảo hành kép 3-5 năm.' },
@@ -954,6 +976,7 @@ export default function AdminCMS({
       const hMenu = options.find(o => o.optionName === 'header_menu')?.optionValue;
       const hSettings = options.find(o => o.optionName === 'header_settings')?.optionValue;
       const fPolicies = options.find(o => o.optionName === 'footer_policies')?.optionValue;
+      const homeSettings = options.find(o => o.optionName === 'homepage_settings')?.optionValue;
       
       setBrandForm({
         siteName: brand.siteName || 'Pentair Việt Nam',
@@ -982,6 +1005,9 @@ export default function AdminCMS({
       }
       if (fPolicies && Array.isArray(fPolicies)) {
         setFooterPolicies(fPolicies);
+      }
+      if (homeSettings) {
+        setHomepageSettings(prev => ({ ...prev, ...homeSettings }));
       }
     }
   }, [options]);
@@ -1209,9 +1235,16 @@ export default function AdminCMS({
       }
 
       await onRefreshData();
-      setIsCreatingNew(false);
-      setEditingPostId(null);
-      setPostFormBaseline(buildPostFormSnapshot(postForm));
+      // If creating new, switch to edit mode with the returned ID so user stays on form
+      if (isCreatingNew && data.id) {
+        setIsCreatingNew(false);
+        setEditingPostId(data.id);
+        setPostForm(prev => ({ ...prev, id: data.id }));
+        setPostFormBaseline(buildPostFormSnapshot({ ...postForm, id: data.id }));
+      } else {
+        // When editing, just update baseline — stay on the same edit page
+        setPostFormBaseline(buildPostFormSnapshot(postForm));
+      }
       triggerToast("Lưu bản ghi thành công trên máy chủ Pentair.");
     } catch (err: any) {
       triggerToast(err.message, true);
@@ -1303,6 +1336,35 @@ export default function AdminCMS({
       triggerToast(err.message, true);
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  // SAVE HOMEPAGE CONFIGS
+  const handleSaveHomepageSettings = async () => {
+    setHfSaving(true);
+    setHfStatusMsg('');
+    setHfErrorMsg('');
+    try {
+      const payload = [
+        { id: 'opt-homepage-settings', optionName: 'homepage_settings', optionValue: homepageSettings },
+      ];
+
+      const res = await fetch('/api/options', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error("Lỗi khi lưu cấu hình trang chủ.");
+      await onRefreshData();
+      triggerToast("Cập nhật Trang chủ thành công.");
+    } catch (err: any) {
+      triggerToast(err.message, true);
+    } finally {
+      setHfSaving(false);
     }
   };
 
@@ -1740,6 +1802,15 @@ export default function AdminCMS({
               >
                 <Layout className="w-4 h-4 text-indigo-400" />
                 Giao Diện Header &amp; Footer
+              </button>
+            )}
+            {currentUser.role === 'administrator' && (
+              <button 
+                onClick={() => navigateToTab('homepage')}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg tracking-wide cursor-pointer transition-all ${activeTab === 'homepage' ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
+              >
+                <Layout className="w-4 h-4 text-orange-400" />
+                Cài Đặt Trang Chủ
               </button>
             )}
           </nav>
@@ -4289,7 +4360,7 @@ export default function AdminCMS({
                     <label className="text-[10px] font-bold text-gray-500 block uppercase">URL Video phát (YouTube Link hoặc Embed Link) *</label>
                     <div className="flex gap-2">
                       <input 
-                        type="url" 
+                        type="text" 
                         required
                         placeholder="https://www.youtube.com/watch?v=xxx... hoặc embed"
                         value={videoForm.videoUrl}
@@ -4329,7 +4400,7 @@ export default function AdminCMS({
                     <label className="text-[10px] font-bold text-gray-500 block uppercase">Ảnh thumbnail đại diện (Image URL) *</label>
                     <div className="flex gap-2">
                       <input 
-                        type="url" 
+                        type="text" 
                         required
                         placeholder="https://images.unsplash.com/..."
                         value={videoForm.thumbnail}
@@ -4644,7 +4715,7 @@ export default function AdminCMS({
                     <label className="text-[10px] font-bold text-gray-500 block uppercase">Ảnh đại diện chính biệt thự (Featured Image URL) *</label>
                     <div className="flex gap-2">
                       <input 
-                        type="url" 
+                        type="text" 
                         required
                         placeholder="https://images.unsplash.com/photo-..."
                         value={perspectiveForm.featuredImage}
@@ -5037,6 +5108,19 @@ export default function AdminCMS({
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
                       id="input-topbar-address"
                     />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Link Google Maps (Iframe SRC)</label>
+                    <input
+                      type="text"
+                      value={headerSettings.mapIframeUrl || ''}
+                      onChange={e => setHeaderSettings(prev => ({ ...prev, mapIframeUrl: e.target.value }))}
+                      placeholder="https://maps.google.com/maps?..."
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                      id="input-map-iframe"
+                    />
+                    <p className="text-[10px] text-gray-400">Dán trực tiếp URL thẻ src="" khi bạn lấy mã nhúng từ Google Maps (bỏ các thẻ &lt;iframe&gt;).</p>
                   </div>
 
                 </div>

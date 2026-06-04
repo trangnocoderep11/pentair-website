@@ -6,9 +6,10 @@ interface HeroSectionProps {
   bannerTitle: string;
   bannerSubTitle: string;
   onNavigate: (url: string) => void;
+  homepageSettings?: any;
 }
 
-export default function HeroSection({ bannerTitle, bannerSubTitle, onNavigate }: HeroSectionProps) {
+export default function HeroSection({ bannerTitle, bannerSubTitle, onNavigate, homepageSettings = {} }: HeroSectionProps) {
   return (
     <section className="relative overflow-hidden bg-[#07162E] text-white py-24 md:py-36 min-h-[600px] flex items-center">
       {/* Background Graphic Layer representing premium water purification */}
@@ -44,14 +45,14 @@ export default function HeroSection({ bannerTitle, bannerSubTitle, onNavigate }:
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-7xl font-sans font-light tracking-tight text-white leading-none uppercase">
-              {bannerTitle.split(' - ')[0]}
+              {homepageSettings.heroTitle ? homepageSettings.heroTitle.split(' - ')[0] : bannerTitle.split(' - ')[0]}
               <span className="block font-bold text-[#E6C073] mt-2 tracking-normal font-sans text-3xl sm:text-4xl lg:text-5xl">
-                {bannerTitle.split(' - ')[1] || bannerTitle}
+                {homepageSettings.heroTitle ? (homepageSettings.heroTitle.split(' - ')[1] || '') : (bannerTitle.split(' - ')[1] || bannerTitle)}
               </span>
             </h1>
 
             <p className="text-sm sm:text-base md:text-lg text-slate-300 font-sans font-light leading-relaxed max-w-2xl border-l-2 border-[#E6C073]/40 pl-4">
-              {bannerSubTitle}
+              {homepageSettings.heroSubtitle || bannerSubTitle}
             </p>
 
             <div className="flex flex-wrap items-center gap-4 pt-4">
@@ -88,23 +89,23 @@ export default function HeroSection({ bannerTitle, bannerSubTitle, onNavigate }:
             <div className="p-1 bg-gradient-to-tr from-white/10 via-white/5 to-transparent rounded-2xl">
               <div className="p-6 bg-[#07162E]/80 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl relative overflow-hidden group">
                 <span className="absolute top-4 right-4 text-[9px] font-mono text-[#E6C073] bg-[#E6C073]/10 border border-[#E6C073]/20 px-2 py-0.5 rounded font-black uppercase tracking-wider">
-                  USA Certified 
+                  {homepageSettings.heroImageTag || 'USA Certified'}
                 </span>
                 
                 <div className="aspect-[4/5] rounded-xl overflow-hidden shadow-inner bg-slate-930 relative">
                   <img 
-                    src="https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80" 
+                    src={homepageSettings.heroImage || "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80"} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 pointer-events-none" 
-                    alt="Pentair Tower" 
+                    alt={homepageSettings.heroImageTitle || "Pentair Tower"} 
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#07162E] via-transparent to-transparent opacity-60" />
                 </div>
 
                 <div className="mt-4 space-y-1">
                   <h3 className="text-xs font-mono text-[#E6C073] tracking-widest uppercase">Elite Showcase</h3>
-                  <h4 className="text-sm font-bold uppercase tracking-wide text-white">Pentair Smart Water System</h4>
+                  <h4 className="text-sm font-bold uppercase tracking-wide text-white">{homepageSettings.heroImageTitle || 'Pentair Smart Water System'}</h4>
                   <p className="text-[11px] text-slate-400 font-sans font-light leading-relaxed">
-                    Kiệt tác nâng tầm giá trị sống dòng biệt thự đơn lập, lâu đài vĩnh cửu.
+                    {homepageSettings.heroImageDesc || 'Kiệt tác nâng tầm giá trị sống dòng biệt thự đơn lập, lâu đài vĩnh cửu.'}
                   </p>
                 </div>
               </div>

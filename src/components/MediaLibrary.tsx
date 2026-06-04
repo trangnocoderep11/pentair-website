@@ -64,7 +64,7 @@ export default function MediaLibrary({
   const [expandedFolders, setExpandedFolders] = React.useState<Set<string>>(new Set());
 
   // Custom states for dialogs (avoids window.confirm in sandbox)
-  const [deleteConfirm, setDeleteConfirm] = React.useState<{ id: string; type: 'folder' | 'item'; name: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = React.useState<{ id: string | string[]; type: 'folder' | 'item' | 'batch'; name: string } | null>(null);
   const [lightboxItem, setLightboxItem] = React.useState<MediaItem | null>(null);
 
   // Load Data
@@ -469,8 +469,54 @@ export default function MediaLibrary({
 
       setItems(prev => prev.filter(i => i.id !== itemId));
       setSelectedItem(null);
+      setSelectedItems(prev => prev.filter(i => i.id !== itemId));
     } catch (err: any) {
       alert(err.message || 'Lỗi xóa tệp tin.');
+    }
+  };
+
+  const executeDeleteBatchItems = async (itemIds: string[]) => {
+    try {
+      let successIds: string[] = [];
+      let lastError: Error | null = null;
+      
+      for (const itemId of itemIds) {
+        try {
+          const res = await fetch(`/api/admin/media/items/${itemId}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+            }
+          });
+
+          if (!res.ok) {
+             if (res.status === 404) {
+                // If it's 404, it means it's already deleted. Consider it a success.
+                successIds.push(itemId);
+                continue;
+             }
+             const data = await res.json();
+             throw new Error(data.error || 'Lỗi xóa ảnh.');
+          }
+          successIds.push(itemId);
+        } catch (err: any) {
+          lastError = err;
+          // Continue with the rest instead of aborting immediately,
+          // so we delete as many as we can
+        }
+      }
+
+      if (successIds.length > 0) {
+        setItems(prev => prev.filter(i => !successIds.includes(i.id)));
+        setSelectedItems(prev => prev.filter(i => !successIds.includes(i.id)));
+        setSelectedItem(null);
+      }
+
+      if (lastError) {
+        alert(lastError.message || 'Có một số tệp tin không thể xóa.');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Lỗi xóa tệp tin hàng loạt.');
     }
   };
 
@@ -819,6 +865,20 @@ export default function MediaLibrary({
                         className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold uppercase rounded-lg transition-all"
                       >
                         Bỏ chọn
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeleteConfirm({
+                            id: selectedItems.map(i => i.id),
+                            type: 'batch',
+                            name: `${selectedItems.length} hình ảnh đã chọn`
+                          });
+                        }}
+                        className="px-3 py-2 bg-red-900/40 border border-red-800 hover:bg-red-900/60 text-red-200 text-[10px] font-bold uppercase rounded-lg transition-all flex items-center gap-1.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Xóa hàng loạt
                       </button>
                     </div>
                   </div>
@@ -1377,9 +1437,11 @@ export default function MediaLibrary({
                   const { id, type } = deleteConfirm;
                   setDeleteConfirm(null);
                   if (type === 'folder') {
-                    await executeDeleteFolder(id);
+                    await executeDeleteFolder(id as string);
+                  } else if (type === 'batch') {
+                    await executeDeleteBatchItems(id as string[]);
                   } else {
-                    await executeDeleteItem(id);
+                    await executeDeleteItem(id as string);
                   }
                 }}
                 className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold hover:shadow-lg hover:shadow-red-900/20 select-none cursor-pointer shrink-0"

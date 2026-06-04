@@ -42,8 +42,9 @@ interface PublicPagesProps {
   currentUser?: any;
   onFormSubmitSuccess: () => void;
   videos: any[];
-  perspectives: any[];
   onAddToCart?: (product: Post, quantity?: number, autoOpen?: boolean) => void;
+  headerSettings?: any;
+  homepageSettings?: any;
 }
 
 export default function PublicPages({
@@ -57,7 +58,9 @@ export default function PublicPages({
   onFormSubmitSuccess,
   videos,
   perspectives,
-  onAddToCart = () => {}
+  onAddToCart = () => {},
+  headerSettings = {},
+  homepageSettings = {}
 }: PublicPagesProps) {
   const isAdminOrEditor = currentUser?.role === 'administrator' || currentUser?.role === 'editor';
 
@@ -1831,24 +1834,19 @@ export default function PublicPages({
               </div>
             </div>
 
-            {/* Custom vector schematic placeholder map for beauty layout */}
-            <div className="bg-slate-100 h-[280px] rounded-2xl overflow-hidden relative shadow-inner border flex flex-col justify-center items-center text-center p-4">
-              <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1524661135339-9140b00785e8?auto=format&fit=crop&w=800&q=80')" }} />
-              <div className="relative z-10 space-y-2">
-                <MapPin className="w-8 h-8 text-rose-600 mx-auto animate-bounce mb-2" />
-                <h5 className="text-xs font-bold text-pentair uppercase">Khu Đô Thị Vạn Phúc City, Thủ Đức</h5>
-                <p className="text-[11px] text-gray-500 max-w-sm mx-auto font-sans">90 Đường Đinh Thị Thi, phường Hiệp Bình Phước, TP. Thủ Đức, TP. Hồ Chí Minh</p>
-                <div className="pt-3">
-                  <a 
-                    href="https://maps.google.com" 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="px-4 py-1.5 bg-pentair text-white text-[10px] font-bold rounded-lg shadow uppercase tracking-wide hover:bg-pentair-light transition-all inline-block"
-                  >
-                    Mở Google Maps
-                  </a>
-                </div>
-              </div>
+            {/* Embedded Google Map */}
+            <div className="bg-slate-100 h-[280px] rounded-2xl overflow-hidden relative shadow-inner border flex flex-col justify-center items-center">
+              <iframe 
+                src={headerSettings?.mapIframeUrl || brandSettings.mapIframeUrl || "https://maps.google.com/maps?q=90%20%C4%90%C6%B0%E1%BB%9Dng%20%C4%90inh%20Th%E1%BB%8B%20Thi,%20Khu%20%C4%91%C3%B4%20th%E1%BB%8B%20V%E1%BA%A1n%20Ph%C3%BAc,%20Th%E1%BB%A7%20%C4%90%E1%BB%A9c,%20TP.HCM&t=&z=17&ie=UTF8&iwloc=&output=embed"}
+                width="100%" 
+                height="100%" 
+                style={{ border: 0 }} 
+                allowFullScreen={false} 
+                loading="lazy" 
+                referrerPolicy="no-referrer-when-downgrade"
+                className="absolute inset-0"
+                title="Google Maps - Pentair Vietnam"
+              ></iframe>
             </div>
           </div>
 
@@ -1974,11 +1972,13 @@ export default function PublicPages({
         bannerTitle={bannerTitle} 
         bannerSubTitle={bannerSubTitle} 
         onNavigate={onNavigate} 
+        homepageSettings={homepageSettings}
       />
       <BrandIntroSection 
         introTitle={introTitle} 
         introBody={introBody} 
         onNavigate={onNavigate} 
+        homepageSettings={homepageSettings}
       />
       <WhyChoosePentairSection 
         sectionTitle={homepage?.meta?.whyChooseTitle}

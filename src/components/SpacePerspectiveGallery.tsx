@@ -10,7 +10,8 @@ interface SpacePerspectiveGalleryProps {
   perspectives: any[];
   posts: Post[];
   onNavigate: (url: string) => void;
-  activeSpaceFilter?: string;
+  activeProductFilter?: string;
+  onOpenLightbox?: (items: any[], index: number, perspective: any) => void;
 }
 
 const SPACE_LABELS: Record<string, { label: string, icon: any }> = {
@@ -23,7 +24,8 @@ export default function SpacePerspectiveGallery({
   perspectives = [],
   posts = [],
   onNavigate,
-  activeSpaceFilter = 'all'
+  activeProductFilter = 'all',
+  onOpenLightbox
 }: SpacePerspectiveGalleryProps) {
   
   // State for pagination limit to keep page performant and scroll-responsive
@@ -110,13 +112,14 @@ export default function SpacePerspectiveGallery({
     return items;
   }, [perspectives]);
 
-  // Apply filters in sequence: Architecture/Space filters
+  // Apply filters in sequence: Product filters
   const filteredItems = React.useMemo(() => {
     return allGalleryItems.filter(item => {
-      // Filter by spaceType (villa, townhouse, apartment)
-      return activeSpaceFilter === 'all' || item.spaceType === activeSpaceFilter;
+      // Filter by product ID
+      if (activeProductFilter === 'all') return true;
+      return item.relatedProductIds && item.relatedProductIds.includes(activeProductFilter);
     });
-  }, [allGalleryItems, activeSpaceFilter]);
+  }, [allGalleryItems, activeProductFilter]);
 
   // Handle pagination slices
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
@@ -128,7 +131,7 @@ export default function SpacePerspectiveGallery({
   // Reset page when filter changes
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [activeSpaceFilter]);
+  }, [activeProductFilter]);
 
   return (
     <div className="space-y-12 font-sans" id="space-perspective-luxury-gallery border-t border-gray-100 pt-6">
@@ -143,6 +146,14 @@ export default function SpacePerspectiveGallery({
 
           const spaceInfo = SPACE_LABELS[item.spaceType] || { label: 'Kiến Trúc', icon: Home };
           const SpaceIcon = spaceInfo.icon;
+          
+          let badgeLabel = spaceInfo.label;
+          if (relatedProds.length > 0) {
+            let cleanName = relatedProds[0].title;
+            cleanName = cleanName.replace(/Hệ thống lọc tổng /i, '');
+            cleanName = cleanName.replace(/Hệ thống lọc nước /i, '');
+            badgeLabel = cleanName;
+          }
 
           return (
             <motion.div
@@ -151,112 +162,43 @@ export default function SpacePerspectiveGallery({
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.6, delay: Math.min(idx * 0.08, 0.4) }}
-              className="bg-white rounded-[2rem] border border-gray-150 overflow-hidden shadow-sm hover:shadow-2xl hover:border-blue-300 transition-all duration-500 group flex flex-col justify-between"
+              className="bg-slate-900 rounded-[2rem] border border-gray-150 overflow-hidden shadow-sm hover:shadow-2xl hover:border-blue-300 transition-all duration-500 group relative aspect-[4/3] cursor-zoom-in"
+              onClick={() => onOpenLightbox && onOpenLightbox(currentItemsSlice, idx, null)}
             >
-              
-              {/* IMAGE TRAY COMPONENT WITH HIGH QUALITY ZOOM LAYOUT */}
-              <div className="relative aspect-[16/11] overflow-hidden bg-slate-900">
-                <img 
-                  src={item.url} 
-                  alt={item.title}
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 filter brightness-[0.98]"
-                />
+              <img 
+                src={item.url} 
+                alt={item.title}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 filter brightness-[0.98]"
+              />
 
-                {/* Left Floating Category Badges */}
-                <div className="absolute top-4 left-4 z-15 flex flex-col gap-1.5 pointer-events-none">
-                  <span className="bg-[#0C3471]/95 text-white text-[8px] font-black tracking-widest px-2.5 py-1 rounded-lg uppercase flex items-center gap-1 backdrop-blur select-none">
-                    <SpaceIcon className="w-2.5 h-2.5" />
-                    {spaceInfo.label}
-                  </span>
-                  <span className="bg-amber-500/95 text-black text-[8.5px] font-extrabold tracking-wide px-2 py-0.5 rounded uppercase backdrop-blur select-none">
-                    {item.conceptName}
-                  </span>
-                </div>
-
-                {/* Premium interactive overlay displayed beautifully when hovering */}
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 p-6 flex flex-col justify-end">
-                  <span className="text-[9px] font-mono font-bold text-amber-300 tracking-widest uppercase mb-1">
-                    Pentair Modern Solution
-                  </span>
-                  <h4 className="text-white text-xs font-black uppercase tracking-tight line-clamp-1">
-                    {item.parentTitle}
-                  </h4>
-                  <p className="text-gray-300 text-[10px] font-sans font-light leading-relaxed mt-1 line-clamp-2">
-                    {item.excerpt}
-                  </p>
-                  
-                  <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
-                    <span className="text-[8px] font-mono text-gray-400">MODEL CODE: {item.slug?.toUpperCase()}</span>
-                    
-                    <button
-                      onClick={() => onNavigate(`/phoi-canh/${item.slug}`)}
-                      className="text-[9px] font-extrabold uppercase text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all"
-                    >
-                      <span>Xem tư vấn</span>
-                      <ArrowUpRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
+              {/* Left Floating Category Badges */}
+              <div className="absolute top-4 left-4 z-15 flex flex-col gap-1.5 pointer-events-none">
+                <span className="bg-[#0C3471]/95 text-white text-[11px] font-black tracking-widest px-3 py-1.5 rounded-lg uppercase flex items-center gap-1 backdrop-blur select-none">
+                  <SpaceIcon className="w-3.5 h-3.5" />
+                  {badgeLabel}
+                </span>
               </div>
 
-              {/* DESCRIPTION & PRODUCT VALUE BENCH WITH NO POPUPS */}
-              <div className="p-5 flex-grow flex flex-col justify-between space-y-4">
-                
-                {/* Space and design info */}
-                <div className="space-y-1.5">
-                  <h3 className="text-xs font-black text-slate-900 group-hover:text-blue-700 uppercase tracking-tight transition-colors line-clamp-1">
-                    {item.parentTitle}
-                  </h3>
-                  <p className="text-[11px] text-gray-500 leading-relaxed font-sans font-light line-clamp-2">
-                    {item.excerpt}
-                  </p>
+              {/* Premium interactive overlay displayed beautifully when hovering */}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 p-6 flex flex-col justify-end pointer-events-none">
+                <span className="text-[9px] font-mono font-bold text-amber-300 tracking-widest uppercase mb-1">
+                  Pentair Modern Solution
+                </span>
+                <h4 className="text-white text-xs font-black uppercase tracking-tight line-clamp-1">
+                  {item.parentTitle}
+                </h4>
+                <p className="text-gray-300 text-[10px] font-sans font-light leading-relaxed mt-1 line-clamp-2">
+                  {item.excerpt}
+                </p>
+                <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
+                  <span className="text-[8px] font-mono text-gray-400">MODEL CODE: {item.slug?.toUpperCase()}</span>
+                  <span className="text-[9px] font-extrabold uppercase text-white bg-white/20 px-3 py-1.5 rounded-lg flex items-center gap-1">
+                    Bấm để xem lớn
+                  </span>
                 </div>
-
-                {/* Inline Recommended Pentair Systems shelf - directly visible, luxury alignment */}
-                {relatedProds.length > 0 && (
-                  <div className="pt-3.5 border-t border-gray-100 space-y-2">
-                    <div className="flex items-center gap-1">
-                      <span className="p-0.5 bg-blue-50 rounded-md">
-                        <Utensils className="w-3 h-3 text-[#0C3471]" />
-                      </span>
-                      <span className="text-[9.5px] font-black text-slate-800 uppercase tracking-more">
-                        Hệ lọc tích hợp khuyên dùng:
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      {relatedProds.slice(0, 2).map((prod: any) => {
-                        const priceHide = prod.meta?.hide_price === true || prod.meta?.hide_price === 'true';
-                        return (
-                          <div
-                            key={prod.id}
-                            onClick={() => onNavigate(`/san-pham/${prod.slug}`)}
-                            className="bg-slate-50 border border-gray-150 rounded-xl p-2 cursor-pointer hover:bg-blue-50/50 hover:border-blue-300 transition-all flex items-center gap-2 group/prod"
-                          >
-                            <img 
-                              src={prod.featuredImage} 
-                              alt={prod.title}
-                              referrerPolicy="no-referrer"
-                              className="w-8 h-8 object-contain bg-white p-1 rounded-lg border border-gray-100 flex-shrink-0 group-hover/prod:scale-105 transition-transform"
-                            />
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[9.5px] font-bold text-gray-800 truncate leading-none group-hover/prod:text-blue-700 uppercase">
-                                {prod.title}
-                              </p>
-                              <span className="text-[8.5px] font-semibold text-blue-800 font-mono">
-                                {priceHide ? 'Liên hệ' : formatCurrency(prod.meta?.sale_price || prod.meta?.regular_price)}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
               </div>
-
             </motion.div>
           );
         })}

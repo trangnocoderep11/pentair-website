@@ -333,6 +333,7 @@ export default function App() {
   ];
 
   const headerSettingsValue = options.find(o => o.optionName === 'header_settings')?.optionValue || {};
+  const homepageSettingsValue = options.find(o => o.optionName === 'homepage_settings')?.optionValue || {};
 
   // ----------------------------------------------------
   // DIAGNOSTIC SCREEN FOR CRITICAL ERROR
@@ -418,6 +419,8 @@ export default function App() {
               currentPath={currentPath}
               onNavigate={handleVirtualNavigate}
               brandSettings={brandValue}
+              headerSettings={headerSettingsValue}
+              homepageSettings={homepageSettingsValue}
               showrooms={showroomListValue}
               posts={posts}
               terms={terms}

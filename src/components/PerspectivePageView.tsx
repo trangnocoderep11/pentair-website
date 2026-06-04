@@ -39,7 +39,24 @@ export default function PerspectivePageView({
   const activeSlug = isDetail ? currentPath.replace('/phoi-canh/', '') : null;
   const activePerspective = activeSlug ? perspectives.find(p => p.slug === activeSlug) : null;
   
-  const [activeSpaceFilter, setActiveSpaceFilter] = React.useState('all');
+  const productFilters = React.useMemo(() => {
+    const prods = posts.filter(p => p.type === 'product' && (p.status === 'publish' || p.status === 'published' || p.status === 'active'));
+    return [
+      { value: 'all', label: 'Tất cả sản phẩm', icon: Filter },
+      ...prods.map(p => {
+        let cleanName = p.title;
+        cleanName = cleanName.replace(/Hệ thống lọc tổng /i, '');
+        cleanName = cleanName.replace(/Hệ thống lọc nước /i, '');
+        return {
+          value: p.id,
+          label: cleanName,
+          icon: Layers
+        };
+      })
+    ];
+  }, [posts]);
+
+  const [activeProductFilter, setActiveProductFilter] = React.useState('all');
 
   // Album/Gallery State variables for detailed perspective view
   const [viewMode, setViewMode] = React.useState<'gallery' | 'grid'>('gallery');
@@ -658,10 +675,6 @@ export default function PerspectivePageView({
   }
 
   // RENDER PERSPECTIVE CATALOGUE LIST
-  const filteredPerspectives = perspectives.filter(p => {
-    if (activeSpaceFilter === 'all') return true;
-    return p.spaceType === activeSpaceFilter;
-  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fadeIn" id="perspectives-list-view">
@@ -669,26 +682,20 @@ export default function PerspectivePageView({
 
       {/* Intro section and layout design */}
       <div className="text-center max-w-2xl mx-auto space-y-3 mt-4 mb-10">
-        <span className="text-[10px] font-black tracking-widest bg-blue-100 text-blue-700 px-3 py-1 rounded-full uppercase inline-block font-sans">
-          Architectural blueprint showcase
-        </span>
         <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900 uppercase">
-          Pentair trong không gian sống hiện đại
+          Hệ thống lọc tổng Pentair trong không gian sống đẳng cấp
         </h1>
-        <p className="text-xs md:text-sm text-gray-500 leading-relaxed font-sans font-light">
-          Trải nghiệm thực tế các mô hình bố trí tủ lọc tổng, máy bơm đẩy, rơ le tự động tích hợp tại gara, tầng hầm hoặc tầng mái sang trọng của Pentair Mỹ.
-        </p>
       </div>
 
-      {/* FILTER TABS BUTTONS BAR (Villa, Townhouse, Apartment etc.) */}
+      {/* FILTER TABS BUTTONS BAR */}
       <div className="flex flex-wrap items-center justify-center gap-2 mb-10 pb-2 border-b border-gray-100">
-        {SPACE_TYPES.map(space => {
-          const Icon = space.icon;
-          const isActive = activeSpaceFilter === space.value;
+        {productFilters.map(prod => {
+          const Icon = prod.icon;
+          const isActive = activeProductFilter === prod.value;
           return (
             <button
-              key={space.value}
-              onClick={() => setActiveSpaceFilter(space.value)}
+              key={prod.value}
+              onClick={() => setActiveProductFilter(prod.value)}
               className={`flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-full border transition-all duration-300 cursor-pointer ${
                 isActive 
                   ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/10 scale-102' 
@@ -696,7 +703,7 @@ export default function PerspectivePageView({
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
-              <span>{space.label}</span>
+              <span>{prod.label}</span>
             </button>
           );
         })}
@@ -708,7 +715,13 @@ export default function PerspectivePageView({
           perspectives={perspectives} 
           posts={posts} 
           onNavigate={onNavigate} 
-          activeSpaceFilter={activeSpaceFilter} 
+          activeProductFilter={activeProductFilter}
+          onOpenLightbox={(items, index) => {
+            setListLightboxImages(items);
+            setListLightboxIndex(index);
+            setListLightboxActiveP({ title: items[index]?.parentTitle, slug: items[index]?.slug });
+            setListLightboxOpen(true);
+          }}
         />
       </div>
 

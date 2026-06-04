@@ -101,42 +101,35 @@ export default function PerspectiveGallerySection({
                 viewport={{ once: true, margin: "-80px" }}
                 transition={{ duration: 0.5, delay: idx * 0.1 }}
                 onClick={() => onNavigate(`/phoi-canh/${item.slug}`)}
-                className="group relative overflow-hidden bg-white rounded-3xl border border-gray-150 shadow-sm hover:shadow-xl transition-all duration-500 aspect-[4/5] cursor-pointer"
+                className="group flex flex-col overflow-hidden bg-white rounded-3xl border border-gray-150 shadow-sm hover:shadow-xl hover:border-blue-200 transition-all duration-500 cursor-pointer"
               >
-                {/* Visual Image cover with brightness containment */}
-                <img 
-                  src={item.featuredImage} 
-                  alt={item.title} 
-                  className="w-full h-full object-cover group-hover:scale-103 duration-700 transition-transform filter brightness-95" 
-                  referrerPolicy="no-referrer"
-                />
-                
-                {/* Advanced Visual Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/20 to-transparent opacity-85 group-hover:opacity-90 transition-opacity duration-300" />
-                
-                {/* Categorization floating badge */}
-                <div className="absolute top-4 left-4 bg-white/95 backdrop-blur px-3 py-1.5 rounded-full text-[9px] font-extrabold uppercase text-gray-800 shadow-sm border border-gray-200/50 flex items-center gap-1 z-10 transition-transform group-hover:translate-y-0.5">
-                  <Icon className="w-3 h-3 text-blue-600" />
-                  <span>{spaceConfig.label}</span>
+                {/* Visual Image cover */}
+                <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
+                  <img 
+                    src={item.featuredImage} 
+                    alt={item.title} 
+                    className="w-full h-full object-cover group-hover:scale-105 duration-700 transition-transform" 
+                    referrerPolicy="no-referrer"
+                  />
                 </div>
-
+                
                 {/* Information captions and CTA Actions */}
-                <div className="absolute bottom-6 left-6 right-6 text-white space-y-2 select-none">
-                  <span className="text-[9px] font-mono font-bold text-amber-400 tracking-widest uppercase block mb-1">
+                <div className="p-6 flex flex-col flex-grow text-slate-800 space-y-2.5">
+                  <span className="text-[9px] font-mono font-bold text-amber-500 tracking-widest uppercase block mb-1">
                     0{idx + 1} • Space Solution
                   </span>
                   
-                  <h3 className="text-xs sm:text-sm font-black tracking-tight uppercase leading-snug text-white line-clamp-2">
+                  <h3 className="text-xs sm:text-sm font-black tracking-tight uppercase leading-snug text-slate-900 line-clamp-2">
                     {item.title}
                   </h3>
                   
-                  <p className="text-[11px] text-slate-300 font-sans font-light leading-snug line-clamp-2 opacity-0 group-hover:opacity-100 duration-300 transition-opacity">
+                  <p className="text-[11px] text-gray-500 font-sans font-light leading-relaxed line-clamp-2 flex-grow">
                     {item.excerpt}
                   </p>
                   
-                  <div className="pt-2 flex items-center gap-1 text-[10px] font-extrabold text-white uppercase tracking-wider opacity-0 group-hover:opacity-100 duration-300 transition-all transform translate-y-2 group-hover:translate-y-0">
-                    <span>Xem phối cảnh chi tiết</span>
-                    <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
+                  <div className="pt-4 mt-auto border-t border-gray-100 flex items-center gap-1 text-[10px] font-extrabold text-blue-600 uppercase tracking-wider group-hover:text-amber-500 transition-colors">
+                    <span>Khám phá phối cảnh</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
                   </div>
                 </div>
               </motion.div>
