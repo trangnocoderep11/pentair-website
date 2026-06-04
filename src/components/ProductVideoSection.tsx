@@ -89,12 +89,13 @@ export default function ProductVideoSection({
     setIsPlaying(false);
   }, [activeTab]);
 
-  // Sync back to general if list is mutated or loaded after
+  // When real videos load from API (videos prop changes), reset selection
   React.useEffect(() => {
-    if (!selectedVid && filteredVideos.length > 0) {
-      setSelectedVid(filteredVideos[0]);
+    if (filteredVideos.length > 0) {
+      setSelectedVid(filteredVideos.find(v => v.isFeatured) || filteredVideos[0]);
+      setIsPlaying(false);
     }
-  }, [videos, filteredVideos]);
+  }, [videos]);
 
   // Extract YouTube video ID from any YouTube URL format
   const getYouTubeThumbnail = (url: string): string => {
