@@ -872,6 +872,46 @@ async function saveDbToSupabase() {
 
       // ⚡ Thứ tự quan trọng: users → terms → posts → submissions → ...
 
+      // --- 🗑️ Xóa các bản ghi đã bị xóa khỏi db (không còn tồn tại trong local) ---
+      try {
+        const localPostIds = (db.posts || []).map((p: any) => p.id);
+        if (localPostIds.length > 0) {
+          await client.query(
+            `DELETE FROM public.posts WHERE id != ALL($1::text[])`,
+            [localPostIds]
+          );
+        } else {
+          await client.query(`DELETE FROM public.posts`);
+        }
+      } catch (e: any) { console.warn('[SYNC] Bỏ qua cleanup posts:', e.message); }
+
+      try {
+        const localTermIds = (db.terms || []).map((t: any) => t.id);
+        if (localTermIds.length > 0) {
+          await client.query(`DELETE FROM public.terms WHERE id != ALL($1::text[])`, [localTermIds]);
+        }
+      } catch (e: any) { console.warn('[SYNC] Bỏ qua cleanup terms:', e.message); }
+
+      try {
+        const localVideoIds = ((db as any).videos || []).map((v: any) => v.id);
+        if (localVideoIds.length > 0) {
+          await client.query(`DELETE FROM public.videos WHERE id != ALL($1::text[])`, [localVideoIds]);
+        } else {
+          await client.query(`DELETE FROM public.videos`);
+        }
+      } catch (e: any) { console.warn('[SYNC] Bỏ qua cleanup videos:', e.message); }
+
+      try {
+        const localPerspIds = ((db as any).perspectives || []).map((p: any) => p.id);
+        if (localPerspIds.length > 0) {
+          await client.query(`DELETE FROM public.perspectives WHERE id != ALL($1::text[])`, [localPerspIds]);
+        } else {
+          await client.query(`DELETE FROM public.perspectives`);
+        }
+      } catch (e: any) { console.warn('[SYNC] Bỏ qua cleanup perspectives:', e.message); }
+
+
+
       // --- 1. Users ---
       let userCount = 0;
       for (const user of db.users || []) {
