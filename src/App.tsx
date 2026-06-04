@@ -440,7 +440,7 @@ export default function App() {
             policies={footerPoliciesValue}
             showrooms={showroomListValue}
             onNavigate={handleVirtualNavigate}
-            onOpenAdmin={() => setShowAdminCMS(true)}
+            onOpenAdmin={currentUser ? () => setShowAdminCMS(true) : undefined}
             logoText={headerSettingsValue.footerLogoText}
             logoImageUrl={headerSettingsValue.footerLogoImageUrl}
             logoTextFull={headerSettingsValue.footerLogoTextFull}
