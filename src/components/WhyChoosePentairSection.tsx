@@ -52,6 +52,18 @@ export default function WhyChoosePentairSection({
   
   const displayReasons = reasons && reasons.length > 0 ? reasons : DEFAULT_REASONS;
 
+  const getGridColsClass = (count: number) => {
+    if (count <= 1) return 'lg:grid-cols-1';
+    if (count === 2) return 'lg:grid-cols-2';
+    if (count === 4) return 'lg:grid-cols-2'; // 2x2 layout is cleaner
+    if (count % 3 === 0) return 'lg:grid-cols-3'; // e.g. 6 items -> 3 cols
+    if (count % 4 === 0) return 'lg:grid-cols-4'; // e.g. 8 items -> 4 cols
+    if (count % 2 === 0) return 'lg:grid-cols-4';
+    return 'lg:grid-cols-3'; // fallback for odd/prime numbers (5, 7, etc.)
+  };
+
+  const gridColsClass = getGridColsClass(displayReasons.length);
+
   return (
     <section className="bg-[#0C3471] text-white py-24 relative overflow-hidden" id="why-choose-us-section">
       {/* Wave graphical backgrounds representing water particles */}
@@ -79,12 +91,12 @@ export default function WhyChoosePentairSection({
             {sectionTitle}
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 font-sans font-light leading-relaxed max-w-xl mx-auto">
-            Khám phá 7 giá trị độc tôn đặt móng cho ngôi vương lọc tổng Pentair xuyên suốt hơn nửa thế kỷ trên phạm vi toàn cầu.
+            Khám phá các giá trị độc tôn đặt móng cho ngôi vương lọc tổng Pentair trên phạm vi toàn cầu.
           </p>
         </div>
 
-        {/* 7 Core Elements Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 gap-y-12">
+        {/* Dynamic Core Elements Grid */}
+        <div className={`grid grid-cols-1 md:grid-cols-2 ${gridColsClass} gap-6 gap-y-12`}>
           
           {displayReasons.map((reason, idx) => (
             <motion.div 
@@ -116,31 +128,6 @@ export default function WhyChoosePentairSection({
               </div>
             </motion.div>
           ))}
-
-          {/* Quick Consultation block that links directly (Grid Filler) */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="rounded-2xl p-6 border border-[#E6C073]/20 bg-gradient-to-br from-[#E6C073]/10 to-transparent flex flex-col justify-between"
-          >
-            <div className="space-y-3">
-              <span className="text-[10px] font-mono text-[#E6C073] uppercase tracking-widest block font-black">Free Assessment</span>
-              <h3 className="text-lg font-bold text-white leading-snug">Kiến tạo giải pháp riêng biệt cho dinh thự của bạn</h3>
-              <p className="text-xs text-slate-300 font-sans font-light leading-relaxed">
-                Đội ngũ kỹ sư giàu kinh nghiệm của Pentair hỗ trợ tư vấn, khảo sát thực địa chất lượng nước tại nhà 100% miễn phí.
-              </p>
-            </div>
-
-            <button 
-              onClick={() => onNavigate('/lien-he')}
-              className="mt-6 w-full py-3 bg-[#E6C073] hover:bg-[#d8b05e] text-[#0C3471] font-black uppercase text-[10px] tracking-widest rounded transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              Yêu cầu tư vấn hệ thống
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
-          </motion.div>
 
         </div>
       </div>

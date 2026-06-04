@@ -1,6 +1,6 @@
 {
   "name": "Pentair CMS",
-  "description": "Website thương hiệu Pentair lọc nước Hoa Kỳ đẳng cấp, code tay đầy đủ hệ quản trị CMS tương đương WordPress tích hợp AI SEO.",
+  "description": "Website thương hiệu Pentair lọc nước Hoa Kỳ đẳng cấp, tích hợp hệ quản trị CMS chất lượng cao.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }

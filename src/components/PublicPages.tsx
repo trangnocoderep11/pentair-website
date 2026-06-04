@@ -85,6 +85,21 @@ export default function PublicPages({
   const renderRichContent = (text: string) => {
     if (!text) return null;
 
+    // Check if the content is HTML (new editor output)
+    const isHtml = (str: string) => {
+      const trimmed = str.trim();
+      return (trimmed.startsWith('<') && trimmed.endsWith('>')) || /<[a-z][\s\S]*>/i.test(trimmed);
+    };
+
+    if (isHtml(text)) {
+      return (
+        <div 
+          className="rich-text-content" 
+          dangerouslySetInnerHTML={{ __html: text }} 
+        />
+      );
+    }
+
     // Split content by lines to process paragraphs, headers, list items, and images
     const lines = text.split('\n');
     const renderedElements: React.ReactNode[] = [];
@@ -1568,14 +1583,13 @@ export default function PublicPages({
               onClick={() => onNavigate(`/san-pham/${prod.slug}`)}
               className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-pentair/50 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col cursor-pointer group"
             >
-              <div className="h-56 bg-gray-50 overflow-hidden relative">
+              <div className="aspect-square bg-gray-50 overflow-hidden relative">
                 <img 
                   src={prod.featuredImage} 
                   alt={prod.title} 
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                   referrerPolicy="no-referrer"
                 />
-                
                 {prod.status === 'draft' && (
                   <span className="absolute top-4 left-4 bg-amber-500 text-white text-[10px] font-bold px-2.5 py-1 rounded shadow-md uppercase tracking-wider z-10 animate-pulse">
                     Bản nháp

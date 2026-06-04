@@ -8,10 +8,11 @@ import {
   BarChart3, FileText, ShoppingBag, FolderTree, MessageSquare, Settings2, 
   Database, ShieldCheck, KeyRound, UserCheck, Plus, Pencil, Trash2, 
   Eye, FileCode, CheckCircle, AlertTriangle, Save, LogOut, ArrowRight, Download, Upload, Shield, RefreshCw, Server,
-  Mail, Video, LayoutTemplate, Image, Search, ChevronDown, X
+  Mail, Video, LayoutTemplate, Image, Search, ChevronDown, X, Layout, Link, GripVertical, ChevronUp, Youtube, Loader2
 } from 'lucide-react';
 import { Post, Term, FormSubmission, CMSBackup } from '../types';
 import MediaLibrary from './MediaLibrary';
+import RichTextEditor from './RichTextEditor';
 
 function cleanVietnameseSlug(str: string): string {
   if (!str) return '';
@@ -70,9 +71,35 @@ export default function AdminCMS({
   const [loginLoading, setLoginLoading] = React.useState(false);
 
   // NAVIGATION SUB-MENU
-  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'posts' | 'pages' | 'products' | 'categories' | 'submissions' | 'settings' | 'security' | 'backup' | 'supabase' | 'email-settings' | 'videos' | 'perspectives' | 'media'>('dashboard');
+  type AdminTab = 'dashboard' | 'posts' | 'pages' | 'products' | 'categories' | 'submissions' | 'settings' | 'security' | 'backup' | 'supabase' | 'email-settings' | 'videos' | 'perspectives' | 'media' | 'header-footer';
+  const [activeTab, setActiveTab] = React.useState<AdminTab>('dashboard');
 
-  // BACKEND INTEGRATION STATES
+  const buildPostFormSnapshot = (form: Partial<Post>) => JSON.stringify({
+    title: form.title || '',
+    slug: form.slug || '',
+    content: form.content || '',
+    excerpt: form.excerpt || '',
+    type: form.type || 'post',
+    status: form.status || 'draft',
+    featuredImage: form.featuredImage || '',
+    menuOrder: form.menuOrder || 0,
+    meta: form.meta || {},
+    terms: form.terms || []
+  });
+
+  const [postFormBaseline, setPostFormBaseline] = React.useState<string>(() => buildPostFormSnapshot({
+    title: '',
+    slug: '',
+    content: '',
+    excerpt: '',
+    type: 'post',
+    status: 'draft',
+    featuredImage: '',
+    menuOrder: 0,
+    meta: {},
+    terms: []
+  }));
+
   const [actionStatus, setActionStatus] = React.useState({ success: '', error: '' });
   const [actionLoading, setActionLoading] = React.useState(false);
 
@@ -80,6 +107,14 @@ export default function AdminCMS({
   const [supabaseConfig, setSupabaseConfig] = React.useState<{ url: string; projectRef: string; hasKey: boolean; apiKeyPreview: string } | null>(null);
   const [supabaseTestResult, setSupabaseTestResult] = React.useState<{ success: boolean; message: string; details?: string } | null>(null);
   const [testingSupabase, setTestingSupabase] = React.useState(false);
+  const [dbHost, setDbHost] = React.useState('');
+  const [dbPort, setDbPort] = React.useState('5432');
+  const [dbName, setDbName] = React.useState('postgres');
+  const [dbUser, setDbUser] = React.useState('');
+  const [dbPassword, setDbPassword] = React.useState('');
+  const [savingSupabase, setSavingSupabase] = React.useState(false);
+  const [pushingData, setPushingData] = React.useState(false);
+  const [pushDataResult, setPushDataResult] = React.useState<{ success: boolean; message: string; stats?: Record<string,number> } | null>(null);
 
   // EMAIL NOTIFICATION STATES
   const [emailEnabled, setEmailEnabled] = React.useState(true);
@@ -113,6 +148,7 @@ export default function AdminCMS({
   const [videoStatusMsg, setVideoStatusMsg] = React.useState('');
   const [videoErrorMsg, setVideoErrorMsg] = React.useState('');
   const [videoLoading, setVideoLoading] = React.useState(false);
+  const [fetchingYt, setFetchingYt] = React.useState(false);
 
   // PERSPECTIVES MANAGEMENT STATES
   const [editingPerspectiveId, setEditingPerspectiveId] = React.useState<string | null>(null);
@@ -140,7 +176,7 @@ export default function AdminCMS({
 
   // MEDIA SELECTOR MODAL STATE
   const [activeMediaSelector, setActiveMediaSelector] = React.useState<{
-    target: 'post_featured' | 'video_thumbnail' | 'perspective_featured' | 'perspective_gallery' | 'perspective_product_gallery';
+    target: 'post_featured' | 'video_thumbnail' | 'perspective_featured' | 'perspective_gallery' | 'perspective_product_gallery' | 'logo_image' | 'post_content_editor';
   } | null>(null);
 
   // USER MANAGEMENT STATES
@@ -391,18 +427,95 @@ export default function AdminCMS({
   // Fetch Supabase configuration on mount or when activeTab changes
   React.useEffect(() => {
     if (activeTab === 'supabase') {
-      fetch('/api/supabase/config')
+      fetch('/api/supabase/config', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+        }
+      })
         .then(res => res.json())
-        .then(data => setSupabaseConfig(data))
+        .then(data => {
+          setSupabaseConfig(data);
+          setDbHost(data.host || '');
+          setDbPort(data.port || '5432');
+          setDbName(data.database || 'postgres');
+          setDbUser(data.user || '');
+          setDbPassword(data.hasPassword ? '__SAVED_PASSWORD__' : '');
+        })
         .catch(err => console.error("Lỗi tải cấu hình Supabase:", err));
     }
   }, [activeTab]);
 
+  const handleSaveSupabaseConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dbHost || !dbUser) {
+      alert("Vui lòng nhập đầy đủ Host và Username.");
+      return;
+    }
+    setSavingSupabase(true);
+    setSupabaseTestResult(null);
+    try {
+      const res = await fetch('/api/supabase/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+        },
+        body: JSON.stringify({
+          host: dbHost,
+          port: Number(dbPort) || 5432,
+          database: dbName || 'postgres',
+          user: dbUser,
+          password: dbPassword
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSupabaseConfig(data.config);
+        setDbPassword(data.config.hasPassword ? '__SAVED_PASSWORD__' : '');
+        setSupabaseTestResult({
+          success: true,
+          message: data.message,
+          details: "Cấu hình đã được lưu và tự động đồng bộ hóa toàn bộ cơ sở dữ liệu!"
+        });
+        triggerToast("Cấu hình PostgreSQL đã được cập nhật thành công!");
+      } else {
+        setSupabaseTestResult({
+          success: false,
+          message: data.error || "Không thể lưu cấu hình kết nối."
+        });
+      }
+    } catch (err: any) {
+      setSupabaseTestResult({
+        success: false,
+        message: err.message || "Lỗi khi lưu cấu hình PostgreSQL."
+      });
+    } finally {
+      setSavingSupabase(false);
+    }
+  };
+
   const testSupabaseConnection = async () => {
+    if (!dbHost || !dbUser) {
+      alert("Vui lòng nhập đầy đủ Host và Username để kiểm thử.");
+      return;
+    }
     setTestingSupabase(true);
     setSupabaseTestResult(null);
     try {
-      const res = await fetch('/api/supabase/test-connection', { method: 'POST' });
+      const res = await fetch('/api/supabase/test-connection', { 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+        },
+        body: JSON.stringify({
+          host: dbHost,
+          port: Number(dbPort) || 5432,
+          database: dbName || 'postgres',
+          user: dbUser,
+          password: dbPassword
+        })
+      });
       const data = await res.json();
       if (res.ok) {
         setSupabaseTestResult({ success: true, message: data.message, details: data.details });
@@ -410,9 +523,34 @@ export default function AdminCMS({
         setSupabaseTestResult({ success: false, message: data.error || "Không thể xác thực kết nối." });
       }
     } catch (err: any) {
-      setSupabaseTestResult({ success: false, message: err.message || "Lỗi mạng khi kết nối tới Supabase." });
+      setSupabaseTestResult({ success: false, message: err.message || "Lỗi mạng khi kết nối tới PostgreSQL." });
     } finally {
       setTestingSupabase(false);
+    }
+  };
+
+  const handlePushData = async () => {
+    if (!window.confirm('Bạn có chắc muốn đẩy toàn bộ dữ liệu hiện tại lên Supabase? Thao tác này sẽ ghi đè dữ liệu trên cloud.')) return;
+    setPushingData(true);
+    setPushDataResult(null);
+    try {
+      const res = await fetch('/api/supabase/push-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPushDataResult({ success: true, message: data.message, stats: data.stats });
+      } else {
+        setPushDataResult({ success: false, message: data.error || 'Lỗi khi đẩy dữ liệu.' });
+      }
+    } catch (err: any) {
+      setPushDataResult({ success: false, message: err.message || 'Lỗi mạng.' });
+    } finally {
+      setPushingData(false);
     }
   };
 
@@ -453,6 +591,92 @@ export default function AdminCMS({
     setVideoErrorMsg('');
   };
 
+  const extractYoutubeId = (url: string): string | null => {
+    if (!url) return null;
+    let cleanUrl = url.trim();
+    if (cleanUrl.includes('<iframe')) {
+      const srcMatch = cleanUrl.match(/src=["']([^"']+)["']/);
+      if (srcMatch && srcMatch[1]) {
+        cleanUrl = srcMatch[1];
+      }
+    }
+    if (cleanUrl.startsWith('//')) {
+      cleanUrl = 'https:' + cleanUrl;
+    }
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = cleanUrl.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const handleFetchYoutubeInfo = async (silentOnFailure = false) => {
+    const videoUrl = videoForm.videoUrl;
+    if (!videoUrl) {
+      if (!silentOnFailure) setVideoErrorMsg("Vui lòng điền URL video phát trước khi lấy thông tin.");
+      return;
+    }
+
+    const videoId = extractYoutubeId(videoUrl);
+    if (!videoId) {
+      if (!silentOnFailure) setVideoErrorMsg("Không thể xác định ID video YouTube từ URL hoặc mã nhúng đã dán. Vui lòng kiểm tra lại đường dẫn.");
+      return;
+    }
+
+    setFetchingYt(true);
+    if (!silentOnFailure) {
+      setVideoStatusMsg("");
+      setVideoErrorMsg("");
+    }
+
+    const fallbackThumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
+    try {
+      let title = "";
+      let thumbnail = fallbackThumbnail;
+
+      // 1. Attempt to fetch from YouTube's oEmbed first
+      try {
+        const ytOembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+        const res = await fetch(ytOembedUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.title) title = data.title;
+          if (data.thumbnail_url) thumbnail = data.thumbnail_url;
+        }
+      } catch (e) {
+        console.warn("YouTube oEmbed fetch blocked or failed, trying noembed proxy...", e);
+      }
+
+      // 2. If title wasn't fetched, try noembed proxy
+      if (!title) {
+        try {
+          const noembedUrl = `https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`;
+          const res = await fetch(noembedUrl);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.title) title = data.title;
+            if (data.thumbnail_url) thumbnail = data.thumbnail_url;
+          }
+        } catch (e) {
+          console.warn("Noembed proxy failed", e);
+        }
+      }
+
+      setVideoForm(prev => ({
+        ...prev,
+        title: title || prev.title || "Video YouTube",
+        thumbnail: thumbnail
+      }));
+
+      setVideoStatusMsg("Đã tự động lấy thông tin tiêu đề và ảnh thumbnail từ YouTube!");
+    } catch (err: any) {
+      if (!silentOnFailure) {
+        setVideoErrorMsg("Lỗi khi tự động lấy thông tin từ YouTube. Bạn vẫn có thể điền thông tin thủ công.");
+      }
+    } finally {
+      setFetchingYt(false);
+    }
+  };
+
   const handleSaveVideo = async (e: React.FormEvent) => {
     e.preventDefault();
     setVideoLoading(true);
@@ -465,7 +689,10 @@ export default function AdminCMS({
 
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+        },
         body: JSON.stringify(videoForm)
       });
       const data = await res.json();
@@ -625,6 +852,36 @@ export default function AdminCMS({
     terms: []
   });
 
+  const postFormSnapshot = React.useMemo(() => buildPostFormSnapshot(postForm), [postForm]);
+  const isPostFormDirty = React.useMemo(() => {
+    if (!editingPostId && !isCreatingNew) return false;
+    return postFormSnapshot !== postFormBaseline;
+  }, [editingPostId, isCreatingNew, postFormSnapshot, postFormBaseline]);
+
+  const confirmDiscardUnsavedChanges = () => {
+    if (!isPostFormDirty) return true;
+    return window.confirm('Bạn có thay đổi chưa lưu trong bài viết. Bạn có chắc chắn muốn rời đi và huỷ các thay đổi này?');
+  };
+
+  const navigateToTab = (tab: AdminTab) => {
+    if (!confirmDiscardUnsavedChanges()) return;
+    setActiveTab(tab);
+    setIsCreatingNew(false);
+    setEditingPostId(null);
+  };
+
+  React.useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!isPostFormDirty) return;
+      event.preventDefault();
+      event.returnValue = 'Các thay đổi chưa lưu sẽ bị mất nếu bạn rời trang.';
+      return event.returnValue;
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isPostFormDirty]);
+
   // TERMS FORM STATES
   const [termForm, setTermForm] = React.useState({ 
     name: '', 
@@ -655,6 +912,36 @@ export default function AdminCMS({
   // SHOWROOMS SETTING LIST
   const [showroomList, setShowroomList] = React.useState<any[]>([]);
 
+  // HEADER & FOOTER MANAGEMENT STATES
+  const [headerMenuItems, setHeaderMenuItems] = React.useState<{label: string; url: string}[]>([
+    { label: 'Về Pentair', url: '/ve-pentair' },
+    { label: 'Sản phẩm', url: '/san-pham' },
+    { label: 'Phối cảnh', url: '/phoi-canh' },
+    { label: 'Tin tức', url: '/tin-tuc' },
+    { label: 'Liên hệ', url: '/lien-he' },
+  ]);
+  const [headerSettings, setHeaderSettings] = React.useState({
+    logoText: 'P',
+    logoImageUrl: '',
+    topBarHotline: '1800 8134',
+    topBarAddress: '90 Đinh Thị Thi, Vạn Phúc City, Thủ Đức',
+    topBarTagline: 'Pentair USA - Leading the Water Revolution',
+  });
+  const [footerPolicies, setFooterPolicies] = React.useState<{title: string; content: string}[]>([
+    { title: 'Chính sách giao hàng', content: 'Cam kết tối đa 24h nội thành.' },
+    { title: 'Chính sách bảo hành', content: 'Cam kết bảo hành kép 3-5 năm.' },
+    { title: 'Chính sách đổi trả', content: 'Đổi mới 1-1 trong 30 ngày.' },
+    { title: 'Chính sách bảo mật', content: 'Tuyệt đối an tâm.' },
+  ]);
+  const [hfMenuEditIdx, setHfMenuEditIdx] = React.useState<number | null>(null);
+  const [hfMenuEditItem, setHfMenuEditItem] = React.useState({ label: '', url: '' });
+  const [hfPolicyEditIdx, setHfPolicyEditIdx] = React.useState<number | null>(null);
+  const [hfPolicyEditItem, setHfPolicyEditItem] = React.useState({ title: '', content: '' });
+  const [hfSubTab, setHfSubTab] = React.useState<'logo' | 'menu' | 'footer'>('logo');
+  const [hfSaving, setHfSaving] = React.useState(false);
+  const [hfStatusMsg, setHfStatusMsg] = React.useState('');
+  const [hfErrorMsg, setHfErrorMsg] = React.useState('');
+
   // BACKUP CODE-BOX IMPORT
   const [backupJsonText, setBackupJsonText] = React.useState('');
 
@@ -664,6 +951,9 @@ export default function AdminCMS({
       const brand = options.find(o => o.optionName === 'brand_settings')?.optionValue || {};
       const seo = options.find(o => o.optionName === 'seo_settings')?.optionValue || {};
       const shows = options.find(o => o.optionName === 'showrooms')?.optionValue || [];
+      const hMenu = options.find(o => o.optionName === 'header_menu')?.optionValue;
+      const hSettings = options.find(o => o.optionName === 'header_settings')?.optionValue;
+      const fPolicies = options.find(o => o.optionName === 'footer_policies')?.optionValue;
       
       setBrandForm({
         siteName: brand.siteName || 'Pentair Việt Nam',
@@ -683,6 +973,16 @@ export default function AdminCMS({
       });
 
       setShowroomList(shows);
+
+      if (hMenu && Array.isArray(hMenu)) {
+        setHeaderMenuItems(hMenu);
+      }
+      if (hSettings) {
+        setHeaderSettings(prev => ({ ...prev, ...hSettings }));
+      }
+      if (fPolicies && Array.isArray(fPolicies)) {
+        setFooterPolicies(fPolicies);
+      }
     }
   }, [options]);
 
@@ -840,13 +1140,16 @@ export default function AdminCMS({
 
   // POST CRUD HANDLERS
   const triggerEditPost = (p: Post) => {
+    if (!confirmDiscardUnsavedChanges()) return;
     setPostForm({ ...p });
     setEditingPostId(p.id);
     setIsCreatingNew(false);
+    setPostFormBaseline(buildPostFormSnapshot(p));
   };
 
   const triggerCreateNewPost = (type: 'post' | 'page' | 'product') => {
-    setPostForm({
+    if (!confirmDiscardUnsavedChanges()) return;
+    const newForm: Partial<Post> = {
       title: '',
       slug: '',
       content: '',
@@ -878,9 +1181,11 @@ export default function AdminCMS({
         ]
       } : {},
       terms: []
-    });
+    };
+    setPostForm(newForm);
     setEditingPostId(null);
     setIsCreatingNew(true);
+    setPostFormBaseline(buildPostFormSnapshot(newForm));
   };
 
   const handleSavePostForm = async (e: React.FormEvent) => {
@@ -906,6 +1211,7 @@ export default function AdminCMS({
       await onRefreshData();
       setIsCreatingNew(false);
       setEditingPostId(null);
+      setPostFormBaseline(buildPostFormSnapshot(postForm));
       triggerToast("Lưu bản ghi thành công trên máy chủ Pentair.");
     } catch (err: any) {
       triggerToast(err.message, true);
@@ -997,6 +1303,38 @@ export default function AdminCMS({
       triggerToast(err.message, true);
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  // SAVE HEADER & FOOTER CONFIGS
+  const handleSaveHeaderFooter = async () => {
+    setHfSaving(true);
+    setHfStatusMsg('');
+    setHfErrorMsg('');
+    try {
+      const payload = [
+        { id: 'opt-header-settings', optionName: 'header_settings', optionValue: headerSettings },
+        { id: 'opt-header-menu', optionName: 'header_menu', optionValue: headerMenuItems },
+        { id: 'opt-footer-policies', optionName: 'footer_policies', optionValue: footerPolicies },
+      ];
+
+      const res = await fetch('/api/options', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error('Sự cố lưu Header & Footer. Kiểm tra quyền Administrator.');
+      await onRefreshData();
+      setHfStatusMsg('Đã lưu cấu hình Header & Footer thành công! Thay đổi sẽ hiển thị ngay trên website.');
+      setTimeout(() => setHfStatusMsg(''), 5000);
+    } catch (err: any) {
+      setHfErrorMsg(err.message || 'Lỗi không xác định.');
+    } finally {
+      setHfSaving(false);
     }
   };
 
@@ -1248,7 +1586,7 @@ export default function AdminCMS({
           {/* Main List */}
           <nav className="p-3 space-y-1">
             <button 
-              onClick={() => { setActiveTab('dashboard'); setIsCreatingNew(false); setEditingPostId(null); }}
+              onClick={() => navigateToTab('dashboard')}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg tracking-wide cursor-pointer transition-all ${activeTab === 'dashboard' ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
             >
               <BarChart3 className="w-4 h-4" />
@@ -1257,7 +1595,7 @@ export default function AdminCMS({
             
             <div className="space-y-1" id="posts-nav-group">
               <button 
-                onClick={() => { setActiveTab('posts'); setIsCreatingNew(false); setEditingPostId(null); }}
+                onClick={() => navigateToTab('posts')}
                 className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-lg tracking-wide cursor-pointer transition-all ${(activeTab === 'posts' || activeTab === 'categories') ? 'bg-slate-800/80 text-white' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
               >
                 <div className="flex items-center gap-2.5">
@@ -1270,15 +1608,15 @@ export default function AdminCMS({
               {/* Sub-menu features */}
               {(activeTab === 'posts' || activeTab === 'categories') && (
                 <div className="pl-5 pr-1 py-1 space-y-1 bg-slate-950/40 rounded-lg border border-slate-800/40 text-left">
-                  <button
-                    onClick={() => { setActiveTab('posts'); setIsCreatingNew(false); setEditingPostId(null); }}
+                      <button
+                    onClick={() => navigateToTab('posts')}
                     className={`w-full flex items-center gap-2.5 py-1.5 px-2 text-[11px] font-semibold rounded-md cursor-pointer transition-all ${activeTab === 'posts' ? 'text-blue-400 bg-blue-950/30' : 'text-slate-400 hover:text-white hover:bg-slate-800/30'}`}
                   >
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${activeTab === 'posts' ? 'bg-blue-400' : 'bg-slate-650'}`}></span>
                     Tất cả bài viết
                   </button>
                   <button
-                    onClick={() => { setActiveTab('categories'); setIsCreatingNew(false); setEditingPostId(null); }}
+                    onClick={() => navigateToTab('categories')}
                     className={`w-full flex items-center gap-2.5 py-1.5 px-2 text-[11px] font-semibold rounded-md cursor-pointer transition-all ${activeTab === 'categories' ? 'text-blue-400 bg-blue-950/30' : 'text-slate-400 hover:text-white hover:bg-slate-800/30'}`}
                   >
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${activeTab === 'categories' ? 'bg-blue-400' : 'bg-slate-650'}`}></span>
@@ -1290,7 +1628,7 @@ export default function AdminCMS({
 
             {currentUser.role === 'administrator' && (
               <button 
-                onClick={() => { setActiveTab('pages'); setIsCreatingNew(false); setEditingPostId(null); }}
+                onClick={() => navigateToTab('pages')}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg tracking-wide cursor-pointer transition-all ${activeTab === 'pages' ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
               >
                 <FileCode className="w-4 h-4" />
@@ -1299,7 +1637,7 @@ export default function AdminCMS({
             )}
 
             <button 
-              onClick={() => { setActiveTab('products'); setIsCreatingNew(false); setEditingPostId(null); }}
+              onClick={() => navigateToTab('products')}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg tracking-wide cursor-pointer transition-all ${activeTab === 'products' ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
             >
               <ShoppingBag className="w-4 h-4" />
@@ -1308,7 +1646,7 @@ export default function AdminCMS({
 
             {currentUser.role === 'administrator' && (
               <button 
-                onClick={() => { setActiveTab('submissions'); setIsCreatingNew(false); setEditingPostId(null); }}
+                onClick={() => navigateToTab('submissions')}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg tracking-wide cursor-pointer transition-all relative ${activeTab === 'submissions' ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
               >
                 <MessageSquare className="w-4 h-4" />
@@ -1323,7 +1661,7 @@ export default function AdminCMS({
 
             {currentUser.role === 'administrator' && (
               <button 
-                onClick={() => { setActiveTab('settings'); setIsCreatingNew(false); setEditingPostId(null); }}
+                onClick={() => navigateToTab('settings')}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg tracking-wide cursor-pointer transition-all ${activeTab === 'settings' ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
               >
                 <Settings2 className="w-4 h-4" />
@@ -1333,7 +1671,7 @@ export default function AdminCMS({
 
             {currentUser.role === 'administrator' && (
               <button 
-                onClick={() => { setActiveTab('security'); setIsCreatingNew(false); setEditingPostId(null); }}
+                onClick={() => navigateToTab('security')}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg tracking-wide cursor-pointer transition-all ${activeTab === 'security' ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
               >
                 <KeyRound className="w-4 h-4" />
@@ -1343,7 +1681,7 @@ export default function AdminCMS({
 
             {currentUser.role === 'administrator' && (
               <button 
-                onClick={() => { setActiveTab('email-settings'); setIsCreatingNew(false); setEditingPostId(null); }}
+                onClick={() => navigateToTab('email-settings')}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg tracking-wide cursor-pointer transition-all ${activeTab === 'email-settings' ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
               >
                 <Mail className="w-4 h-4" />
@@ -1352,7 +1690,7 @@ export default function AdminCMS({
             )}
 
             <button 
-              onClick={() => { setActiveTab('videos'); setIsCreatingNew(false); setEditingPostId(null); }}
+              onClick={() => navigateToTab('videos')}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg tracking-wide cursor-pointer transition-all ${activeTab === 'videos' ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
             >
               <Video className="w-4 h-4" />
@@ -1360,7 +1698,7 @@ export default function AdminCMS({
             </button>
 
             <button 
-              onClick={() => { setActiveTab('perspectives'); setIsCreatingNew(false); setEditingPostId(null); }}
+              onClick={() => navigateToTab('perspectives')}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg tracking-wide cursor-pointer transition-all ${activeTab === 'perspectives' ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
             >
               <LayoutTemplate className="w-4 h-4" />
@@ -1368,7 +1706,7 @@ export default function AdminCMS({
             </button>
 
             <button 
-              onClick={() => { setActiveTab('media'); setIsCreatingNew(false); setEditingPostId(null); }}
+              onClick={() => navigateToTab('media')}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg tracking-wide cursor-pointer transition-all ${activeTab === 'media' ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
             >
               <Image className="w-4 h-4 text-sky-400" />
@@ -1377,7 +1715,7 @@ export default function AdminCMS({
 
             {currentUser.role === 'administrator' && (
               <button 
-                onClick={() => { setActiveTab('backup'); setIsCreatingNew(false); setEditingPostId(null); }}
+                onClick={() => navigateToTab('backup')}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg tracking-wide cursor-pointer transition-all ${activeTab === 'backup' ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
               >
                 <Database className="w-4 h-4" />
@@ -1387,11 +1725,21 @@ export default function AdminCMS({
 
             {currentUser.role === 'administrator' && (
               <button 
-                onClick={() => { setActiveTab('supabase'); setIsCreatingNew(false); setEditingPostId(null); }}
+                onClick={() => navigateToTab('supabase')}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg tracking-wide cursor-pointer transition-all ${activeTab === 'supabase' ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
               >
                 <Server className="w-4 h-4 text-emerald-400 animate-pulse" />
                 Tích hợp Supabase
+              </button>
+            )}
+
+            {currentUser.role === 'administrator' && (
+              <button 
+                onClick={() => navigateToTab('header-footer')}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg tracking-wide cursor-pointer transition-all ${activeTab === 'header-footer' ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
+              >
+                <Layout className="w-4 h-4 text-indigo-400" />
+                Giao Diện Header &amp; Footer
               </button>
             )}
           </nav>
@@ -2166,69 +2514,10 @@ export default function AdminCMS({
                   <div className="space-y-1">
                     <label className="text-[11px] font-bold text-gray-700 block uppercase">Toàn văn nội dung chính *</label>
                     
-                    {/* Formatting Toolbar */}
-                    <div className="flex flex-wrap items-center gap-2 p-2 bg-slate-50 border border-gray-200 rounded-t-xl -mb-1 select-none">
-                      <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest px-2 font-mono">Soạn thảo nhanh:</span>
-                      <div className="h-4 w-px bg-gray-250"></div>
-                      
-                      <button
-                        type="button"
-                        onClick={() => insertFormatting('h2')}
-                        className="px-2.5 py-1 text-[11px] font-black text-slate-700 bg-white hover:bg-slate-100 hover:text-blue-700 border border-gray-200 rounded shadow-xs cursor-pointer transition-all active:scale-95"
-                        title="Thêm Tiêu đề lớn Heading 2 (##)"
-                      >
-                        H2
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => insertFormatting('h3')}
-                        className="px-2.5 py-1 text-[11px] font-black text-slate-700 bg-white hover:bg-slate-100 hover:text-blue-700 border border-gray-200 rounded shadow-xs cursor-pointer transition-all active:scale-95"
-                        title="Thêm Tiêu đề phụ Heading 3 (###)"
-                      >
-                        H3
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => insertFormatting('bullet')}
-                        className="px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-white hover:bg-slate-100 hover:text-blue-700 border border-gray-200 rounded shadow-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95"
-                        title="Thêm dòng danh sách mục tròn (Bullet)"
-                      >
-                        <span>•</span> <span className="text-[10px] font-medium font-sans">Bullets</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => insertFormatting('image')}
-                        className="px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-white hover:bg-slate-100 hover:text-blue-700 border border-gray-200 rounded shadow-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95"
-                        title="Chèn ảnh dạng liên kết (Image)"
-                      >
-                        <span>📷</span> <span className="text-[10px] font-medium font-sans">Thêm ảnh</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => insertFormatting('bold')}
-                        className="px-2.5 py-1 text-[11px] font-black text-slate-700 bg-white hover:bg-slate-100 hover:text-blue-700 border border-gray-200 rounded shadow-xs cursor-pointer transition-all active:scale-95"
-                        title="In đậm chữ đang chọn (**bold**)"
-                      >
-                        B
-                      </button>
-
-                      <span className="text-[9px] text-[#0C3471] bg-blue-50 px-2 py-0.5 rounded font-medium ml-auto hidden md:inline-block">
-                        Hỗ trợ định dạng Markdown & Căn chỉnh ảnh 4K tự động
-                      </span>
-                    </div>
-
-                    <textarea 
-                      id="form-content-textarea"
-                      rows={12}
-                      required
+                    <RichTextEditor 
                       value={postForm.content}
-                      onChange={e => setPostForm({ ...postForm, content: e.target.value })}
-                      className="w-full px-3.5 py-2.5 text-xs rounded-b-lg border border-t-0 border-gray-200 focus:outline-none text-gray-800 font-sans leading-relaxed"
-                      placeholder="Nhập nội dung bài đăng chuẩn chỉnh..."
+                      onChange={html => setPostForm({ ...postForm, content: html })}
+                      onInsertMediaClick={() => setActiveMediaSelector({ target: 'post_content_editor' })}
                     />
                   </div>
 
@@ -3372,10 +3661,10 @@ export default function AdminCMS({
             <div>
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                <h3 className="text-base font-black text-slate-800 uppercase tracking-tight">Trung Tâm Quản Lý Tích Hợp Supabase (PostgreSQL)</h3>
+                <h3 className="text-base font-black text-slate-800 uppercase tracking-tight">Trung Tâm Quản Lý Tích Hợp Supabase (PostgreSQL Session Pooler)</h3>
               </div>
               <p className="text-xs text-gray-500 font-sans mt-0.5">
-                Rất chuyên nghiệp! Hệ thống đã tự động nhận diện thông tin và khoá API của dự án Supabase thuộc tài khoản của bạn.
+                Đồng bộ hóa dữ liệu CMS trực tiếp với cơ sở dữ liệu cloud Supabase thông qua cơ chế Pooling.
               </p>
             </div>
 
@@ -3384,42 +3673,95 @@ export default function AdminCMS({
               
               {/* Left Column: Diagnostics & Connection Status */}
               <div className="lg:col-span-5 space-y-6">
-                <div className="bg-slate-50 p-6 rounded-2xl border border-gray-200/60 space-y-4">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#062c63] block">Trạng thái kết nối hiện tại</span>
+                <form onSubmit={handleSaveSupabaseConfig} className="bg-slate-50 p-6 rounded-2xl border border-gray-200/60 space-y-4">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#062c63] block">Cấu hình kết nối PostgreSQL</span>
                   
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center text-xs pb-2 border-b border-gray-200">
-                      <span className="text-gray-500 font-medium font-sans">Project Reference (Ref ID):</span>
-                      <span className="font-mono font-bold text-[#0C3471]">{supabaseConfig?.projectRef || 'rrfldkxgwbcclpchuyxef'}</span>
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-600 block uppercase">Database Host *</label>
+                      <input 
+                        type="text"
+                        required
+                        placeholder="aws-1-ap-[region].pooler.supabase.com"
+                        value={dbHost}
+                        onChange={e => setDbHost(e.target.value)}
+                        className="w-full px-3.5 py-2.5 text-xs rounded-lg border border-gray-200 focus:outline-none bg-white text-gray-800 font-mono"
+                      />
                     </div>
 
-                    <div className="flex justify-between items-center text-xs pb-2 border-b border-gray-200">
-                      <span className="text-gray-500 font-medium font-sans">Supabase Project URL:</span>
-                      <span className="font-mono text-blue-600 bg-blue-100/50 px-2 py-0.5 rounded text-[11px]">{supabaseConfig?.url || 'https://rrfldkxgwbcclpchuyxef.supabase.co'}</span>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-gray-600 block uppercase">Port *</label>
+                        <input 
+                          type="text"
+                          required
+                          placeholder="5432"
+                          value={dbPort}
+                          onChange={e => setDbPort(e.target.value)}
+                          className="w-full px-3.5 py-2.5 text-xs rounded-lg border border-gray-200 focus:outline-none bg-white text-gray-800 font-mono"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-gray-600 block uppercase">Database Name *</label>
+                        <input 
+                          type="text"
+                          required
+                          placeholder="postgres"
+                          value={dbName}
+                          onChange={e => setDbName(e.target.value)}
+                          className="w-full px-3.5 py-2.5 text-xs rounded-lg border border-gray-200 focus:outline-none bg-white text-gray-800 font-mono"
+                        />
+                      </div>
                     </div>
 
-                    <div className="flex justify-between items-center text-xs pb-2 border-b border-gray-200">
-                      <span className="text-gray-500 font-medium font-sans">API Key (Anon Key):</span>
-                      <span className="font-mono text-gray-700 font-bold" title="API Key do bạn đã nhập">{supabaseConfig?.apiKeyPreview || 'eyJhbGciOiJI...loJkTD9I4'}</span>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-600 block uppercase">Username *</label>
+                      <input 
+                        type="text"
+                        required
+                        placeholder="postgres.[ref-id]"
+                        value={dbUser}
+                        onChange={e => setDbUser(e.target.value)}
+                        className="w-full px-3.5 py-2.5 text-xs rounded-lg border border-gray-200 focus:outline-none bg-white text-gray-800 font-mono"
+                      />
                     </div>
 
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-500 font-medium font-sans">Service Status:</span>
-                      <span className="flex items-center gap-1.5 font-sans font-bold text-emerald-600">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                        Đã sẵn sàng (Ready)
-                      </span>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-600 block uppercase">Password *</label>
+                      <input 
+                        type="password"
+                        placeholder={dbPassword === '__SAVED_PASSWORD__' ? "•••••••• (Đã lưu mật khẩu)" : "Nhập mật khẩu database..."}
+                        value={dbPassword === '__SAVED_PASSWORD__' ? '' : dbPassword}
+                        onChange={e => setDbPassword(e.target.value)}
+                        className="w-full px-3.5 py-2.5 text-xs rounded-lg border border-gray-200 focus:outline-none bg-white text-gray-800 font-mono"
+                      />
+                      {dbPassword === '__SAVED_PASSWORD__' && (
+                        <p className="text-[10px] text-blue-500 font-sans mt-1">
+                          Mật khẩu đã lưu sẽ được giữ lại. Chỉ cần nhập vào đây nếu bạn muốn thay đổi.
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  <div className="pt-2">
+                  <div className="flex gap-2 pt-2">
                     <button 
+                      type="button"
                       onClick={testSupabaseConnection}
-                      disabled={testingSupabase}
-                      className="w-full py-2.5 bg-[#0C3471] hover:bg-[#062c63] text-white text-xs font-bold uppercase rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      disabled={testingSupabase || savingSupabase}
+                      className="flex-1 py-2.5 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 text-slate-800 text-xs font-bold uppercase rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer font-sans"
                     >
-                      <RefreshCw className={`w-4 h-4 ${testingSupabase ? 'animate-spin' : ''}`} />
-                      {testingSupabase ? 'Đang kiểm tra kết nối...' : 'Kiểm Tra Kết Nối Live'}
+                      <RefreshCw className={`w-3.5 h-3.5 ${testingSupabase ? 'animate-spin' : ''}`} />
+                      {testingSupabase ? 'Đang test...' : 'Test kết nối'}
+                    </button>
+
+                    <button 
+                      type="submit"
+                      disabled={savingSupabase || testingSupabase}
+                      className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-xs font-bold uppercase rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer font-sans"
+                    >
+                      {savingSupabase ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                      Lưu & Đồng bộ
                     </button>
                   </div>
 
@@ -3439,17 +3781,38 @@ export default function AdminCMS({
                       )}
                     </div>
                   )}
-                </div>
+
+                  {/* Current connection details */}
+                  {supabaseConfig && (
+                    <div className="pt-2 border-t border-gray-200 space-y-2 text-[11px]">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Database Host:</span>
+                        <span className="font-mono text-gray-700 truncate max-w-[180px]" title={supabaseConfig.projectRef}>{supabaseConfig.projectRef}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Trạng thái:</span>
+                        <span className="font-mono text-emerald-600 font-bold">{supabaseConfig.url ? "Đã cấu hình (Mật khẩu ẩn)" : "Chưa cấu hình"}</span>
+                      </div>
+                    </div>
+                  )}
+                </form>
 
                 {/* Guide panel */}
                 <div className="p-5 bg-blue-50/40 rounded-2xl border border-blue-100 space-y-3">
-                  <h4 className="text-xs font-black text-blue-900 uppercase">Làm cách nào để kết nối cục bộ?</h4>
+                  <h4 className="text-xs font-black text-blue-900 uppercase font-sans">Lấy thông số kết nối ở đâu?</h4>
                   <p className="text-[11px] text-slate-600 font-sans leading-relaxed">
-                    Khởi chạy ứng dụng và tự động kết nối bằng cách định nghĩa các biến môi trường sau trong tệp <code className="bg-white px-1 py-0.5 border rounded text-rose-600 font-mono text-[10px]">.env</code>:
+                    1. Đăng nhập vào trang quản trị <strong>Supabase</strong>.<br />
+                    2. Chọn dự án &gt; Nhấn vào biểu tượng <strong>Settings</strong> (Bánh răng) &gt; <strong>Database</strong>.<br />
+                    3. Cuộn xuống phần <strong>Connection parameters</strong>.<br />
+                    4. Bạn sẽ thấy các trường tương ứng để điền vào form:
+                    <ul className="list-disc pl-4 mt-2 space-y-1">
+                      <li><strong>Host:</strong> aws-1-ap-...pooler.supabase.com</li>
+                      <li><strong>Port:</strong> 5432</li>
+                      <li><strong>Database Name:</strong> postgres</li>
+                      <li><strong>User:</strong> postgres.[project-ref]</li>
+                      <li><strong>Password:</strong> Mật khẩu database của bạn</li>
+                    </ul>
                   </p>
-                  <pre className="p-3 bg-slate-900 text-slate-100 font-mono text-[10px] rounded-lg overflow-x-auto leading-relaxed">
-                    {`# Cho máy chủ Express (server.ts)\nSUPABASE_URL="https://rrfldkxgwbcclpchuyxef.supabase.co"\nSUPABASE_ANON_KEY="eyJhbGciOiJI..."\n\n# Cho ứng dụng client (Vite React)\nVITE_SUPABASE_URL="https://rrfldkxgwbcclpchuyxef.supabase.co"\nVITE_SUPABASE_ANON_KEY="eyJhbGciOiJI..."`}
-                  </pre>
                 </div>
               </div>
 
@@ -3475,22 +3838,70 @@ export default function AdminCMS({
                 </div>
 
                 <p className="text-[11px] text-gray-500 font-sans leading-relaxed">
-                  Để lưu trữ các bài viết Pentair Việt Nam trực tiếp trên dự án bảo mật Supabase của bạn, hãy mở <strong className="text-emerald-600 font-semibold font-sans">Supabase SQL Editor</strong> trong bảng điều khiển Supabase của bạn và dán đoạn mã Schema SQL dưới đây để chạy:
+                  Để lưu trữ dữ liệu CMS đồng bộ lên Supabase, bạn hãy chạy script khởi tạo dưới đây trong <strong className="text-emerald-600 font-semibold font-sans">Supabase SQL Editor</strong> để tạo sẵn các bảng cần thiết:
                 </p>
 
                 <textarea 
                   id="supabase-sql-schema"
-                  rows={14}
+                  rows={12}
                   readOnly
-                  value={`-- Cấu trúc bảng Lưu trữ bài viết CMS\nCREATE TABLE IF NOT EXISTS public.posts (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL,\n  slug TEXT UNIQUE NOT NULL,\n  content TEXT,\n  excerpt TEXT,\n  type TEXT,\n  status TEXT,\n  author_id TEXT,\n  featured_image TEXT,\n  menu_order INTEGER DEFAULT 0,\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),\n  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),\n  meta JSONB DEFAULT '{}'::jsonb,\n  terms JSONB DEFAULT '[]'::jsonb\n);\n\n-- Cấu trúc bảng Phân loại chuyên mục Taxonomies\nCREATE TABLE IF NOT EXISTS public.terms (\n  id TEXT PRIMARY KEY,\n  name TEXT NOT NULL,\n  slug TEXT UNIQUE NOT NULL,\n  taxonomy TEXT NOT NULL\n);\n\n-- Cấu trúc bảng Khách hàng đăng ký liên hệ\nCREATE TABLE IF NOT EXISTS public.submissions (\n  id TEXT PRIMARY KEY,\n  name TEXT NOT NULL,\n  email TEXT,\n  phone TEXT,\n  message TEXT,\n  product_interest TEXT,\n  status TEXT DEFAULT 'unread',\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()\n);\n\n-- Cấu trúc bảng Cấu hình toàn bộ Brand Options\nCREATE TABLE IF NOT EXISTS public.options (\n  id TEXT PRIMARY KEY,\n  option_name TEXT UNIQUE NOT NULL,\n  option_value JSONB DEFAULT '{}'::jsonb\n);`}
+                  value={`-- Cấu trúc bảng Cấu hình toàn bộ Brand Options & Database Backups\nCREATE TABLE IF NOT EXISTS public.options (\n  id TEXT PRIMARY KEY,\n  option_name TEXT UNIQUE NOT NULL,\n  option_value JSONB DEFAULT '{}'::jsonb\n);\n\n-- (Tùy chọn) Bảng lưu trữ bài viết CMS nếu chạy độc lập\nCREATE TABLE IF NOT EXISTS public.posts (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL,\n  slug TEXT UNIQUE NOT NULL,\n  content TEXT,\n  excerpt TEXT,\n  type TEXT,\n  status TEXT,\n  author_id TEXT,\n  featured_image TEXT,\n  menu_order INTEGER DEFAULT 0,\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),\n  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),\n  meta JSONB DEFAULT '{}'::jsonb,\n  terms JSONB DEFAULT '[]'::jsonb\n);`}
                   className="w-full p-4 font-mono text-[10px] text-slate-100 bg-slate-900 border border-gray-150 rounded-2xl leading-relaxed focus:outline-none select-all"
                 />
 
                 <div className="bg-amber-50 rounded-xl p-4 border border-amber-200 text-[11px] text-amber-850 space-y-1.5 leading-relaxed font-sans">
-                  <span className="font-bold uppercase tracking-wide text-amber-900 font-sans block">⚠️ LƯU Ý KHI MỞ RỘNG MIGRATION</span>
+                  <span className="font-bold uppercase tracking-wide text-amber-900 font-sans block">⚡ TỰ ĐỘNG THIẾT LẬP BẢNG</span>
                   <p className="font-sans">
-                    Hệ thống CMS hiện sử dụng database lai (Hybrid Database) với bộ nhớ đệm an toàn tự đồng bộ qua file tĩnh <code className="bg-amber-100 text-amber-900 px-1 py-0.5 rounded font-mono text-[10px]">data/db.json</code>. Việc thiết lập trên giúp hệ thống của bạn hoạt động mượt mà, ngay cả khi Supabase ở chế độ Free Tier tạm ngắt kết nối do không hoạt động (auto-pause).
+                    Hệ thống sẽ <strong>tự động tạo đầy đủ tất cả bảng</strong> (posts, terms, users, submissions, videos, perspectives, media_folders, media_items, options) khi bạn nhấn <strong>Lưu &amp; Đồng bộ</strong>.
+                    Sau đó nhấn nút bên dưới để đẩy toàn bộ dữ liệu cũ lên các bảng riêng biệt.
                   </p>
+                </div>
+
+                {/* Push existing data section */}
+                <div className="bg-gradient-to-br from-[#062c63]/5 to-blue-50/50 rounded-2xl border border-blue-200/60 p-5 space-y-4">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#062c63] block">Đẩy Dữ Liệu Cũ Lên Supabase</span>
+                    <p className="text-[11px] text-gray-500 font-sans mt-1 leading-relaxed">
+                      Đẩy toàn bộ dữ liệu hiện tại (bài viết, sản phẩm, người dùng, liên hệ...) từ máy chủ lên từng bảng riêng biệt trong Supabase. Cần kết nối thành công trước.
+                    </p>
+                  </div>
+
+                  <button
+                    id="btn-push-supabase-data"
+                    type="button"
+                    onClick={handlePushData}
+                    disabled={pushingData}
+                    className="w-full py-3 bg-[#062c63] hover:bg-[#0a3d80] disabled:bg-gray-300 text-white text-xs font-bold uppercase rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer font-sans shadow-md hover:shadow-lg"
+                  >
+                    {pushingData ? (
+                      <><RefreshCw className="w-4 h-4 animate-spin" /> Đang đẩy dữ liệu lên Supabase...</>
+                    ) : (
+                      <><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Đẩy Toàn Bộ Dữ Liệu Lên Supabase</>
+                    )}
+                  </button>
+
+                  {pushDataResult && (
+                    <div className={`p-4 rounded-xl border text-xs space-y-2 ${pushDataResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'}`}>
+                      <div className="flex items-center gap-1.5 font-bold">
+                        {pushDataResult.success ? (
+                          <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                        )}
+                        <span>{pushDataResult.message}</span>
+                      </div>
+                      {pushDataResult.stats && (
+                        <div className="grid grid-cols-4 gap-2 mt-2">
+                          {Object.entries(pushDataResult.stats).map(([key, val]) => (
+                            <div key={key} className="bg-white/70 rounded-lg p-2 text-center border border-emerald-100">
+                              <div className="text-base font-black text-emerald-700">{val}</div>
+                              <div className="text-[9px] uppercase font-bold text-gray-500 mt-0.5">{key}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -3876,14 +4287,42 @@ export default function AdminCMS({
 
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-gray-500 block uppercase">URL Video phát (YouTube Link hoặc Embed Link) *</label>
-                    <input 
-                      type="url" 
-                      required
-                      placeholder="https://www.youtube.com/watch?v=xxx... hoặc embed"
-                      value={videoForm.videoUrl}
-                      onChange={e => setVideoForm({...videoForm, videoUrl: e.target.value})}
-                      className="w-full px-3 py-2 text-xs border rounded-lg focus:outline-none font-mono"
-                    />
+                    <div className="flex gap-2">
+                      <input 
+                        type="url" 
+                        required
+                        placeholder="https://www.youtube.com/watch?v=xxx... hoặc embed"
+                        value={videoForm.videoUrl}
+                        onChange={e => setVideoForm({...videoForm, videoUrl: e.target.value})}
+                        onBlur={() => {
+                          const vId = extractYoutubeId(videoForm.videoUrl);
+                          if (vId && !fetchingYt) {
+                            handleFetchYoutubeInfo(true);
+                          }
+                        }}
+                        className="flex-grow px-3 py-2 text-xs border rounded-lg focus:outline-none font-mono"
+                        id="input-video-url"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleFetchYoutubeInfo(false)}
+                        disabled={fetchingYt}
+                        className="px-3.5 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg cursor-pointer transition-colors shrink-0 flex items-center gap-1 shadow-sm font-sans disabled:opacity-50"
+                        title="Tự động lấy tiêu đề và ảnh thumbnail từ YouTube"
+                      >
+                        {fetchingYt ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Đang tải...
+                          </>
+                        ) : (
+                          <>
+                            <Youtube className="w-3.5 h-3.5 text-red-500 fill-red-500 shrink-0" />
+                            Tự động lấy tin
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-1">
@@ -4313,14 +4752,11 @@ export default function AdminCMS({
 
                   {/* Content rich text layout using simple HTML area */}
                   <div className="space-y-1 md:col-span-2 border-t pt-4">
-                    <label className="text-[10px] font-bold text-gray-500 block uppercase">Nội dung chi tiết dự án (HTML Allowed) *</label>
-                    <textarea 
-                      rows={8}
-                      required
-                      placeholder="VD: <p>Nội dung chi tiết...</p><h4>Đặc trưng thi công</h4><ul><li>...</li></ul>"
+                    <label className="text-[10px] font-bold text-gray-500 block uppercase">Nội dung chi tiết dự án *</label>
+                    <RichTextEditor 
                       value={perspectiveForm.content}
-                      onChange={e => setPerspectiveForm({...perspectiveForm, content: e.target.value})}
-                      className="w-full p-4 border text-xs rounded-lg focus:outline-none font-sans leading-relaxed"
+                      onChange={html => setPerspectiveForm({...perspectiveForm, content: html})}
+                      onInsertMediaClick={() => setActiveMediaSelector({ target: 'post_content_editor' })}
                     />
                   </div>
                 </div>
@@ -4473,6 +4909,510 @@ export default function AdminCMS({
           </div>
         )}
 
+        {/* --------------------------------------------------------------------------------------------------------------------------------------
+            SUB-PANEL: HEADER & FOOTER MANAGEMENT
+            -------------------------------------------------------------------------------------------------------------------------------------- */}
+        {activeTab === 'header-footer' && (
+          <div className="space-y-6 animate-fadeIn" id="panel-header-footer">
+
+            {/* Header strip */}
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-700 p-6 rounded-2xl text-white shadow-lg">
+              <div className="flex items-center gap-3 mb-1">
+                <Layout className="w-6 h-6 text-indigo-200" />
+                <h2 className="text-lg font-black uppercase tracking-tight">Quản Lý Header &amp; Footer</h2>
+              </div>
+              <p className="text-indigo-200 text-xs font-sans">Chỉnh sửa logo, thanh top bar, menu điều hướng và các chính sách footer. Mọi thay đổi được lưu vào database và hiển thị ngay trên website.</p>
+            </div>
+
+            {/* Sub-tab Navigation */}
+            <div className="flex gap-2 border-b border-gray-200 pb-0">
+              {([
+                { key: 'logo', label: 'Logo & Top Bar', icon: <Image className="w-4 h-4" /> },
+                { key: 'menu', label: 'Menu Điều Hướng', icon: <Link className="w-4 h-4" /> },
+                { key: 'footer', label: 'Chính Sách Footer', icon: <Layout className="w-4 h-4" /> },
+              ] as const).map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setHfSubTab(tab.key)}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold rounded-t-lg border-b-2 transition-all cursor-pointer ${hfSubTab === tab.key ? 'border-indigo-600 text-indigo-600 bg-indigo-50' : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}
+                  id={`btn-hf-tab-${tab.key}`}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* STATUS MESSAGES */}
+            {hfStatusMsg && (
+              <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-xs font-semibold">
+                <CheckCircle className="w-4 h-4 shrink-0" />
+                {hfStatusMsg}
+              </div>
+            )}
+            {hfErrorMsg && (
+              <div className="flex items-center gap-2 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                {hfErrorMsg}
+              </div>
+            )}
+
+            {/* ---- TAB 1: LOGO & TOP BAR ---- */}
+            {hfSubTab === 'logo' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Form */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+                  <h3 className="text-sm font-black uppercase text-gray-800 border-b pb-2 flex items-center gap-2">
+                    <Image className="w-4 h-4 text-indigo-500" />
+                    Logo &amp; Thanh Top Bar
+                  </h3>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">URL Ảnh Logo</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={headerSettings.logoImageUrl}
+                        onChange={e => setHeaderSettings(prev => ({ ...prev, logoImageUrl: e.target.value }))}
+                        placeholder="https://... (để trống sẽ dùng chữ logo)"
+                        className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                        id="input-logo-image-url"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setActiveMediaSelector({ target: 'logo_image' })}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-lg transition-all cursor-pointer shrink-0 whitespace-nowrap"
+                        id="btn-logo-pick-media"
+                        title="Chọn ảnh từ Thư Viện Media"
+                      >
+                        <Image className="w-3.5 h-3.5" />
+                        Thư Viện
+                      </button>
+                      {headerSettings.logoImageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setHeaderSettings(prev => ({ ...prev, logoImageUrl: '' }))}
+                          className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"
+                          title="Xóa ảnh logo"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-gray-400">Nếu có URL, logo ảnh sẽ thay thế chữ logo. Khuyến nghị PNG nền trong suốt, kích thước 120x40px.</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Chữ Logo (khi không có ảnh)</label>
+                    <input
+                      type="text"
+                      value={headerSettings.logoText}
+                      onChange={e => setHeaderSettings(prev => ({ ...prev, logoText: e.target.value }))}
+                      placeholder="P"
+                      maxLength={3}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                      id="input-logo-text"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Hotline Top Bar</label>
+                    <input
+                      type="text"
+                      value={headerSettings.topBarHotline}
+                      onChange={e => setHeaderSettings(prev => ({ ...prev, topBarHotline: e.target.value }))}
+                      placeholder="1800 8134"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                      id="input-topbar-hotline"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Địa chỉ Top Bar</label>
+                    <input
+                      type="text"
+                      value={headerSettings.topBarAddress}
+                      onChange={e => setHeaderSettings(prev => ({ ...prev, topBarAddress: e.target.value }))}
+                      placeholder="90 Đinh Thị Thi, Vạn Phúc City..."
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                      id="input-topbar-address"
+                    />
+                  </div>
+
+                </div>
+
+                {/* Preview */}
+                <div className="space-y-4">
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+                    <h3 className="text-xs font-black uppercase text-gray-500 border-b pb-2">Xem trước Header</h3>
+                    {/* Top bar preview */}
+                    <div className="bg-[#0C3471] text-white text-[10px] px-3 py-2 rounded-lg flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <span>📞 Hotline: <strong>{headerSettings.topBarHotline || '1800 8134'}</strong></span>
+                        <span className="hidden sm:block">📍 {headerSettings.topBarAddress || 'Địa chỉ'}</span>
+                      </div>
+                    </div>
+                    {/* Main bar preview */}
+                    <div className="border border-gray-200 rounded-lg px-4 py-3 flex items-center gap-3">
+                      {headerSettings.logoImageUrl ? (
+                        <img src={headerSettings.logoImageUrl} alt="Logo" className="h-8 object-contain" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-lg bg-[#0C3471] flex items-center justify-center text-white font-extrabold text-base shadow-md">
+                          {headerSettings.logoText || 'P'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-800 font-sans">
+                    <strong className="block text-[11px] uppercase mb-1">💡 Hướng dẫn:</strong>
+                    Sau khi nhập URL ảnh logo, nhấn Save để lưu. Logo mới sẽ hiển thị ngay trên website công cộng sau khi tải lại trang.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ---- TAB 2: MENU ITEMS ---- */}
+            {hfSubTab === 'menu' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Menu list */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+                  <div className="flex justify-between items-center border-b pb-3">
+                    <h3 className="text-sm font-black uppercase text-gray-800 flex items-center gap-2">
+                      <Link className="w-4 h-4 text-indigo-500" />
+                      Danh Sách Menu ({headerMenuItems.length} mục)
+                    </h3>
+                    <button
+                      onClick={() => {
+                        setHfMenuEditIdx(headerMenuItems.length);
+                        setHfMenuEditItem({ label: '', url: '/' });
+                      }}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white text-[11px] font-bold rounded-lg hover:bg-indigo-700 transition-all cursor-pointer"
+                      id="btn-hf-add-menu"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Thêm mục
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {headerMenuItems.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100 group">
+                        <GripVertical className="w-4 h-4 text-gray-300 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-bold text-gray-800 truncate">{item.label}</div>
+                          <div className="text-[10px] text-gray-400 font-mono truncate">{item.url}</div>
+                        </div>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => {
+                              setHfMenuEditIdx(idx);
+                              setHfMenuEditItem({ label: item.label, url: item.url });
+                            }}
+                            className="p-1 text-indigo-500 hover:bg-indigo-50 rounded cursor-pointer"
+                            title="Sửa"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Xóa mục menu "${item.label}"?`)) {
+                                setHeaderMenuItems(prev => prev.filter((_, i) => i !== idx));
+                              }
+                            }}
+                            className="p-1 text-rose-500 hover:bg-rose-50 rounded cursor-pointer"
+                            title="Xóa"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (idx > 0) {
+                                const next = [...headerMenuItems];
+                                [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                                setHeaderMenuItems(next);
+                              }
+                            }}
+                            className="p-1 text-gray-400 hover:bg-gray-100 rounded cursor-pointer"
+                            title="Lên"
+                          >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (idx < headerMenuItems.length - 1) {
+                                const next = [...headerMenuItems];
+                                [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
+                                setHeaderMenuItems(next);
+                              }
+                            }}
+                            className="p-1 text-gray-400 hover:bg-gray-100 rounded cursor-pointer"
+                            title="Xuống"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {headerMenuItems.length === 0 && (
+                      <p className="text-xs text-center text-gray-400 py-6">Chưa có mục menu nào. Nhấn "Thêm mục" để bắt đầu.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Edit form */}
+                <div className="space-y-4">
+                  {hfMenuEditIdx !== null ? (
+                    <div className="bg-white rounded-2xl border border-indigo-200 shadow-sm p-6 space-y-4">
+                      <h3 className="text-sm font-black uppercase text-indigo-700 border-b pb-2">
+                        {hfMenuEditIdx === headerMenuItems.length ? '➕ Thêm mục menu mới' : `✏️ Sửa mục #${hfMenuEditIdx + 1}`}
+                      </h3>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Tên hiển thị *</label>
+                        <input
+                          type="text"
+                          value={hfMenuEditItem.label}
+                          onChange={e => setHfMenuEditItem(prev => ({ ...prev, label: e.target.value }))}
+                          placeholder="Ví dụ: Về Pentair"
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          id="input-menu-label"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Đường dẫn URL *</label>
+                        <input
+                          type="text"
+                          value={hfMenuEditItem.url}
+                          onChange={e => setHfMenuEditItem(prev => ({ ...prev, url: e.target.value }))}
+                          placeholder="Ví dụ: /ve-pentair"
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          id="input-menu-url"
+                        />
+                        <p className="text-[10px] text-gray-400">URL nội bộ bắt đầu bằng "/" hoặc URL ngoài dạng "https://..."</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            if (!hfMenuEditItem.label.trim() || !hfMenuEditItem.url.trim()) return;
+                            const next = [...headerMenuItems];
+                            if (hfMenuEditIdx === headerMenuItems.length) {
+                              next.push(hfMenuEditItem);
+                            } else {
+                              next[hfMenuEditIdx] = hfMenuEditItem;
+                            }
+                            setHeaderMenuItems(next);
+                            setHfMenuEditIdx(null);
+                            setHfMenuEditItem({ label: '', url: '' });
+                          }}
+                          className="flex-1 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-all cursor-pointer flex items-center justify-center gap-1"
+                          id="btn-hf-save-menu-item"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          {hfMenuEditIdx === headerMenuItems.length ? 'Thêm vào danh sách' : 'Cập nhật mục'}
+                        </button>
+                        <button
+                          onClick={() => { setHfMenuEditIdx(null); setHfMenuEditItem({ label: '', url: '' }); }}
+                          className="px-4 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-lg hover:bg-gray-200 transition-all cursor-pointer"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 text-xs text-indigo-700 font-sans space-y-2">
+                      <strong className="block text-[11px] uppercase">💡 Hướng dẫn Menu:</strong>
+                      <ul className="list-disc pl-4 space-y-1">
+                        <li>Nhấn nút <strong>Sửa (bút)</strong> bên cạnh từng mục để chỉnh sửa.</li>
+                        <li>Nhấn <strong>Lên/Xuống</strong> để sắp xếp lại thứ tự hiển thị.</li>
+                        <li>Nhấn <strong>Xóa (thùng rác)</strong> để xóa mục menu.</li>
+                        <li>Sau khi điều chỉnh, nhấn <strong>Lưu tất cả thay đổi</strong> phía dưới để áp dụng.</li>
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Preview */}
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-2">
+                    <h4 className="text-[11px] font-black uppercase text-gray-400">Xem trước menu navigation</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {headerMenuItems.map((item, idx) => (
+                        <span key={idx} className="px-3 py-1 bg-gray-100 text-gray-700 text-[11px] font-semibold rounded-full">
+                          {item.label}
+                        </span>
+                      ))}
+                      {headerMenuItems.length === 0 && <span className="text-[11px] text-gray-300">Chưa có mục menu</span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ---- TAB 3: FOOTER POLICIES ---- */}
+            {hfSubTab === 'footer' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Policies list */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+                  <div className="flex justify-between items-center border-b pb-3">
+                    <h3 className="text-sm font-black uppercase text-gray-800 flex items-center gap-2">
+                      <Layout className="w-4 h-4 text-indigo-500" />
+                      Chính Sách ({footerPolicies.length} mục)
+                    </h3>
+                    <button
+                      onClick={() => {
+                        setHfPolicyEditIdx(footerPolicies.length);
+                        setHfPolicyEditItem({ title: '', content: '' });
+                      }}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white text-[11px] font-bold rounded-lg hover:bg-indigo-700 transition-all cursor-pointer"
+                      id="btn-hf-add-policy"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Thêm chính sách
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {footerPolicies.map((policy, idx) => (
+                      <div key={idx} className="p-3 bg-gray-50 rounded-xl border border-gray-100 group">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-gray-800">{policy.title}</div>
+                            <div className="text-[10px] text-gray-400 mt-0.5 leading-relaxed line-clamp-2">{policy.content}</div>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <button
+                              onClick={() => {
+                                setHfPolicyEditIdx(idx);
+                                setHfPolicyEditItem({ title: policy.title, content: policy.content });
+                              }}
+                              className="p-1 text-indigo-500 hover:bg-indigo-50 rounded cursor-pointer"
+                              title="Sửa"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Xóa chính sách "${policy.title}"?`)) {
+                                  setFooterPolicies(prev => prev.filter((_, i) => i !== idx));
+                                }
+                              }}
+                              className="p-1 text-rose-500 hover:bg-rose-50 rounded cursor-pointer"
+                              title="Xóa"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {footerPolicies.length === 0 && (
+                      <p className="text-xs text-center text-gray-400 py-6">Chưa có chính sách nào.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Edit form */}
+                <div className="space-y-4">
+                  {hfPolicyEditIdx !== null ? (
+                    <div className="bg-white rounded-2xl border border-indigo-200 shadow-sm p-6 space-y-4">
+                      <h3 className="text-sm font-black uppercase text-indigo-700 border-b pb-2">
+                        {hfPolicyEditIdx === footerPolicies.length ? '➕ Thêm chính sách mới' : `✏️ Sửa chính sách #${hfPolicyEditIdx + 1}`}
+                      </h3>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Tiêu đề chính sách *</label>
+                        <input
+                          type="text"
+                          value={hfPolicyEditItem.title}
+                          onChange={e => setHfPolicyEditItem(prev => ({ ...prev, title: e.target.value }))}
+                          placeholder="Ví dụ: Chính sách giao hàng"
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          id="input-policy-title"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Nội dung chi tiết *</label>
+                        <textarea
+                          value={hfPolicyEditItem.content}
+                          onChange={e => setHfPolicyEditItem(prev => ({ ...prev, content: e.target.value }))}
+                          placeholder="Mô tả chi tiết nội dung chính sách..."
+                          rows={5}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+                          id="input-policy-content"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            if (!hfPolicyEditItem.title.trim() || !hfPolicyEditItem.content.trim()) return;
+                            const next = [...footerPolicies];
+                            if (hfPolicyEditIdx === footerPolicies.length) {
+                              next.push(hfPolicyEditItem);
+                            } else {
+                              next[hfPolicyEditIdx] = hfPolicyEditItem;
+                            }
+                            setFooterPolicies(next);
+                            setHfPolicyEditIdx(null);
+                            setHfPolicyEditItem({ title: '', content: '' });
+                          }}
+                          className="flex-1 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-all cursor-pointer flex items-center justify-center gap-1"
+                          id="btn-hf-save-policy-item"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          {hfPolicyEditIdx === footerPolicies.length ? 'Thêm chính sách' : 'Cập nhật'}
+                        </button>
+                        <button
+                          onClick={() => { setHfPolicyEditIdx(null); setHfPolicyEditItem({ title: '', content: '' }); }}
+                          className="px-4 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-lg hover:bg-gray-200 transition-all cursor-pointer"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-[#0C3471]/5 border border-[#0C3471]/10 rounded-2xl p-5 text-xs text-[#0C3471] font-sans space-y-2">
+                      <strong className="block text-[11px] uppercase">💡 Footer Policies:</strong>
+                      <p>Các chính sách này hiển thị trong cột "Chính Sách Khách Hàng" ở footer website. Khi khách nhấn vào, sẽ hiện popup với nội dung chi tiết.</p>
+                    </div>
+                  )}
+
+                  {/* Footer preview */}
+                  <div className="bg-[#0C3471] rounded-2xl p-4 space-y-2">
+                    <h4 className="text-[11px] font-black uppercase text-blue-300">Xem trước Footer Policies</h4>
+                    <div className="space-y-1">
+                      {footerPolicies.map((p, idx) => (
+                        <div key={idx} className="flex justify-between items-center py-1 border-b border-white/5 text-[11px]">
+                          <span className="text-blue-100 font-medium">{p.title}</span>
+                          <span className="text-[9px] bg-white/10 px-1.5 py-0.5 rounded text-blue-200">Chi tiết</span>
+                        </div>
+                      ))}
+                      {footerPolicies.length === 0 && <p className="text-blue-300/50 text-[11px]">Chưa có chính sách</p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SAVE BUTTON */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="text-xs text-gray-500 font-sans">
+                <strong className="text-gray-700">Lưu ý:</strong> Nhấn nút lưu để áp dụng tất cả thay đổi (logo, menu, chính sách) vào database. Website sẽ cập nhật ngay sau đó.
+              </div>
+              <button
+                onClick={handleSaveHeaderFooter}
+                disabled={hfSaving}
+                className={`flex items-center gap-2 px-6 py-2.5 text-xs font-black uppercase rounded-xl transition-all cursor-pointer shadow-md ${hfSaving ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'}`}
+                id="btn-save-header-footer"
+              >
+                {hfSaving ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {hfSaving ? 'Đang lưu...' : 'Lưu tất cả thay đổi Header & Footer'}
+              </button>
+            </div>
+
+          </div>
+        )}
+
       </main>
 
       {/* RENDER DYNAMIC PUBLIC-PREVIEW MODAL (Trực quan & Bảo lưu Pentair) */}
@@ -4516,8 +5456,16 @@ export default function AdminCMS({
                     />
                   )}
 
-                  <div className="prose max-w-none text-xs sm:text-sm text-gray-700 leading-relaxed space-y-4 font-sans whitespace-pre-line border-t pt-4">
-                    {previewItem.data.content || 'Nội dung bài viết chưa được nhập.'}
+                  <div className="border-t pt-4">
+                    {(() => {
+                      const text = previewItem.data.content || 'Nội dung bài viết chưa được nhập.';
+                      const trimmed = text.trim();
+                      const isHtml = (trimmed.startsWith('<') && trimmed.endsWith('>')) || /<[a-z][\s\S]*>/i.test(trimmed);
+                      if (isHtml) {
+                        return <div className="rich-text-content" dangerouslySetInnerHTML={{ __html: text }} />;
+                      }
+                      return <div className="prose max-w-none text-xs sm:text-sm text-gray-750 leading-relaxed font-sans whitespace-pre-line">{text}</div>;
+                    })()}
                   </div>
                 </div>
               )}
@@ -4592,8 +5540,16 @@ export default function AdminCMS({
                   {/* Core Description block */}
                   <div className="border-t pt-6 space-y-3">
                     <span className="text-sm font-black uppercase text-slate-900 block border-b pb-1">Chi tiết tính năng vượt trội:</span>
-                    <div className="prose max-w-none text-xs sm:text-sm text-gray-700 font-sans whitespace-pre-line leading-relaxed">
-                      {previewItem.data.content || "Nội dung sản phẩm chưa được thiết lập."}
+                    <div>
+                      {(() => {
+                        const text = previewItem.data.content || "Nội dung sản phẩm chưa được thiết lập.";
+                        const trimmed = text.trim();
+                        const isHtml = (trimmed.startsWith('<') && trimmed.endsWith('>')) || /<[a-z][\s\S]*>/i.test(trimmed);
+                        if (isHtml) {
+                          return <div className="rich-text-content" dangerouslySetInnerHTML={{ __html: text }} />;
+                        }
+                        return <div className="prose max-w-none text-xs sm:text-sm text-gray-750 font-sans whitespace-pre-line leading-relaxed">{text}</div>;
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -4748,6 +5704,13 @@ export default function AdminCMS({
                       if (!trimmed) return url;
                       return trimmed.endsWith(',') ? `${trimmed} ${url}` : `${trimmed}, ${url}`;
                     });
+                  } else if (target === 'logo_image') {
+                    setHeaderSettings(prev => ({ ...prev, logoImageUrl: url }));
+                  } else if (target === 'post_content_editor') {
+                    if ((window as any).onPostContentEditorImageSelect) {
+                      (window as any).onPostContentEditorImageSelect(url);
+                    }
+                    return; // keep the media modal open so editors can insert multiple images consecutively
                   }
                   setActiveMediaSelector(null);
                 }}

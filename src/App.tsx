@@ -332,6 +332,8 @@ export default function App() {
     { title: "Chính sách bảo mật", content: "Tuyệt đối an tâm." }
   ];
 
+  const headerSettingsValue = options.find(o => o.optionName === 'header_settings')?.optionValue || {};
+
   // ----------------------------------------------------
   // DIAGNOSTIC SCREEN FOR CRITICAL ERROR
   // ----------------------------------------------------
@@ -404,6 +406,11 @@ export default function App() {
             onOpenAdmin={() => setShowAdminCMS(true)}
             cartCount={cart.reduce((acc, item) => acc + item.quantity, 0)}
             onOpenCart={() => setCartOpen(true)}
+            logoText={headerSettingsValue.logoText || 'P'}
+            logoImageUrl={headerSettingsValue.logoImageUrl || ''}
+            topBarHotline={headerSettingsValue.topBarHotline || '1800 8134'}
+            topBarAddress={headerSettingsValue.topBarAddress || 'Trụ sở: 90 Đinh Thị Thi, Vạn Phúc City, Thủ Đức'}
+            topBarTagline={headerSettingsValue.topBarTagline || 'Pentair USA - Leading the Water Revolution'}
           />
 
           <main className="flex-grow">

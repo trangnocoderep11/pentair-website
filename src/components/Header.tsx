@@ -17,6 +17,11 @@ interface HeaderProps {
   onOpenAdmin: () => void;
   cartCount?: number;
   onOpenCart?: () => void;
+  logoText?: string;
+  logoImageUrl?: string;
+  topBarHotline?: string;
+  topBarAddress?: string;
+  topBarTagline?: string;
 }
 
 export default function Header({ 
@@ -29,7 +34,12 @@ export default function Header({
   onLogout,
   onOpenAdmin,
   cartCount = 0,
-  onOpenCart = () => {}
+  onOpenCart = () => {},
+  logoText = 'P',
+  logoImageUrl = '',
+  topBarHotline = '1800 8134',
+  topBarAddress = 'Trụ sở: 90 Đinh Thị Thi, Vạn Phúc City, Thủ Đức',
+  topBarTagline = 'Pentair USA - Leading the Water Revolution',
 }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
@@ -41,20 +51,17 @@ export default function Header({
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5 font-sans">
               <Phone className="w-3.5 h-3.5 text-blue-300" />
-              Hotline miễn cước: <strong className="text-white hover:underline transition-all">1800 8134</strong>
+              Hotline miễn cước: <strong className="text-white hover:underline transition-all">{topBarHotline}</strong>
             </span>
             <span className="hidden md:flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-blue-300" />
-              Trụ sở: 90 Đinh Thị Thi, Vạn Phúc City, Thủ Đức
+              {topBarAddress}
             </span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-blue-200 uppercase tracking-widest text-[10px] font-mono leading-none">
-              Pentair USA - Leading the Water Revolution
-            </span>
             {currentUser && (
               <span className="flex items-center gap-1 text-[11px] bg-white/10 px-2 py-0.5 rounded text-blue-100 font-mono">
-                <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                 {currentUser.role === 'administrator' ? 'ADMIN' : 'EDITOR'}
               </span>
             )}
@@ -70,20 +77,20 @@ export default function Header({
           className="flex items-center gap-2.5 cursor-pointer group select-none"
           id="logo-branding-container"
         >
-          <div 
-            className="w-10 h-10 rounded-lg bg-pentair flex items-center justify-center text-white font-extrabold text-xl shadow-md shadow-blue-950/20 group-hover:scale-105 active:scale-95 transition-all cursor-pointer"
-            title="Sản phẩm lọc tổng cao cấp Pentair Mỹ"
-          >
-            P
-          </div>
-          <div>
-            <h1 className="text-pentair text-xl md:text-2xl font-bold tracking-tight uppercase leading-none font-sans group-hover:text-pentair-light transition-colors">
-              PENTAIR
-            </h1>
-            <p className="text-[10px] text-gray-500 font-medium tracking-wider uppercase leading-none mt-1">
-              {tagline || "Tinh Hoa Lọc Nước Từ Mỹ"}
-            </p>
-          </div>
+          {logoImageUrl ? (
+            <img
+              src={logoImageUrl}
+              alt={siteName}
+              className="h-10 object-contain group-hover:scale-105 active:scale-95 transition-all"
+            />
+          ) : (
+            <div 
+              className="w-10 h-10 rounded-lg bg-pentair flex items-center justify-center text-white font-extrabold text-xl shadow-md shadow-blue-950/20 group-hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              title="Sản phẩm lọc tổng cao cấp Pentair Mỹ"
+            >
+              {logoText}
+            </div>
+          )}
         </div>
 
         {/* Desktop Navigation */}

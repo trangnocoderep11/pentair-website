@@ -34,10 +34,34 @@ export default function MediaLibrary({
   const [dragActive, setDragActive] = React.useState(false);
 
   const [selectedItem, setSelectedItem] = React.useState<MediaItem | null>(null);
+  const [selectedItems, setSelectedItems] = React.useState<MediaItem[]>([]);
   const [itemEditForm, setItemEditForm] = React.useState({ title: '', altText: '', description: '', folderId: '' });
   const [savingItem, setSavingItem] = React.useState(false);
 
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
+
+  const isItemSelected = (item: MediaItem) => selectedItems.some(i => i.id === item.id);
+  const toggleItemSelection = (item: MediaItem, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setSelectedItems(prev => {
+      if (prev.some(i => i.id === item.id)) {
+        return prev.filter(i => i.id !== item.id);
+      }
+      return [...prev, item];
+    });
+  };
+
+  const insertSelectedItems = () => {
+    if (!onSelect || selectedItems.length === 0) return;
+    selectedItems.forEach(item => onSelect(item.url));
+    setSelectedItems([]);
+  };
+
+  // Upload progress tracking
+  const [uploadProgress, setUploadProgress] = React.useState<{ completed: number; total: number }>({ completed: 0, total: 0 });
+
+  // Folder expand/collapse state
+  const [expandedFolders, setExpandedFolders] = React.useState<Set<string>>(new Set());
 
   // Custom states for dialogs (avoids window.confirm in sandbox)
   const [deleteConfirm, setDeleteConfirm] = React.useState<{ id: string; type: 'folder' | 'item'; name: string } | null>(null);
@@ -78,10 +102,47 @@ export default function MediaLibrary({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const normalizeParentId = (id: string | null | undefined) => id ?? undefined;
+
   // Hierarchy Utilities
   const getSubfoldersOf = (parentId: string | undefined) => {
-    return folders.filter(f => f.parentId === parentId);
+    const normalizedParentId = normalizeParentId(parentId);
+    return folders.filter(f => normalizeParentId(f.parentId) === normalizedParentId);
   };
+
+  // Check if a folder has children (subfolders)
+  const hasChildren = (folderId: string) => {
+    return folders.some(f => normalizeParentId(f.parentId) === folderId);
+  };
+
+  // Toggle folder expand/collapse
+  const toggleFolderExpand = (folderId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedFolders(prev => {
+      const next = new Set(prev);
+      if (next.has(folderId)) {
+        next.delete(folderId);
+      } else {
+        next.add(folderId);
+      }
+      return next;
+    });
+  };
+
+  // Auto-expand parent folders when navigating to a child folder
+  React.useEffect(() => {
+    if (currentFolderId) {
+      const newExpanded = new Set(expandedFolders);
+      let current = folders.find(f => f.id === currentFolderId);
+      while (current) {
+        if (current.parentId) {
+          newExpanded.add(current.parentId);
+        }
+        current = current.parentId ? folders.find(f => f.id === current!.parentId) : undefined;
+      }
+      setExpandedFolders(newExpanded);
+    }
+  }, [currentFolderId, folders]);
 
   const getItemsOf = (folderId: string | undefined) => {
     return items.filter(item => {
@@ -106,12 +167,28 @@ export default function MediaLibrary({
   // Generate recursive folder tree view for dropdowns
   const getFolderTreeOptions = (parentId: string | undefined = undefined, depth = 0): { folder: MediaFolder; depth: number }[] => {
     let result: { folder: MediaFolder; depth: number }[] = [];
-    const levelFolders = folders.filter(f => f.parentId === parentId);
+    const normalizedParentId = normalizeParentId(parentId);
+    const levelFolders = folders.filter(f => normalizeParentId(f.parentId) === normalizedParentId);
     levelFolders.forEach(folder => {
       // Prevent self parenting if editing
       if (editingFolder && folder.id === editingFolder.id) return;
       result.push({ folder, depth });
       result = [...result, ...getFolderTreeOptions(folder.id, depth + 1)];
+    });
+    return result;
+  };
+
+  // Generate folder tree for sidebar (respects expand/collapse state)
+  const getSidebarFolderTree = (parentId: string | undefined = undefined, depth = 0): { folder: MediaFolder; depth: number }[] => {
+    let result: { folder: MediaFolder; depth: number }[] = [];
+    const normalizedParentId = normalizeParentId(parentId);
+    const levelFolders = folders.filter(f => normalizeParentId(f.parentId) === normalizedParentId);
+    levelFolders.forEach(folder => {
+      result.push({ folder, depth });
+      // Only recurse if this folder is expanded
+      if (expandedFolders.has(folder.id)) {
+        result = [...result, ...getSidebarFolderTree(folder.id, depth + 1)];
+      }
     });
     return result;
   };
@@ -195,45 +272,79 @@ export default function MediaLibrary({
   };
 
   // Upload Actions
-  const uploadBase64File = async (base64Data: string, filename: string, mimeType: string) => {
+  // Upload Actions
+  const uploadMultipleFiles = async (files: FileList | File[]) => {
+    if (files.length === 0) return;
     setUploading(true);
-    try {
-      const res = await fetch('/api/admin/media/upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
-        },
-        body: JSON.stringify({
-          filename,
-          mimeType,
-          base64Data,
-          folderId: currentFolderId || undefined
-        })
+    
+    const totalFiles = files.length;
+    const newItems: MediaItem[] = [];
+    const errors: string[] = [];
+    let completedCount = 0;
+
+    setUploadProgress({ completed: 0, total: totalFiles });
+
+    // Upload files sequentially to avoid overwhelming the server
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith('image/')) {
+        errors.push(`Tệp ${file.name} không phải là hình ảnh.`);
+        completedCount++;
+        setUploadProgress({ completed: completedCount, total: totalFiles });
+        continue;
+      }
+      
+      await new Promise<void>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const base64 = (reader.result as string).split(',')[1];
+            const res = await fetch('/api/admin/media/upload', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+              },
+              body: JSON.stringify({
+                filename: file.name,
+                mimeType: file.type,
+                base64Data: base64,
+                folderId: currentFolderId || undefined
+              })
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || `Lỗi upload ${file.name}`);
+
+            newItems.push(data);
+          } catch (err: any) {
+            errors.push(`${file.name}: ${err.message || 'Lỗi upload'}`);
+          } finally {
+            completedCount++;
+            setUploadProgress({ completed: completedCount, total: totalFiles });
+            resolve();
+          }
+        };
+        reader.readAsDataURL(file);
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Lỗi upload ảnh.');
-
-      setItems(prev => [data, ...prev]);
-      setShowUploadModal(false);
-    } catch (err: any) {
-      alert(err.message || 'Lỗi gửi file lên máy chủ.');
-    } finally {
-      setUploading(false);
     }
+
+    if (newItems.length > 0) {
+      setItems(prev => [...newItems, ...prev]);
+    }
+
+    if (errors.length > 0) {
+      alert(`Đã hoàn thành tải lên ${newItems.length}/${totalFiles} hình ảnh.\n\nChi tiết lỗi:\n` + errors.join('\n'));
+    }
+
+    setUploadProgress({ completed: 0, total: 0 });
+    setUploading(false);
+    setShowUploadModal(false);
   };
 
   const handleLocalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = (reader.result as string).split(',')[1];
-      uploadBase64File(base64, file.name, file.type);
-    };
-    reader.readAsDataURL(file);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    uploadMultipleFiles(files);
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -251,14 +362,9 @@ export default function MediaLibrary({
     e.stopPropagation();
     setDragActive(false);
 
-    const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = (reader.result as string).split(',')[1];
-        uploadBase64File(base64, file.name, file.type);
-      };
-      reader.readAsDataURL(file);
+    const files: File[] = (Array.from(e.dataTransfer.files) as File[]).filter((f) => f.type.startsWith('image/'));
+    if (files.length > 0) {
+      uploadMultipleFiles(files);
     }
   };
 
@@ -403,9 +509,9 @@ export default function MediaLibrary({
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return (
-      item.title.toLowerCase().includes(query) ||
-      (item.altText && item.altText.toLowerCase().includes(query)) ||
-      (item.description && item.description.toLowerCase().includes(query))
+      (item.title || '').toLowerCase().includes(query) ||
+      ((item.altText || '').toLowerCase().includes(query)) ||
+      ((item.description || '').toLowerCase().includes(query))
     );
   });
 
@@ -476,9 +582,11 @@ export default function MediaLibrary({
             </button>
 
             {/* Tree hierarchy */}
-            {getFolderTreeOptions().map(({ folder, depth }) => {
+            {getSidebarFolderTree().map(({ folder, depth }) => {
               const fileCount = items.filter(i => i.folderId === folder.id).length;
               const isSelected = currentFolderId === folder.id;
+              const hasSubs = hasChildren(folder.id);
+              const isExpanded = expandedFolders.has(folder.id);
 
               return (
                 <div 
@@ -487,20 +595,29 @@ export default function MediaLibrary({
                   className="group relative"
                 >
                   <div className={`w-full flex items-center justify-between text-left rounded-lg transition-all text-xs font-sans mt-0.5 cursor-pointer border ${isSelected ? 'bg-blue-600/10 text-blue-400 font-bold border-blue-500/20' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border-transparent'}`}>
-                    <button
+                    <div
                       onClick={() => {
                         setCurrentFolderId(folder.id);
                         setSelectedItem(null);
                       }}
-                      className="flex-grow flex items-center gap-1.5 px-2 py-1.5 text-left"
+                      className="flex-grow flex items-center gap-1 px-2 py-1.5 text-left min-w-0 cursor-pointer"
                     >
-                      {depth > 0 ? (
-                        <CornerDownRight className="w-3 h-3 text-slate-600 shrink-0" />
+                      {/* Expand/Collapse toggle */}
+                      {hasSubs ? (
+                        <span
+                          onClick={(e) => toggleFolderExpand(folder.id, e)}
+                          className="p-0.5 hover:bg-slate-700/50 rounded transition-all shrink-0 cursor-pointer"
+                          title={isExpanded ? 'Thu gọn' : 'Mở rộng'}
+                          role="button"
+                        >
+                          <ChevronRight className={`w-3 h-3 transition-transform duration-200 ${isExpanded ? 'rotate-90 text-blue-400' : 'text-slate-500'}`} />
+                        </span>
                       ) : (
-                        <Folder className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                        <span className="w-4 shrink-0" />
                       )}
+                      <Folder className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-blue-400' : isExpanded ? 'text-blue-500' : 'text-slate-500'}`} />
                       <span className="truncate" title={folder.name}>{folder.name}</span>
-                    </button>
+                    </div>
 
                     <div className="flex items-center gap-1.5 pr-2 shrink-0">
                       <span className="text-[9px] font-mono text-slate-500">{fileCount}</span>
@@ -682,6 +799,30 @@ export default function MediaLibrary({
                     : `Danh sách hình ảnh ở thư mục gốc (${activeItems.length})`}
                 </h4>
 
+                {onSelect && selectedItems.length > 0 && (
+                  <div className="mb-4 p-4 rounded-2xl border border-emerald-600/20 bg-emerald-950/10 text-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">{selectedItems.length} hình đã chọn</p>
+                      <p className="text-[10px] text-slate-400">Nhấn nút bên dưới để chèn toàn bộ ảnh đã chọn vào nội dung.</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={insertSelectedItems}
+                        className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase rounded-lg transition-all"
+                      >
+                        Chèn {selectedItems.length} ảnh vào nội dung
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedItems([])}
+                        className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold uppercase rounded-lg transition-all"
+                      >
+                        Bỏ chọn
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {activeItems.length === 0 ? (
                   <div className="p-12 border-2 border-dashed border-slate-800 rounded-2xl flex flex-col items-center justify-center text-center space-y-3">
                     <div className="w-12 h-12 rounded-full bg-slate-800/50 text-slate-500 flex items-center justify-center">
@@ -762,7 +903,11 @@ export default function MediaLibrary({
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    onSelect(item.url);
+                                    if (selectedItems.length > 0) {
+                                      toggleItemSelection(item, e);
+                                    } else {
+                                      onSelect(item.url);
+                                    }
                                   }}
                                   className="p-1 px-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 border border-emerald-500 flex items-center gap-1"
                                   title={selectButtonText}
@@ -790,6 +935,19 @@ export default function MediaLibrary({
                                 </div>
                               )}
                             </div>
+
+                            {onSelect && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleItemSelection(item, e);
+                                }}
+                                className={`mt-3 w-full py-2 text-[10px] font-bold rounded-xl transition-all ${isItemSelected(item) ? 'bg-emerald-600 text-white border border-emerald-500' : 'bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700'}`}
+                              >
+                                {isItemSelected(item) ? 'Bỏ chọn' : 'Chọn nhiều'}
+                              </button>
+                            )}
                             
                             <div className="flex items-center justify-between text-[9px] font-mono text-slate-500 mt-2 pt-2 border-t border-slate-850">
                               <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString('vi-VN') : 'Mới'}</span>
@@ -1081,9 +1239,9 @@ export default function MediaLibrary({
                   <UploadCloud className={`w-12 h-12 transition-colors ${dragActive ? 'text-blue-400' : 'text-slate-500'}`} />
                   
                   <div className="space-y-1">
-                    <p className="text-xs font-bold text-slate-300">Kéo thả bức ảnh của bạn vào đây</p>
+                    <p className="text-xs font-bold text-slate-300">Kéo thả hình ảnh của bạn vào đây</p>
                     <p className="text-[10px] text-slate-500 max-w-xs mx-auto leading-relaxed">
-                      Chấp nhận tệp ảnh png, jpeg, webp, gif dưới 15MB.<br />
+                      Hỗ trợ tải <strong>nhiều ảnh cùng lúc</strong>. Chấp nhận png, jpeg, webp, gif dưới 15MB.<br />
                       Tệp sẽ được phân loại trực tiếp dưới thư mục: <strong>{currentFolderId ? folders.find(f => f.id === currentFolderId)?.name : '[Thư mục Gốc]'}</strong>
                     </p>
                   </div>
@@ -1093,11 +1251,12 @@ export default function MediaLibrary({
                       type="button"
                       className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 select-none cursor-pointer"
                     >
-                      Chọn tệp từ máy
+                      Chọn nhiều tệp từ máy
                     </button>
                     <input
                       type="file"
                       accept="image/*"
+                      multiple
                       onChange={handleLocalFileChange}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       disabled={uploading}
@@ -1107,7 +1266,21 @@ export default function MediaLibrary({
                   {uploading && (
                     <div className="absolute inset-0 bg-slate-900/90 rounded-2xl flex flex-col items-center justify-center space-y-3">
                       <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-                      <p className="text-xs font-mono font-bold tracking-widest text-slate-300 text-[10px]">ĐANG LƯU TỆP SANG BỘ NHỚ CỤC BỘ...</p>
+                      <p className="text-xs font-mono font-bold tracking-widest text-slate-300 text-[10px]">ĐANG TẢI LÊN HÌNH ẢNH...</p>
+                      {uploadProgress.total > 1 && (
+                        <div className="w-48 space-y-2">
+                          <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                            <span>{uploadProgress.completed}/{uploadProgress.total} ảnh</span>
+                            <span>{Math.round((uploadProgress.completed / uploadProgress.total) * 100)}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-blue-500 to-emerald-400 rounded-full transition-all duration-300 ease-out"
+                              style={{ width: `${(uploadProgress.completed / uploadProgress.total) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

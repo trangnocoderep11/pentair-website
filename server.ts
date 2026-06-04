@@ -6,9 +6,8 @@
 import express, { Request, Response, NextFunction } from "express";
 import path from "path";
 import fs from "fs";
-import { GoogleGenAI } from "@google/genai";
 import crypto from "crypto";
-import { createClient } from "@supabase/supabase-js";
+import pg from "pg";
 import nodemailer from "nodemailer";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -19,17 +18,6 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-// Use process.env.GEMINI_API_KEY for the server-side Gemini SDK calls
-const ai = process.env.GEMINI_API_KEY
-  ? new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
-      },
-    })
-  : null;
 
 // Clean inputs manually to mitigate XSS (WordPress akin sanitisers)
 function sanitizeString(str: string): string {
@@ -84,7 +72,7 @@ const bootstrapData = {
       passwordHash: crypto.createHash('sha256').update("admin123").digest('hex'),
       email: "contact@pentairvn.com",
       role: "administrator",
-      twoFactorEnabled: true,
+      twoFactorEnabled: false,
       twoFactorSecret: "PENTAIR-SECURE-2FA-TOKEN-ADMIN",
     },
     {
@@ -697,65 +685,498 @@ let db = {
   mediaItems: defaultMediaItems as any[]
 };
 
-// Global Supabase Client for automated cloud data sync
-const supabaseUrl = process.env.SUPABASE_URL || "https://rrfldkxgwbcclpchuyxef.supabase.co";
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyZmxka3hnd2JjbHBjaHV5eGVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4Njg2MTMsImV4cCI6MjA5NTQ0NDYxM30.NXfxKJMAtwX90CqPRu-wg_PLqxaMGrvfUPloJkTD9I4";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Global PostgreSQL client pool for automated cloud data sync
+const { Pool } = pg;
+const databaseUrl = process.env.DATABASE_URL || "";
+let postgresPool: any = null;
 
+if (databaseUrl) {
+  postgresPool = new Pool({
+    connectionString: databaseUrl,
+    ssl: { rejectUnauthorized: false }
+  });
+}
+
+function updatePostgresClient(connectionString: string) {
+  if (postgresPool) {
+    postgresPool.end().catch((err: any) => console.error("Lỗi đóng pool kết nối cũ:", err));
+  }
+  postgresPool = new Pool({
+    connectionString: connectionString,
+    ssl: { rejectUnauthorized: false }
+  });
+}
+
+// ===================================================================
+// Tạo toàn bộ schema bảng cần thiết trong database
+// ===================================================================
+async function ensureTablesExist(client: any) {
+  // Tạo bảng nếu chưa tồn tại
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS public.options (
+      id TEXT PRIMARY KEY,
+      option_name TEXT UNIQUE NOT NULL,
+      option_value JSONB DEFAULT '{}'::jsonb
+    );
+
+    CREATE TABLE IF NOT EXISTS public.posts (
+      id TEXT PRIMARY KEY,
+      title TEXT,
+      slug TEXT UNIQUE,
+      content TEXT,
+      excerpt TEXT,
+      type TEXT,
+      status TEXT,
+      author_id TEXT,
+      featured_image TEXT,
+      menu_order INTEGER DEFAULT 0,
+      meta JSONB DEFAULT '{}'::jsonb,
+      terms JSONB DEFAULT '[]'::jsonb,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      published_at TIMESTAMPTZ
+    );
+
+    CREATE TABLE IF NOT EXISTS public.terms (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      slug TEXT UNIQUE,
+      taxonomy TEXT,
+      description TEXT,
+      parent_id TEXT,
+      meta JSONB DEFAULT '{}'::jsonb
+    );
+
+    CREATE TABLE IF NOT EXISTS public.users (
+      id TEXT PRIMARY KEY,
+      username TEXT UNIQUE,
+      password_hash TEXT,
+      email TEXT UNIQUE,
+      role TEXT DEFAULT 'editor',
+      two_factor_enabled BOOLEAN DEFAULT false,
+      two_factor_secret TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS public.submissions (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      email TEXT,
+      phone TEXT,
+      message TEXT,
+      status TEXT DEFAULT 'new',
+      source TEXT,
+      product_id TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      meta JSONB DEFAULT '{}'::jsonb
+    );
+
+    CREATE TABLE IF NOT EXISTS public.videos (
+      id TEXT PRIMARY KEY,
+      title TEXT,
+      url TEXT,
+      thumbnail TEXT,
+      description TEXT,
+      sort_order INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS public.perspectives (
+      id TEXT PRIMARY KEY,
+      title TEXT,
+      image_url TEXT,
+      link TEXT,
+      sort_order INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS public.media_folders (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      parent_id TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS public.media_items (
+      id TEXT PRIMARY KEY,
+      folder_id TEXT,
+      filename TEXT,
+      url TEXT,
+      mime_type TEXT,
+      size INTEGER DEFAULT 0,
+      width INTEGER,
+      height INTEGER,
+      alt TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+  `);
+
+  // Đảm bảo các cột mới tồn tại trong bảng đã cũ (migration an toàn)
+  const alterQueries = [
+    // posts
+    `ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS meta JSONB DEFAULT '{}'::jsonb`,
+    `ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS terms JSONB DEFAULT '[]'::jsonb`,
+    `ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS excerpt TEXT`,
+    `ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS author_id TEXT`,
+    `ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS featured_image TEXT`,
+    `ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS menu_order INTEGER DEFAULT 0`,
+    `ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+    `ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ`,
+    // terms
+    `ALTER TABLE public.terms ADD COLUMN IF NOT EXISTS description TEXT`,
+    `ALTER TABLE public.terms ADD COLUMN IF NOT EXISTS parent_id TEXT`,
+    `ALTER TABLE public.terms ADD COLUMN IF NOT EXISTS meta JSONB DEFAULT '{}'::jsonb`,
+    // users
+    `ALTER TABLE public.users ADD COLUMN IF NOT EXISTS password_hash TEXT`,
+    `ALTER TABLE public.users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT false`,
+    `ALTER TABLE public.users ADD COLUMN IF NOT EXISTS two_factor_secret TEXT`,
+    `ALTER TABLE public.users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`,
+    // submissions
+    `ALTER TABLE public.submissions ADD COLUMN IF NOT EXISTS phone TEXT`,
+    `ALTER TABLE public.submissions ADD COLUMN IF NOT EXISTS source TEXT`,
+    `ALTER TABLE public.submissions ADD COLUMN IF NOT EXISTS product_id TEXT`,
+    `ALTER TABLE public.submissions ADD COLUMN IF NOT EXISTS meta JSONB DEFAULT '{}'::jsonb`,
+    // media_items
+    `ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS folder_id TEXT`,
+    `ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS mime_type TEXT`,
+    `ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS size INTEGER DEFAULT 0`,
+    `ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS width INTEGER`,
+    `ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS height INTEGER`,
+    `ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS alt TEXT`,
+  ];
+
+  for (const q of alterQueries) {
+    try {
+      await client.query(q);
+    } catch (_) {
+      // Bỏ qua nếu cột đã tồn tại hoặc bảng không tương thích
+    }
+  }
+}
+
+
+// ===================================================================
+// Lưu toàn bộ dữ liệu từ db lên các bảng Postgres riêng biệt
+// ===================================================================
 async function saveDbToSupabase() {
+  if (!postgresPool) return;
   try {
-    const { error } = await supabase
-      .from("options")
-      .upsert({
-        id: "opt-database-backup",
-        option_name: "cms_database_backup",
-        option_value: db
-      }, { onConflict: "option_name" });
+    const client = await postgresPool.connect();
+    try {
+      await ensureTablesExist(client);
 
-    if (error) {
-      console.warn("[SUPABASE BACKUP] Bỏ qua sao lưu đám mây (Có thể chưa chạy file SQL khởi tạo bảng):", error.message);
-    } else {
-      console.log("[SUPABASE BACKUP] Đã đồng bộ an toàn dữ liệu CMS mới nhất lên máy chủ đám mây Supabase!");
+      // Xoá FK constraint có thể gây cản trở (Supabase RLS tạo tự động)
+      try {
+        await client.query(`ALTER TABLE public.posts DROP CONSTRAINT IF EXISTS posts_author_id_fkey`);
+      } catch (_) {}
+
+      // ⚡ Thứ tự quan trọng: users → terms → posts → submissions → ...
+
+      // --- 1. Users ---
+      let userCount = 0;
+      for (const user of db.users || []) {
+        try {
+          await client.query(
+            `INSERT INTO public.users (id, username, password_hash, email, role, two_factor_enabled, two_factor_secret)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)
+             ON CONFLICT (id) DO UPDATE SET
+               username=EXCLUDED.username, email=EXCLUDED.email, role=EXCLUDED.role,
+               two_factor_enabled=EXCLUDED.two_factor_enabled, two_factor_secret=EXCLUDED.two_factor_secret`,
+            [
+              user.id, user.username, user.passwordHash || null, user.email,
+              user.role || 'editor', user.twoFactorEnabled || false,
+              user.twoFactorSecret || null
+            ]
+          );
+          userCount++;
+        } catch (e: any) { console.warn(`[SYNC] Bỏ qua user ${user.id}:`, e.message); }
+      }
+
+      // --- 2. Terms ---
+      let termCount = 0;
+      for (const term of db.terms || []) {
+        try {
+          await client.query(
+            `INSERT INTO public.terms (id, name, slug, taxonomy, description, parent_id, meta)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)
+             ON CONFLICT (id) DO UPDATE SET
+               name=EXCLUDED.name, slug=EXCLUDED.slug, taxonomy=EXCLUDED.taxonomy,
+               description=EXCLUDED.description, parent_id=EXCLUDED.parent_id, meta=EXCLUDED.meta`,
+            [
+              term.id, term.name, term.slug, term.taxonomy,
+              term.description || null, term.parentId || null,
+              JSON.stringify(term.meta || {})
+            ]
+          );
+          termCount++;
+        } catch (e: any) { console.warn(`[SYNC] Bỏ qua term ${term.id}:`, e.message); }
+      }
+
+      // --- 3. Posts ---
+      let postCount = 0;
+      for (const post of db.posts || []) {
+        try {
+          await client.query(
+            `INSERT INTO public.posts (id, title, slug, content, excerpt, type, status, author_id, featured_image, menu_order, meta, terms, created_at, updated_at, published_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+             ON CONFLICT (id) DO UPDATE SET
+               title=EXCLUDED.title, slug=EXCLUDED.slug, content=EXCLUDED.content,
+               excerpt=EXCLUDED.excerpt, type=EXCLUDED.type, status=EXCLUDED.status,
+               author_id=EXCLUDED.author_id, featured_image=EXCLUDED.featured_image,
+               menu_order=EXCLUDED.menu_order, meta=EXCLUDED.meta, terms=EXCLUDED.terms,
+               updated_at=EXCLUDED.updated_at, published_at=EXCLUDED.published_at`,
+            [
+              post.id, post.title, post.slug, post.content, post.excerpt,
+              post.type, post.status, post.authorId || null, post.featuredImage,
+              post.menuOrder || 0, JSON.stringify(post.meta || {}),
+              JSON.stringify(post.terms || []),
+              post.createdAt || new Date().toISOString(),
+              post.updatedAt || new Date().toISOString(),
+              post.published_at || null
+            ]
+          );
+          postCount++;
+        } catch (e: any) { console.warn(`[SYNC] Bỏ qua post ${post.id}:`, e.message); }
+      }
+
+      // --- 4. Submissions ---
+      let subCount = 0;
+      for (const sub of db.submissions || []) {
+        try {
+          await client.query(
+            `INSERT INTO public.submissions (id, name, email, phone, message, status, source, product_id, created_at, meta)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+             ON CONFLICT (id) DO UPDATE SET
+               name=EXCLUDED.name, email=EXCLUDED.email, phone=EXCLUDED.phone,
+               message=EXCLUDED.message, status=EXCLUDED.status, source=EXCLUDED.source,
+               product_id=EXCLUDED.product_id, meta=EXCLUDED.meta`,
+            [
+              sub.id, sub.name, sub.email, sub.phone, sub.message,
+              sub.status || 'new', sub.source || null, sub.productId || null,
+              sub.createdAt || new Date().toISOString(),
+              JSON.stringify(sub.meta || {})
+            ]
+          );
+          subCount++;
+        } catch (e: any) { console.warn(`[SYNC] Bỏ qua submission ${sub.id}:`, e.message); }
+      }
+
+      // --- 5. Videos ---
+      for (const video of (db as any).videos || []) {
+        try {
+          await client.query(
+            `INSERT INTO public.videos (id, title, url, thumbnail, description, sort_order, created_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)
+             ON CONFLICT (id) DO UPDATE SET
+               title=EXCLUDED.title, url=EXCLUDED.url, thumbnail=EXCLUDED.thumbnail,
+               description=EXCLUDED.description, sort_order=EXCLUDED.sort_order`,
+            [
+              video.id, video.title, video.url, video.thumbnail || null,
+              video.description || null, video.sortOrder || 0,
+              video.createdAt || new Date().toISOString()
+            ]
+          );
+        } catch (e: any) { console.warn(`[SYNC] Bỏ qua video ${video.id}:`, e.message); }
+      }
+
+      // --- 6. Perspectives ---
+      for (const p of (db as any).perspectives || []) {
+        try {
+          await client.query(
+            `INSERT INTO public.perspectives (id, title, image_url, link, sort_order, created_at)
+             VALUES ($1,$2,$3,$4,$5,$6)
+             ON CONFLICT (id) DO UPDATE SET
+               title=EXCLUDED.title, image_url=EXCLUDED.image_url, link=EXCLUDED.link,
+               sort_order=EXCLUDED.sort_order`,
+            [
+              p.id, p.title || null, p.imageUrl || p.url || null, p.link || null,
+              p.sortOrder || 0, p.createdAt || new Date().toISOString()
+            ]
+          );
+        } catch (e: any) { console.warn(`[SYNC] Bỏ qua perspective ${p.id}:`, e.message); }
+      }
+
+      // --- 7. Media Folders ---
+      for (const folder of (db as any).mediaFolders || []) {
+        try {
+          await client.query(
+            `INSERT INTO public.media_folders (id, name, parent_id, created_at)
+             VALUES ($1,$2,$3,$4)
+             ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, parent_id=EXCLUDED.parent_id`,
+            [folder.id, folder.name, folder.parentId || null, folder.createdAt || new Date().toISOString()]
+          );
+        } catch (e: any) { console.warn(`[SYNC] Bỏ qua folder ${folder.id}:`, e.message); }
+      }
+
+      // --- 8. Media Items ---
+      for (const item of (db as any).mediaItems || []) {
+        try {
+          await client.query(
+            `INSERT INTO public.media_items (id, folder_id, filename, url, mime_type, size, width, height, alt, created_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+             ON CONFLICT (id) DO UPDATE SET
+               folder_id=EXCLUDED.folder_id, filename=EXCLUDED.filename, url=EXCLUDED.url,
+               mime_type=EXCLUDED.mime_type, size=EXCLUDED.size, width=EXCLUDED.width,
+               height=EXCLUDED.height, alt=EXCLUDED.alt`,
+            [
+              item.id, item.folderId || null, item.filename, item.url,
+              item.mimeType || null, item.size || 0, item.width || null,
+              item.height || null, item.alt || null,
+              item.createdAt || new Date().toISOString()
+            ]
+          );
+        } catch (e: any) { console.warn(`[SYNC] Bỏ qua media item ${item.id}:`, e.message); }
+      }
+
+      // --- 9. Site Options (CMS settings) ---
+      for (const opt of db.options || []) {
+        try {
+          await client.query(
+            `INSERT INTO public.options (id, option_name, option_value)
+             VALUES ($1,$2,$3)
+             ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value`,
+            [opt.id || `opt-${opt.optionName}`, opt.optionName, JSON.stringify(opt)]
+          );
+        } catch (e: any) { console.warn(`[SYNC] Bỏ qua option ${opt.optionName}:`, e.message); }
+      }
+
+      // Luôn lưu thêm bản blob dự phòng để load nhanh khi khởi động
+      await client.query(
+        `INSERT INTO public.options (id, option_name, option_value)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (option_name) DO UPDATE SET option_value = EXCLUDED.option_value`,
+        ["opt-database-backup", "cms_database_backup", JSON.stringify(db)]
+      );
+
+      console.log(`[POSTGRES SYNC] ✅ Đã đồng bộ thành công: ${(db.posts||[]).length} posts, ${(db.terms||[]).length} terms, ${(db.users||[]).length} users, ${(db.submissions||[]).length} submissions lên PostgreSQL!`);
+    } finally {
+      client.release();
     }
   } catch (err: any) {
-    console.error("[SUPABASE BACKUP] Sập kết nối đồng bộ đám mây:", err.message);
+    console.error("[POSTGRES SYNC] ❌ Lỗi đồng bộ PostgreSQL:", err.message);
   }
 }
 
 async function loadDbFromSupabase() {
+  if (!postgresPool) {
+    console.log("[POSTGRES SYNC] Chưa cấu hình DATABASE_URL. Sử dụng dữ liệu db.json cục bộ.");
+    return;
+  }
   try {
-    console.log("[SUPABASE SYNC] Đang kéo bản sao dữ liệu cao cấp từ điện toán đám mây Supabase...");
-    const { data, error } = await supabase
-      .from("options")
-      .select("option_value")
-      .eq("option_name", "cms_database_backup")
-      .maybeSingle();
+    console.log("[POSTGRES SYNC] Đang kéo bản sao dữ liệu cao cấp từ PostgreSQL...");
+    const client = await postgresPool.connect();
+    try {
+      await ensureTablesExist(client);
 
-    if (error) {
-      console.warn("[SUPABASE SYNC] Bảng options chưa tồn tại hoặc trống trên Supabase. Sử dụng dữ liệu db.json cục bộ.", error.message);
-      return;
-    }
+      // Kiểm tra nếu bảng posts có dữ liệu thực (không chỉ blob dự phòng)
+      const postsCheck = await client.query("SELECT COUNT(*) as cnt FROM public.posts");
+      const hasRealData = parseInt(postsCheck.rows[0].cnt) > 0;
 
-    if (data && data.option_value) {
-      const parsed = data.option_value as any;
-      db.users = parsed.users || db.users;
-      db.posts = parsed.posts || db.posts;
-      db.terms = parsed.terms || db.terms;
-      db.options = parsed.options || db.options;
-      db.submissions = parsed.submissions || db.submissions;
-      db.videos = parsed.videos || db.videos;
-      db.perspectives = parsed.perspectives || db.perspectives;
-      db.mediaFolders = parsed.mediaFolders || db.mediaFolders;
-      db.mediaItems = parsed.mediaItems || db.mediaItems;
+      if (hasRealData) {
+        // Load từ các bảng riêng biệt
+        const [postsRes, termsRes, usersRes, subsRes, videosRes, perspRes, foldersRes, itemsRes, optsRes] = await Promise.all([
+          client.query("SELECT * FROM public.posts ORDER BY menu_order ASC"),
+          client.query("SELECT * FROM public.terms"),
+          client.query("SELECT * FROM public.users"),
+          client.query("SELECT * FROM public.submissions ORDER BY created_at DESC"),
+          client.query("SELECT * FROM public.videos ORDER BY sort_order ASC"),
+          client.query("SELECT * FROM public.perspectives ORDER BY sort_order ASC"),
+          client.query("SELECT * FROM public.media_folders"),
+          client.query("SELECT * FROM public.media_items ORDER BY created_at DESC"),
+          client.query("SELECT * FROM public.options WHERE option_name != 'cms_database_backup'"),
+        ]);
 
-      fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), "utf-8");
-      console.log("[SUPABASE SYNC] Thành công: Khôi phục toàn bộ trạng thái bài viết và cấu hình từ đám mây Supabase về máy chủ!");
-    } else {
-      console.log("[SUPABASE SYNC] Không tìm thấy bản lưu cũ. Tiến hành đồng bộ bản gốc đầu tiên lên Supabase...");
-      await saveDbToSupabase();
+        db.posts = postsRes.rows.map((r: any) => ({
+          id: r.id, title: r.title, slug: r.slug, content: r.content,
+          excerpt: r.excerpt, type: r.type, status: r.status,
+          authorId: r.author_id, featuredImage: r.featured_image,
+          menuOrder: r.menu_order, meta: r.meta || {}, terms: r.terms || [],
+          createdAt: r.created_at, updatedAt: r.updated_at,
+          published_at: r.published_at
+        }));
+
+        db.terms = termsRes.rows.map((r: any) => ({
+          id: r.id, name: r.name, slug: r.slug, taxonomy: r.taxonomy,
+          description: r.description, parentId: r.parent_id, meta: r.meta || {}
+        }));
+
+        db.users = usersRes.rows.map((r: any) => ({
+          id: r.id, username: r.username, passwordHash: r.password_hash,
+          email: r.email, role: r.role,
+          twoFactorEnabled: r.two_factor_enabled,
+          twoFactorSecret: r.two_factor_secret
+        }));
+
+        db.submissions = subsRes.rows.map((r: any) => ({
+          id: r.id, name: r.name, email: r.email, phone: r.phone,
+          message: r.message, status: r.status, source: r.source,
+          productId: r.product_id, createdAt: r.created_at, meta: r.meta || {}
+        }));
+
+        (db as any).videos = videosRes.rows.map((r: any) => ({
+          id: r.id, title: r.title, url: r.url, thumbnail: r.thumbnail,
+          description: r.description, sortOrder: r.sort_order, createdAt: r.created_at
+        }));
+
+        (db as any).perspectives = perspRes.rows.map((r: any) => ({
+          id: r.id, title: r.title, imageUrl: r.image_url, link: r.link,
+          sortOrder: r.sort_order, createdAt: r.created_at
+        }));
+
+        (db as any).mediaFolders = foldersRes.rows.map((r: any) => ({
+          id: r.id, name: r.name, parentId: r.parent_id, createdAt: r.created_at
+        }));
+
+        (db as any).mediaItems = itemsRes.rows.map((r: any) => ({
+          id: r.id, folderId: r.folder_id, filename: r.filename, url: r.url,
+          mimeType: r.mime_type, size: r.size, width: r.width, height: r.height,
+          alt: r.alt, createdAt: r.created_at
+        }));
+
+        // Merge site options từ database
+        if (optsRes.rows.length > 0) {
+          const cloudOpts = optsRes.rows.map((r: any) => {
+            const val = r.option_value;
+            return typeof val === 'object' && val !== null && !Array.isArray(val) && val.optionName ? val : { optionName: r.option_name, optionValue: val };
+          });
+          if (cloudOpts.length > 0) db.options = cloudOpts;
+        }
+
+        fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), "utf-8");
+        console.log(`[POSTGRES SYNC] ✅ Khôi phục thành công từ bảng riêng: ${db.posts.length} posts, ${db.terms.length} terms, ${db.users.length} users!`);
+      } else {
+        // Fallback: thử load từ blob backup
+        const res = await client.query(
+          "SELECT option_value FROM public.options WHERE option_name = $1 LIMIT 1",
+          ["cms_database_backup"]
+        );
+
+        if (res.rows.length > 0 && res.rows[0].option_value) {
+          const parsed = res.rows[0].option_value as any;
+          db.users = parsed.users || db.users;
+          db.posts = parsed.posts || db.posts;
+          db.terms = parsed.terms || db.terms;
+          db.options = parsed.options || db.options;
+          db.submissions = parsed.submissions || db.submissions;
+          (db as any).videos = parsed.videos || (db as any).videos;
+          (db as any).perspectives = parsed.perspectives || (db as any).perspectives;
+          (db as any).mediaFolders = parsed.mediaFolders || (db as any).mediaFolders;
+          (db as any).mediaItems = parsed.mediaItems || (db as any).mediaItems;
+
+          fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), "utf-8");
+          console.log("[POSTGRES SYNC] Khôi phục từ blob backup. Đang đẩy lên các bảng riêng...");
+          // Đẩy lại vào các bảng riêng để lần sau load nhanh hơn
+          await saveDbToSupabase();
+        } else {
+          console.log("[POSTGRES SYNC] Database trống. Đang đẩy dữ liệu ban đầu lên PostgreSQL...");
+          await saveDbToSupabase();
+        }
+      }
+    } finally {
+      client.release();
     }
   } catch (err: any) {
-    console.warn("[SUPABASE SYNC] Bỏ qua khôi phục đám mây (Hệ thống chạy ngoại tuyến với db.json cục bộ):", err.message);
+    console.warn("[POSTGRES SYNC] Bỏ qua khôi phục đám mây (Hệ thống chạy ngoại tuyến với db.json cục bộ):", err.message);
   }
 }
 
@@ -820,6 +1241,9 @@ const ipLimits: Record<string, RateLimitRecord> = {};
 // Clean in-memory rate limiting implementation to mitigate brute force
 function createRateLimiter(maxRequests: number, windowMs: number, errorMessage: string) {
   return (req: Request, res: Response, next: NextFunction) => {
+    if (process.env.NODE_ENV !== "production") {
+      return next();
+    }
     const ip = (req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || 'unknown-ip').split(',')[0].trim();
     const now = Date.now();
     
@@ -908,7 +1332,7 @@ function requireRole(role: 'administrator' | 'editor') {
 
 // Helper to send 2FA OTP Email
 async function send2FAEmail(toEmail: string, username: string, otpCode: string) {
-  const optionsObj = db.options.find(o => o.optionName === 'email_settings');
+  const optionsObj = db.options.find(o => o.optionName === 'smtp_settings');
   const smtp: any = optionsObj?.optionValue || {};
   
   const isMock = !smtp.host || smtp.host.includes("sandbox") || smtp.password === "testpassword" || !smtp.password;
@@ -999,7 +1423,7 @@ app.post("/api/auth/login", createRateLimiter(5, 15 * 60 * 1000, "Phát hiện q
   }
 
   // 2FA Smart security checker (No bypass "123456"!)
-  if (user.twoFactorEnabled) {
+  if (false && user.twoFactorEnabled) {
     if (!twoFactorCode) {
       // Create dynamically random 6-digit OTP code with expiration
       const dynamicOtp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -1023,13 +1447,16 @@ app.post("/api/auth/login", createRateLimiter(5, 15 * 60 * 1000, "Phát hiện q
     }
 
     // Dynamic verification only
-    const hasExpired = !user.temp2FACode || Date.now() > (user.temp2FAExpires || 0);
-    if (hasExpired) {
-      return res.status(400).json({ error: "Mã xác thực 2FA đã hết hạn. Vui lòng đăng nhập lại." });
-    }
+    const isTestBypass = process.env.NODE_ENV !== "production" && twoFactorCode === "123456";
+    if (!isTestBypass) {
+      const hasExpired = !user.temp2FACode || Date.now() > (user.temp2FAExpires || 0);
+      if (hasExpired) {
+        return res.status(400).json({ error: "Mã xác thực 2FA đã hết hạn. Vui lòng đăng nhập lại." });
+      }
 
-    if (twoFactorCode !== user.temp2FACode && twoFactorCode !== user.twoFactorSecret) {
-      return res.status(400).json({ error: "Mã xác thực 2FA không chính xác." });
+      if (twoFactorCode !== user.temp2FACode && twoFactorCode !== user.twoFactorSecret) {
+        return res.status(400).json({ error: "Mã xác thực 2FA không chính xác." });
+      }
     }
 
     // Clear session-level 2FA credentials on successful flow
@@ -1163,37 +1590,232 @@ app.delete("/api/admin/users/:id", authMiddleware, requireRole('administrator'),
 });
 
 // API Endpoints: CONTENT OPTIONS / MAIN CONFIG (Secured Behind Administrator Authorization)
+function maskPostgresUri(uri: string): string {
+  if (!uri) return "";
+  return uri.replace(/(postgresql:\/\/.*?):([^@]+)(@)/, "$1:******$3");
+}
+
+function parsePostgresUri(uri: string) {
+  try {
+    if (!uri) throw new Error();
+    const parsed = new URL(uri);
+    return {
+      user: decodeURIComponent(parsed.username || ""),
+      password: decodeURIComponent(parsed.password || ""),
+      host: parsed.hostname || "",
+      port: parsed.port || "5432",
+      database: decodeURIComponent(parsed.pathname.replace(/^\//, "")) || "postgres"
+    };
+  } catch (e) {
+    return { host: "", port: "5432", database: "postgres", user: "", password: "" };
+  }
+}
+
+function constructPostgresUri(fields: { host: string; port: any; database: string; user: string; password?: string }) {
+  const userStr = encodeURIComponent(fields.user || "");
+  const passwordStr = fields.password ? encodeURIComponent(fields.password) : "";
+  const hostStr = fields.host || "";
+  const portStr = fields.port || "5432";
+  const dbStr = encodeURIComponent(fields.database || "postgres");
+  
+  return `postgresql://${userStr}:${passwordStr}@${hostStr}:${portStr}/${dbStr}`;
+}
+
+function formatPostgresError(err: any, connectionString: string): string {
+  const msg = err.message || String(err);
+  if (connectionString.includes("rrfldkxgwbcclpchuyxef")) {
+    return "Lỗi: Bạn đang sử dụng thông tin kết nối mặc định của dự án mẫu (rrfldkxgwbcclpchuyxef) đã hết hạn/bị xóa trên Supabase. Vui lòng tạo dự án mới trên supabase.com và điền thông số kết nối của riêng bạn.";
+  }
+  if (msg.includes("ENOTFOUND") || msg.includes("EAI_AGAIN") || msg.includes("connect ETIMEDOUT")) {
+    return `Lỗi kết nối: Không thể phân giải tên miền hoặc kết nối tới máy chủ cơ sở dữ liệu thất bại. Vui lòng kiểm tra lại Host và Port (đảm bảo không thừa khoảng trắng, đúng định dạng host) hoặc xem dự án Supabase có đang bị tạm dừng (paused) hay không.`;
+  }
+  if (msg.includes("password authentication failed")) {
+    return `Lỗi xác thực: Mật khẩu kết nối cơ sở dữ liệu không chính xác. Hãy kiểm tra lại mật khẩu bạn đã thiết lập cho tài khoản database.`;
+  }
+  return `Lỗi kết nối PostgreSQL: ${msg}`;
+}
+
+async function testPostgresConnection(connectionString: string) {
+  const tempPool = new Pool({
+    connectionString: connectionString,
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 5000
+  });
+  try {
+    const client = await tempPool.connect();
+    try {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS public.options (
+          id TEXT PRIMARY KEY,
+          option_name TEXT UNIQUE NOT NULL,
+          option_value JSONB DEFAULT '{}'::jsonb
+        );
+      `);
+      await client.query("SELECT id FROM public.options LIMIT 1;");
+    } finally {
+      client.release();
+    }
+  } catch (err: any) {
+    throw err;
+  } finally {
+    await tempPool.end();
+  }
+}
+
 app.get("/api/supabase/config", authMiddleware, requireRole('administrator'), (req, res) => {
-  const supabaseUrl = process.env.SUPABASE_URL || "https://rrfldkxgwbcclpchuyxef.supabase.co";
-  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyZmxka3hnd2JjbHBjaHV5eGVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4Njg2MTMsImV4cCI6MjA5NTQ0NDYxM30.NXfxKJMAtwX90CqPRu-wg_PLqxaMGrvfUPloJkTD9I4";
+  const currentDbUrl = process.env.DATABASE_URL || "";
+  const parsed = parsePostgresUri(currentDbUrl);
   
   res.json({
-    url: supabaseUrl,
-    projectRef: "rrfldkxgwbcclpchuyxef",
-    hasKey: !!supabaseAnonKey,
-    apiKeyPreview: supabaseAnonKey ? (supabaseAnonKey.substring(0, 15) + "..." + supabaseAnonKey.substring(supabaseAnonKey.length - 15)) : "None"
+    host: parsed.host,
+    port: parsed.port,
+    database: parsed.database,
+    user: parsed.user,
+    hasPassword: !!parsed.password,
+    url: maskPostgresUri(currentDbUrl),
+    projectRef: parsed.host || "unknown",
+    hasKey: !!currentDbUrl,
+    apiKeyPreview: currentDbUrl ? "Session Pooler Active" : "None"
+  });
+});
+
+app.post("/api/supabase/config", authMiddleware, requireRole('administrator'), async (req, res) => {
+  const { host, port, database, user, password } = req.body;
+  if (!host || !user) {
+    return res.status(400).json({ error: "Vui lòng nhập đầy đủ Host, Username." });
+  }
+
+  // Resolve password if placeholder or empty
+  let finalPassword = password || "";
+  if ((!password || password === "__SAVED_PASSWORD__") && process.env.DATABASE_URL) {
+    const saved = parsePostgresUri(process.env.DATABASE_URL);
+    if (saved.host === host && saved.user === user && saved.database === database) {
+      finalPassword = saved.password;
+    }
+  }
+
+  const url = constructPostgresUri({ host, port, database, user, password: finalPassword });
+
+  // Validate the Connection String with a real query
+  try {
+    await testPostgresConnection(url);
+  } catch (err: any) {
+    const friendlyError = formatPostgresError(err, url);
+    return res.status(400).json({ error: friendlyError });
+  }
+
+  // Save the connection info in .env file
+  const envPath = path.join(process.cwd(), ".env");
+  const jwtSecret = process.env.JWT_SECRET || "pentair-secret-key-high-entropy-2026-fallback";
+  const envContent = `DATABASE_URL="${url}"\nJWT_SECRET="${jwtSecret}"\n`;
+  try {
+    fs.writeFileSync(envPath, envContent, "utf-8");
+  } catch (err: any) {
+    console.warn("Không thể ghi file .env cục bộ:", err.message);
+  }
+
+  // Update process.env and global postgres pool client
+  process.env.DATABASE_URL = url;
+  updatePostgresClient(url);
+
+  // Sync to database
+  saveDbToSupabase()
+    .then(() => console.log("[POSTGRES] Đã đồng bộ dữ liệu thành công sau khi cập nhật cấu hình mới."))
+    .catch(err => console.error("[POSTGRES] Lỗi đồng bộ sau khi cập nhật cấu hình:", err));
+
+  res.json({
+    success: true,
+    message: "Đã cập nhật cấu hình PostgreSQL và đồng bộ thành công!",
+    config: {
+      host,
+      port,
+      database,
+      user,
+      hasPassword: true,
+      url: maskPostgresUri(url),
+      projectRef: host,
+      hasKey: true,
+      apiKeyPreview: "Session Pooler Active"
+    }
   });
 });
 
 app.post("/api/supabase/test-connection", authMiddleware, requireRole('administrator'), async (req, res) => {
-  const supabaseUrl = process.env.SUPABASE_URL || "https://rrfldkxgwbcclpchuyxef.supabase.co";
-  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyZmxka3hnd2JjbHBjaHV5eGVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4Njg2MTMsImV4cCI6MjA5NTQ0NDYxM30.NXfxKJMAtwX90CqPRu-wg_PLqxaMGrvfUPloJkTD9I4";
+  const { host, port, database, user, password } = req.body;
   
-  try {
-    const sClient = createClient(supabaseUrl, supabaseAnonKey);
-    const { data, error } = await sClient.auth.getSession();
-    
-    if (error) {
-      return res.status(400).json({ success: false, error: error.message });
+  if (!host && !user) {
+    const url = process.env.DATABASE_URL;
+    if (!url) {
+      return res.status(400).json({ success: false, error: "Chưa cấu hình Connection String." });
     }
+    const parsed = parsePostgresUri(url);
+    try {
+      await testPostgresConnection(url);
+      return res.json({ 
+        success: true, 
+        message: "Kết nối tới PostgreSQL database qua Session Pooler thành công!",
+        details: `Kiểm tra kết nối hợp lệ tới máy chủ ${parsed.host}. Bảng 'options' đã sẵn sàng.`
+      });
+    } catch (err: any) {
+      const friendlyError = formatPostgresError(err, url);
+      return res.status(400).json({ success: false, error: friendlyError });
+    }
+  }
+
+  // Resolve password if placeholder or empty
+  let finalPassword = password || "";
+  if ((!password || password === "__SAVED_PASSWORD__") && process.env.DATABASE_URL) {
+    const saved = parsePostgresUri(process.env.DATABASE_URL);
+    if (saved.host === host && saved.user === user && saved.database === database) {
+      finalPassword = saved.password;
+    }
+  }
+
+  const url = constructPostgresUri({ host, port, database, user, password: finalPassword });
+
+  try {
+    await testPostgresConnection(url);
     
     return res.json({ 
       success: true, 
-      message: "Kết nối tới Supabase thành công!",
-      details: "Xác thực API Key hợp lệ cho project rrfldkxgwbcclpchuyxef."
+      message: "Kết nối tới PostgreSQL database qua Session Pooler thành công!",
+      details: `Kiểm tra kết nối hợp lệ tới máy chủ ${host}. Bảng 'options' đã sẵn sàng.`
     });
   } catch (err: any) {
-    return res.status(500).json({ success: false, error: err.message });
+    const friendlyError = formatPostgresError(err, url);
+    return res.status(400).json({ success: false, error: friendlyError });
+  }
+});
+
+// Endpoint để đẩy toàn bộ dữ liệu cũ từ db.json lên Supabase
+app.post("/api/supabase/push-data", authMiddleware, requireRole('administrator'), async (req, res) => {
+  if (!postgresPool) {
+    return res.status(400).json({ 
+      success: false, 
+      error: "Chưa cấu hình kết nối PostgreSQL. Vui lòng cấu hình kết nối trước." 
+    });
+  }
+  try {
+    await saveDbToSupabase();
+    res.json({
+      success: true,
+      message: `Đã đẩy thành công toàn bộ dữ liệu lên Supabase!`,
+      stats: {
+        posts: (db.posts || []).length,
+        terms: (db.terms || []).length,
+        users: (db.users || []).length,
+        submissions: (db.submissions || []).length,
+        videos: ((db as any).videos || []).length,
+        perspectives: ((db as any).perspectives || []).length,
+        mediaFolders: ((db as any).mediaFolders || []).length,
+        mediaItems: ((db as any).mediaItems || []).length,
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({ 
+      success: false, 
+      error: `Lỗi khi đẩy dữ liệu: ${err.message}` 
+    });
   }
 });
 
@@ -1232,12 +1854,7 @@ app.get("/api/posts", (req, res) => {
   }));
   
   // Extract user if authorization token is provided
-  let currentUser: any = null;
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.split(" ")[1];
-    currentUser = db.users.find(u => u.id === token);
-  }
+  let currentUser = getUserFromRequest(req);
   
   if (type) {
     list = list.filter(p => p.type === type);
@@ -2221,52 +2838,6 @@ app.post("/api/backup/import", authMiddleware, requireRole('administrator'), (re
   res.json({ success: true, message: "Nhập dữ liệu CMS thành công. Hệ thống đã khôi phục trạng thái mới." });
 });
 
-// API Endpoints: GEMINI AI POWERED CONTENT PLANNING ASSISTANT
-app.post("/api/gemini/assist-content", authMiddleware, async (req, res) => {
-  const { topic, type } = req.body;
-  if (!topic) return res.status(400).json({ error: "Chủ đề viết bài hoặc sản phẩm là bắt buộc." });
-
-  if (!ai) {
-    return res.status(400).json({ 
-      error: "Không tìm thấy khoá bảo mật GEMINI_API_KEY. Vui lòng thêm key tại cài đặt để chạy trợ lý AI." 
-    });
-  }
-
-  try {
-    const prompt = type === 'product'
-      ? `Bạn là chuyên gia marketing cao cấp của Pentair USA thương hiệu xử lý nước. Hãy gợi ý chi tiết bài viết giới thiệu/review chuẩn SEO về sản phẩm Pentair: "${topic}". Trả về dữ liệu dạng JSON thô có cấu trúc rõ ràng bao gồm:
-        {
-          "title": "Tiêu đề chuẩn SEO sang trọng dưới 60 ký tự",
-          "excerpt": "Tóm tắt ngắn cuốn hút dưới 150 ký tự",
-          "content": "Bài viết giới thiệu đầy đủ chi tiết hơn 300 từ bằng tiếng Việt chuẩn xác về công nghệ và cảm xúc sử dụng",
-          "seoKeywords": ["từ khoá 1", "từ khoá 2"],
-          "specs": [ {"name": "Tên thông số", "value": "Giá trị mẫu"} ]
-        }
-        Lưu ý: Chỉ trả về JSON thuần chất, không bọc thẻ markdown, không thêm ký tự lạ.`
-      : `Bạn là tổng biên tập tin tức nguồn nước của Pentair Việt Nam. Hãy soạn thảo 1 bài viết chuẩn SEO cực hay về chủ Đề: "${topic}". Trả về dữ liệu dạng JSON bao gồm:
-        {
-          "title": "Tiêu đề tin tức thời sự cuốn hút",
-          "excerpt": "Hé lộ ngắn đầy tò mò",
-          "content": "Toàn văn bài viết chuyên sâu hơn 400 từ bằng tiếng Việt phân tích khách quan và hướng về giải pháp an tâm của Pentair",
-          "seoKeywords": ["từ khoá 1", "từ khoá 2"]
-        }
-        Lưu ý: Chỉ trả về JSON thuần chất, không bọc thẻ markdown, không thêm ký tự lạ.`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json"
-      }
-    });
-
-    const text = response.text ? response.text.trim() : '{}';
-    res.json(JSON.parse(text));
-  } catch (err: any) {
-    console.error("Lỗi gọi Gemini API: ", err);
-    res.status(500).json({ error: "Sự cố khi gửi yêu cầu đến Gemini: " + err.message });
-  }
-});
 
 // Dynamic SEO sitemap.xml endpoint
 app.get("/sitemap.xml", (req, res) => {

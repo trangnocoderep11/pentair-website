@@ -78,9 +78,6 @@ export default function PerspectiveGallerySection({
         
         {/* Generous section header details */}
         <div className="max-w-3xl mx-auto text-center mb-16 space-y-3">
-          <span className="text-[10px] font-bold text-blue-700 tracking-widest uppercase bg-blue-100/60 border border-blue-200/40 px-3 py-1 rounded-full inline-block font-sans">
-            Pentair Architectural Space Layouts
-          </span>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black uppercase text-[#0B2144] tracking-tight">
             {galleryTitle}
           </h2>
