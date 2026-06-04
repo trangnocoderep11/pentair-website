@@ -246,6 +246,83 @@ export default function PublicPages({
     setDetailQty(1);
   }, [currentPath]);
 
+  // Showrooms search & filter states
+  const [showroomSearch, setShowroomSearch] = React.useState('');
+  const [activeRegion, setActiveRegion] = React.useState<'Tất cả' | 'Miền Bắc' | 'Miền Trung - Tây Nguyên' | 'Miền Nam'>('Tất cả');
+  const [selectedCity, setSelectedCity] = React.useState<string>('Tất cả');
+
+  // Helper functions for region and city categorization
+  const getShowroomRegion = (address: string) => {
+    const addr = address.toLowerCase();
+    if (addr.includes("hà nội") || addr.includes("hải phòng") || addr.includes("quảng ninh") || addr.includes("hạ long") || addr.includes("miền bắc")) {
+      return "Miền Bắc";
+    }
+    if (addr.includes("đà nẵng") || addr.includes("khánh hòa") || addr.includes("nha trang") || addr.includes("gia lai") || addr.includes("quy nhơn") || addr.includes("đắk lắk") || addr.includes("buôn ma thuột") || addr.includes("miền trung") || addr.includes("tây nguyên")) {
+      return "Miền Trung - Tây Nguyên";
+    }
+    return "Miền Nam";
+  };
+
+  const getShowroomCity = (address: string) => {
+    const addr = address.toLowerCase();
+    if (addr.includes("hồ chí minh") || addr.includes("hcm") || addr.includes("sài gòn")) return "TP. Hồ Chí Minh";
+    if (addr.includes("hà nội") || addr.includes("hn")) return "TP. Hà Nội";
+    if (addr.includes("đà nẵng")) return "TP. Đà Nẵng";
+    if (addr.includes("cần thơ")) return "TP. Cần Thơ";
+    if (addr.includes("hải phòng")) return "TP. Hải Phòng";
+    if (addr.includes("quảng ninh") || addr.includes("hạ long")) return "Tỉnh Quảng Ninh";
+    if (addr.includes("khánh hòa") || addr.includes("nha trang")) return "Tỉnh Khánh Hòa";
+    if (addr.includes("gia lai") || addr.includes("quy nhơn")) return "Tỉnh Gia Lai";
+    if (addr.includes("đắk lắk") || addr.includes("buôn ma thuột")) return "Tỉnh Đắk Lắk";
+    if (addr.includes("đồng nai") || addr.includes("biên hòa")) return "Tỉnh Đồng Nai";
+    if (addr.includes("bình dương") || addr.includes("thủ dầu một")) return "Tỉnh Bình Dương";
+    if (addr.includes("vũng tàu") || addr.includes("bà rịa")) return "Tỉnh Bà Rịa - Vũng Tàu";
+    return "Tỉnh/Thành khác";
+  };
+
+  // Filter showrooms based on search query, region, and city
+  const filteredShowroomsList = React.useMemo(() => {
+    return showrooms.filter(show => {
+      const region = getShowroomRegion(show.address || '');
+      const city = getShowroomCity(show.address || '');
+      
+      const matchSearch = 
+        (show.name || '').toLowerCase().includes(showroomSearch.toLowerCase()) ||
+        (show.address || '').toLowerCase().includes(showroomSearch.toLowerCase()) ||
+        (show.phone || '').includes(showroomSearch);
+        
+      const matchRegion = activeRegion === 'Tất cả' || region === activeRegion;
+      const matchCity = selectedCity === 'Tất cả' || city === selectedCity;
+      
+      return matchSearch && matchRegion && matchCity;
+    });
+  }, [showrooms, showroomSearch, activeRegion, selectedCity]);
+
+  // Get dynamic city options based on current region filter
+  const cityOptions = React.useMemo(() => {
+    const cities = showrooms
+      .filter(show => activeRegion === 'Tất cả' || getShowroomRegion(show.address || '') === activeRegion)
+      .map(show => getShowroomCity(show.address || ''));
+    return ['Tất cả', ...Array.from(new Set(cities))];
+  }, [showrooms, activeRegion]);
+
+  // Count helper for regions
+  const regionCounts = React.useMemo(() => {
+    const counts = {
+      'Tất cả': showrooms.length,
+      'Miền Bắc': 0,
+      'Miền Trung - Tây Nguyên': 0,
+      'Miền Nam': 0
+    };
+    showrooms.forEach(show => {
+      const reg = getShowroomRegion(show.address || '');
+      if (reg in counts) {
+        counts[reg as keyof typeof counts]++;
+      }
+    });
+    return counts;
+  }, [showrooms]);
+
   // Luxury water softening diagnostics states
   const [showSoftenerAdvisor, setShowSoftenerAdvisor] = React.useState(false);
   const [selectedRegion, setSelectedRegion] = React.useState('hn');
@@ -2011,6 +2088,204 @@ export default function PublicPages({
             </div>
           </div>
 
+        </div>
+
+        {/* National Showrooms Section */}
+        <div className="mt-16 pt-10 border-t border-gray-155">
+          <div className="max-w-3xl mb-8">
+            <span className="inline-flex items-center gap-2 text-[10px] uppercase font-extrabold tracking-[0.2em] text-blue-600 bg-blue-50 border border-blue-100 px-3.5 py-1.5 rounded-full mb-3 shadow-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block animate-pulse" />
+              Hệ thống đại lý ủy quyền
+            </span>
+            <h2 className="text-2xl md:text-3xl font-sans font-black text-[#0C3471] uppercase tracking-tight leading-tight">
+              Hệ Thống Showroom Pentair Toàn Quốc
+            </h2>
+            <p className="text-xs md:text-sm text-gray-500 leading-relaxed font-sans mt-2 font-light">
+              Quý khách có thể trực tiếp tham quan, kiểm tra chất lượng nước và trải nghiệm thực tế các dòng máy lọc nước tổng cao cấp nhập khẩu từ Mỹ tại showroom gần nhất.
+            </p>
+          </div>
+
+          {/* Search and Filters Controls */}
+          <div className="bg-white p-5 md:p-6 rounded-3xl border border-gray-100 shadow-md space-y-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+              {/* Search Bar */}
+              <div className="md:col-span-6 relative">
+                <input 
+                  type="text"
+                  placeholder="Tìm showroom theo tên, địa chỉ, số điện thoại..."
+                  value={showroomSearch}
+                  onChange={e => {
+                    setShowroomSearch(e.target.value);
+                    setSelectedCity('Tất cả'); // Reset city when searching globally
+                  }}
+                  className="w-full pl-10 pr-10 py-3 text-xs md:text-sm rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-450 text-gray-850 transition-all font-sans"
+                />
+                <Search className="w-5 h-5 text-gray-400 absolute left-3.5 top-3" />
+                {showroomSearch && (
+                  <button 
+                    onClick={() => setShowroomSearch('')}
+                    className="absolute right-3.5 top-2.5 p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-all text-xs font-bold font-sans cursor-pointer"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+
+              {/* City Selection Dropdown (Only show relevant cities) */}
+              <div className="md:col-span-6 flex items-center gap-2">
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap font-sans">Tỉnh/Thành phố:</label>
+                <select
+                  value={selectedCity}
+                  onChange={e => setSelectedCity(e.target.value)}
+                  className="w-full px-3 py-2.5 text-xs rounded-xl border border-gray-205 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-gray-800 font-sans cursor-pointer"
+                >
+                  {cityOptions.map((city, idx) => (
+                    <option key={idx} value={city}>{city}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Region Filters Tabs */}
+            <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-50">
+              {(['Tất cả', 'Miền Bắc', 'Miền Trung - Tây Nguyên', 'Miền Nam'] as const).map((region, idx) => {
+                const count = regionCounts[region];
+                const isActive = activeRegion === region;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setActiveRegion(region);
+                      setSelectedCity('Tất cả'); // Reset city selection
+                    }}
+                    className={`px-4 py-2 rounded-2xl text-[11px] md:text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
+                      isActive 
+                        ? 'bg-[#0C3471] text-white shadow-md shadow-blue-900/10' 
+                        : 'bg-slate-50 text-gray-500 hover:bg-gray-100 border border-gray-100'
+                    }`}
+                  >
+                    <span>{region}</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Showroom scroll list */}
+          <div 
+            className="max-h-[550px] overflow-y-auto pr-2 space-y-4 scrollbar-thin"
+            style={{ 
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#0C3471 rgba(0, 0, 0, 0.05)'
+            }}
+          >
+            {filteredShowroomsList.length === 0 ? (
+              <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-gray-200 p-8 space-y-3">
+                <HelpCircle className="w-12 h-12 text-gray-300 mx-auto" />
+                <h4 className="text-sm font-bold text-gray-700 font-sans uppercase">Không tìm thấy showroom phù hợp</h4>
+                <p className="text-xs text-gray-400 font-sans max-w-sm mx-auto">Vui lòng thử tìm kiếm bằng từ khóa khác hoặc thiết lập lại bộ lọc vùng miền.</p>
+                <button
+                  onClick={() => {
+                    setShowroomSearch('');
+                    setActiveRegion('Tất cả');
+                    setSelectedCity('Tất cả');
+                  }}
+                  className="px-4 py-2 bg-blue-50 text-blue-700 text-xs font-bold rounded-xl hover:bg-blue-100 transition-all cursor-pointer"
+                >
+                  Thiết lập lại bộ lọc
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
+                {filteredShowroomsList.map((show, idx) => {
+                  const region = getShowroomRegion(show.address || '');
+                  let regionBadgeColor = 'bg-blue-50 text-blue-700 border-blue-100';
+                  if (region === 'Miền Bắc') regionBadgeColor = 'bg-red-50 text-red-700 border-red-100';
+                  if (region === 'Miền Trung - Tây Nguyên') regionBadgeColor = 'bg-amber-50 text-amber-700 border-amber-100';
+
+                  return (
+                    <div 
+                      key={idx} 
+                      className="bg-white p-5 rounded-3xl border border-gray-100 hover:border-blue-200 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 flex flex-col justify-between space-y-4 group relative overflow-hidden"
+                    >
+                      {/* Decorative corner light */}
+                      <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full bg-blue-500/5 group-hover:scale-150 transition-transform duration-500 pointer-events-none" />
+
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className={`text-[9px] font-bold uppercase tracking-wider border px-2.5 py-0.5 rounded-full ${regionBadgeColor}`}>
+                            {region}
+                          </span>
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                            ✓ Đối tác chính hãng
+                          </span>
+                        </div>
+
+                        <h4 className="text-sm md:text-base font-extrabold text-[#0C3471] group-hover:text-blue-700 transition-colors tracking-tight line-clamp-1 leading-snug">
+                          {show.name}
+                        </h4>
+
+                        <div className="space-y-2 pt-1">
+                          <p className="text-xs text-gray-500 leading-relaxed font-sans min-h-[36px] flex gap-1.5 items-start">
+                            <MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                            <span>{show.address}</span>
+                          </p>
+                          <p className="text-xs text-gray-755 font-semibold flex gap-1.5 items-center">
+                            <Phone className="w-4 h-4 text-rose-500 shrink-0" />
+                            <span>Hotline: </span>
+                            <a href={`tel:${show.phone}`} className="text-rose-600 hover:underline">{show.phone}</a>
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-50">
+                        <a 
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(show.name + ' ' + show.address)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="py-2.5 bg-slate-50 hover:bg-slate-100 text-gray-600 border border-gray-150 hover:border-gray-200 text-[10px] md:text-xs font-bold rounded-2xl flex items-center justify-center gap-1.5 transition-all text-center"
+                        >
+                          <svg className="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          Xem bản đồ
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Autofill the message/notes field with showroom name
+                            setFormData(prev => ({
+                              ...prev,
+                              message: `Tôi muốn đăng ký kiểm định nguồn nước & nhận tư vấn giải pháp từ Showroom: ${show.name}\nĐịa chỉ: ${show.address}`
+                            }));
+                            
+                            // Scroll smoothly to form
+                            const formElement = document.getElementById('contacts-page-view');
+                            if (formElement) {
+                              formElement.scrollIntoView({ behavior: 'smooth' });
+                            }
+                          }}
+                          className="py-2.5 bg-blue-50 hover:bg-blue-100 text-[#0C3471] border border-blue-100 text-[10px] md:text-xs font-bold rounded-2xl flex items-center justify-center gap-1.5 transition-all cursor-pointer text-center"
+                        >
+                          <svg className="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                          Tư vấn ngay
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
