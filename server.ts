@@ -1435,10 +1435,18 @@ async function loadDbFromSupabase() {
           description: r.description, sortOrder: r.sort_order, createdAt: r.created_at
         }));
 
-        (db as any).perspectives = perspRes.rows.map((r: any) => ({
-          id: r.id, title: r.title, imageUrl: r.image_url, link: r.link,
-          sortOrder: r.sort_order, createdAt: r.created_at
-        }));
+        (db as any).perspectives = perspRes.rows.map((r: any) => {
+          const meta = r.meta || {};
+          return {
+            ...meta,
+            id: r.id,
+            title: r.title || meta.title,
+            imageUrl: r.image_url || meta.imageUrl || null,
+            link: r.link || meta.link || null,
+            sortOrder: r.sort_order ?? meta.sortOrder ?? 0,
+            createdAt: r.created_at || meta.createdAt,
+          };
+        });
 
         (db as any).mediaFolders = foldersRes.rows.map((r: any) => ({
           id: r.id, name: r.name, parentId: r.parent_id, createdAt: r.created_at
