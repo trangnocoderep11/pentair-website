@@ -49,6 +49,43 @@ interface AdminCMSProps {
   perspectives: any[];
 }
 
+function ImageThumbInput({ value, onChange, onPick, placeholder, required }: {
+  value: string;
+  onChange: (v: string) => void;
+  onPick?: () => void;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  return (
+    <div className="flex gap-2 items-start">
+      <div className="flex-shrink-0">
+        {value ? (
+          <div className="relative w-16 h-16 group">
+            <img src={value} alt="preview" className="w-full h-full object-cover rounded-lg border border-gray-200 shadow-sm" />
+            <button type="button" onClick={() => onChange('')}
+              className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity shadow">×</button>
+          </div>
+        ) : (
+          <div className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center">
+            <Image className="w-5 h-5 text-gray-300" />
+          </div>
+        )}
+      </div>
+      <div className="flex-grow flex gap-2">
+        <input type="text" value={value} onChange={e => onChange(e.target.value)}
+          placeholder={placeholder || "URL ảnh..."} required={required}
+          className="flex-grow px-3 py-2 text-xs border rounded-lg focus:outline-none font-mono" />
+        {onPick && (
+          <button type="button" onClick={onPick}
+            className="px-3 py-2 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded-lg cursor-pointer flex items-center gap-1.5 shadow-sm shrink-0">
+            <Image className="w-3.5 h-3.5" /> Kho ảnh
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminCMS({
   onNewLogin,
   currentUser,
@@ -2685,23 +2722,11 @@ export default function AdminCMS({
 
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-gray-700 block uppercase">Ảnh tiêu biểu (Featured Image URL)</label>
-                      <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          value={postForm.featuredImage}
-                          onChange={e => setPostForm({ ...postForm, featuredImage: e.target.value })}
-                          className="flex-grow px-3.5 py-2.5 text-xs rounded-lg border border-gray-200 focus:outline-none text-gray-800 font-mono"
-                          id="form-featured-image"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setActiveMediaSelector({ target: 'post_featured' })}
-                          className="px-3 py-2 text-xs font-semibold bg-slate-900 border hover:bg-slate-800 text-white rounded-lg cursor-pointer transition-colors shrink-0 flex items-center gap-1 shadow-sm font-sans"
-                        >
-                          <Image className="w-3.5 h-3.5" />
-                          Chọn từ kho ảnh
-                        </button>
-                      </div>
+                      <ImageThumbInput
+                        value={postForm.featuredImage}
+                        onChange={v => setPostForm({ ...postForm, featuredImage: v })}
+                        onPick={() => setActiveMediaSelector({ target: 'post_featured' })}
+                      />
                     </div>
 
                     <div className="space-y-1">
@@ -4568,24 +4593,12 @@ export default function AdminCMS({
 
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-gray-500 block uppercase">Ảnh thumbnail đại diện (Image URL) *</label>
-                    <div className="flex gap-2">
-                      <input 
-                        type="text" 
-                        required
-                        placeholder="https://images.unsplash.com/..."
-                        value={videoForm.thumbnail}
-                        onChange={e => setVideoForm({...videoForm, thumbnail: e.target.value})}
-                        className="flex-grow px-3 py-2 text-xs border rounded-lg focus:outline-none font-mono"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setActiveMediaSelector({ target: 'video_thumbnail' })}
-                        className="px-3 py-2 text-xs font-semibold bg-slate-900 border hover:bg-slate-800 text-white rounded-lg cursor-pointer transition-colors shrink-0 flex items-center gap-1 shadow-sm font-sans"
-                      >
-                        <Image className="w-3.5 h-3.5" />
-                        Chọn tệp
-                      </button>
-                    </div>
+                    <ImageThumbInput
+                      value={videoForm.thumbnail}
+                      onChange={v => setVideoForm({...videoForm, thumbnail: v})}
+                      onPick={() => setActiveMediaSelector({ target: 'video_thumbnail' })}
+                      required
+                    />
                   </div>
 
                   <div className="space-y-1 md:col-span-2">
@@ -4883,42 +4896,12 @@ export default function AdminCMS({
 
                   <div className="space-y-1 md:col-span-2">
                     <label className="text-[10px] font-bold text-gray-500 block uppercase">Ảnh đại diện chính (Featured Image) *</label>
-                    <div className="flex gap-3 items-start">
-                      {perspectiveForm.featuredImage ? (
-                        <div className="relative flex-shrink-0">
-                          <img
-                            src={perspectiveForm.featuredImage}
-                            alt="featured"
-                            className="w-24 h-24 object-cover rounded-xl border border-gray-200 shadow-sm"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setPerspectiveForm({...perspectiveForm, featuredImage: ''})}
-                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs cursor-pointer shadow"
-                          >×</button>
-                        </div>
-                      ) : (
-                        <div className="w-24 h-24 flex-shrink-0 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
-                          <Image className="w-6 h-6 text-gray-300" />
-                        </div>
-                      )}
-                      <div className="flex-grow space-y-2">
-                        <input
-                          type="text"
-                          placeholder="Chọn từ kho ảnh hoặc nhập URL..."
-                          value={perspectiveForm.featuredImage}
-                          onChange={e => setPerspectiveForm({...perspectiveForm, featuredImage: e.target.value})}
-                          className="w-full px-3 py-2 text-xs border rounded-lg focus:outline-none font-mono"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setActiveMediaSelector({ target: 'perspective_featured' })}
-                          className="px-3 py-2 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded-lg cursor-pointer flex items-center gap-1.5 shadow-sm"
-                        >
-                          <Image className="w-3.5 h-3.5" /> Chọn từ kho ảnh
-                        </button>
-                      </div>
-                    </div>
+                    <ImageThumbInput
+                      value={perspectiveForm.featuredImage}
+                      onChange={v => setPerspectiveForm({...perspectiveForm, featuredImage: v})}
+                      onPick={() => setActiveMediaSelector({ target: 'perspective_featured' })}
+                      placeholder="Chọn từ kho ảnh hoặc nhập URL..."
+                    />
                   </div>
 
                   <div className="space-y-2 md:col-span-2">
@@ -5281,34 +5264,12 @@ export default function AdminCMS({
                     <h4 className="text-xs font-bold uppercase text-indigo-600">Logo Trên Header</h4>
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">URL Ảnh Logo Header</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={headerSettings.logoImageUrl}
-                          onChange={e => setHeaderSettings(prev => ({ ...prev, logoImageUrl: e.target.value }))}
-                          placeholder="https://... (để trống sẽ dùng chữ logo)"
-                          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                          id="input-logo-image-url"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setActiveMediaSelector({ target: 'logo_image' })}
-                          className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-lg transition-all cursor-pointer shrink-0 whitespace-nowrap"
-                          id="btn-logo-pick-media"
-                        >
-                          <Image className="w-3.5 h-3.5" />
-                          Thư Viện
-                        </button>
-                        {headerSettings.logoImageUrl && (
-                          <button
-                            type="button"
-                            onClick={() => setHeaderSettings(prev => ({ ...prev, logoImageUrl: '' }))}
-                            className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
+                      <ImageThumbInput
+                        value={headerSettings.logoImageUrl}
+                        onChange={v => setHeaderSettings(prev => ({ ...prev, logoImageUrl: v }))}
+                        onPick={() => setActiveMediaSelector({ target: 'logo_image' })}
+                        placeholder="https://... (để trống sẽ dùng chữ logo)"
+                      />
                     </div>
 
                     <div className="space-y-1">
@@ -5330,34 +5291,12 @@ export default function AdminCMS({
                     <h4 className="text-xs font-bold uppercase text-indigo-600">Logo Dưới Footer</h4>
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">URL Ảnh Logo Footer</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={headerSettings.footerLogoImageUrl || ''}
-                          onChange={e => setHeaderSettings(prev => ({ ...prev, footerLogoImageUrl: e.target.value }))}
-                          placeholder="https://... (để trống sẽ dùng chữ logo)"
-                          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                          id="input-footer-logo-image-url"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setActiveMediaSelector({ target: 'footer_logo_image' })}
-                          className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-lg transition-all cursor-pointer shrink-0 whitespace-nowrap"
-                          id="btn-footer-logo-pick-media"
-                        >
-                          <Image className="w-3.5 h-3.5" />
-                          Thư Viện
-                        </button>
-                        {headerSettings.footerLogoImageUrl && (
-                          <button
-                            type="button"
-                            onClick={() => setHeaderSettings(prev => ({ ...prev, footerLogoImageUrl: '' }))}
-                            className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
+                      <ImageThumbInput
+                        value={headerSettings.footerLogoImageUrl || ''}
+                        onChange={v => setHeaderSettings(prev => ({ ...prev, footerLogoImageUrl: v }))}
+                        onPick={() => setActiveMediaSelector({ target: 'footer_logo_image' })}
+                        placeholder="https://... (để trống sẽ dùng chữ logo)"
+                      />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
