@@ -787,6 +787,9 @@ let db = {
   mediaItems: defaultMediaItems as any[]
 };
 
+// Setup mode: true when DATABASE_URL is not configured
+let isSetupMode = !process.env.DATABASE_URL;
+
 // Global PostgreSQL client pool for automated cloud data sync
 const { Pool } = pg;
 const databaseUrl = process.env.DATABASE_URL || "";
@@ -1327,6 +1330,209 @@ function writeDb() {
 
 app.use(express.json({ limit: '15mb' }));
 app.use("/uploads", express.static(path.join(process.cwd(), "data", "uploads")));
+
+// ===================================================================
+// SETUP WIZARD — runs when DATABASE_URL is not configured
+// ===================================================================
+const SETUP_PAGE_HTML = `<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pentair CMS — Thiết lập Database</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#060f2a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .card{background:#0d1e47;border:1px solid #1e3a6e;border-radius:20px;padding:40px;width:100%;max-width:560px;box-shadow:0 25px 60px rgba(0,0,0,.5)}
+  .logo{display:flex;align-items:center;gap:10px;margin-bottom:28px}
+  .logo-diamond{width:36px;height:36px;background:linear-gradient(135deg,#1a5fa8,#0c3471);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#e6c073;font-size:18px}
+  .logo-text{font-size:20px;font-weight:800;color:#fff;letter-spacing:.05em}
+  h1{font-size:18px;font-weight:700;color:#fff;margin-bottom:6px}
+  .subtitle{font-size:13px;color:#7ca3d4;margin-bottom:28px;line-height:1.5}
+  .badge{display:inline-block;background:#e6c073;color:#060f2a;font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:16px}
+  label{display:block;font-size:11px;font-weight:700;color:#7ca3d4;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+  input,select{width:100%;background:#060f2a;border:1px solid #1e3a6e;border-radius:10px;padding:12px 14px;font-size:13px;color:#e2eaff;outline:none;transition:border-color .2s;margin-bottom:16px;font-family:monospace}
+  input:focus,select:focus{border-color:#1a5fa8}
+  input::placeholder{color:#3a5a8a}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .toggle-link{font-size:12px;color:#e6c073;cursor:pointer;text-decoration:underline;margin-bottom:20px;display:inline-block}
+  .btn{width:100%;padding:13px;border-radius:10px;font-size:13px;font-weight:700;border:none;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.06em}
+  .btn-test{background:#1e3a6e;color:#e2eaff;margin-bottom:10px}
+  .btn-test:hover{background:#255090}
+  .btn-save{background:#e6c073;color:#060f2a}
+  .btn-save:hover{background:#f0cb7a}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .status{margin-top:16px;padding:12px 16px;border-radius:10px;font-size:13px;display:none}
+  .status.ok{background:#0d2d1f;border:1px solid #1a6640;color:#4ade80;display:block}
+  .status.err{background:#2d0d0d;border:1px solid #6b1a1a;color:#f87171;display:block}
+  .status.info{background:#0d1e47;border:1px solid #1e3a6e;color:#93c5fd;display:block}
+  .divider{border:none;border-top:1px solid #1e3a6e;margin:20px 0}
+  .hint{font-size:11px;color:#4a6a9a;margin-top:6px;line-height:1.5}
+  #fields-section{display:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-diamond">P</div>
+    <span class="logo-text">PENTAIR CMS</span>
+  </div>
+  <div class="badge">First-time Setup</div>
+  <h1>Thiết lập kết nối Database</h1>
+  <p class="subtitle">Để khởi động CMS, hãy cung cấp thông tin kết nối PostgreSQL (Supabase hoặc bất kỳ Postgres nào).</p>
+
+  <div id="url-section">
+    <label>Connection String (DATABASE_URL)</label>
+    <input id="db-url" type="text" placeholder="postgresql://user:password@host:5432/database?sslmode=require" />
+    <p class="hint">Lấy từ Supabase → Project Settings → Database → Connection String (URI mode)</p>
+    <span class="toggle-link" onclick="toggleMode()">Hoặc nhập từng trường riêng lẻ →</span>
+  </div>
+
+  <div id="fields-section">
+    <span class="toggle-link" onclick="toggleMode()">← Dùng Connection String</span>
+    <div class="row">
+      <div><label>Host</label><input id="f-host" placeholder="db.xxx.supabase.co" /></div>
+      <div><label>Port</label><input id="f-port" placeholder="5432" /></div>
+    </div>
+    <label>Database</label><input id="f-db" placeholder="postgres" />
+    <label>Username</label><input id="f-user" placeholder="postgres" />
+    <label>Password</label><input id="f-pass" type="password" placeholder="••••••••" />
+    <label>SSL Mode</label>
+    <select id="f-ssl"><option value="require">require (khuyến nghị)</option><option value="disable">disable</option></select>
+  </div>
+
+  <hr class="divider">
+  <button class="btn btn-test" onclick="testConn()">🔌 Kiểm tra kết nối</button>
+  <button class="btn btn-save" onclick="saveConn()">✅ Lưu & Khởi động CMS</button>
+  <div id="status" class="status"></div>
+</div>
+
+<script>
+let useFields = false;
+function toggleMode() {
+  useFields = !useFields;
+  document.getElementById('url-section').style.display = useFields ? 'none' : 'block';
+  document.getElementById('fields-section').style.display = useFields ? 'block' : 'none';
+}
+function getUrl() {
+  if (!useFields) return document.getElementById('db-url').value.trim();
+  const h = document.getElementById('f-host').value.trim();
+  const p = document.getElementById('f-port').value.trim() || '5432';
+  const d = document.getElementById('f-db').value.trim() || 'postgres';
+  const u = document.getElementById('f-user').value.trim();
+  const pw = encodeURIComponent(document.getElementById('f-pass').value);
+  const ssl = document.getElementById('f-ssl').value;
+  return \`postgresql://\${u}:\${pw}@\${h}:\${p}/\${d}?sslmode=\${ssl}\`;
+}
+function showStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.textContent = msg; el.className = 'status ' + type;
+}
+async function testConn() {
+  const url = getUrl();
+  if (!url) return showStatus('Vui lòng nhập connection string.', 'err');
+  showStatus('Đang kiểm tra kết nối...', 'info');
+  try {
+    const r = await fetch('/api/setup/test', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({databaseUrl:url})});
+    const d = await r.json();
+    if (d.ok) showStatus('✅ Kết nối thành công! ' + (d.version||''), 'ok');
+    else showStatus('❌ ' + d.error, 'err');
+  } catch(e) { showStatus('❌ Lỗi mạng: ' + e.message, 'err'); }
+}
+async function saveConn() {
+  const url = getUrl();
+  if (!url) return showStatus('Vui lòng nhập connection string.', 'err');
+  showStatus('Đang lưu và tải dữ liệu từ database...', 'info');
+  document.querySelectorAll('.btn').forEach(b => b.disabled = true);
+  try {
+    const r = await fetch('/api/setup/save', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({databaseUrl:url})});
+    const d = await r.json();
+    if (d.ok) {
+      showStatus('🚀 ' + d.message + ' Đang chuyển hướng...', 'ok');
+      setTimeout(() => { window.location.href = '/'; }, 2000);
+    } else {
+      showStatus('❌ ' + d.error, 'err');
+      document.querySelectorAll('.btn').forEach(b => b.disabled = false);
+    }
+  } catch(e) {
+    showStatus('❌ Lỗi: ' + e.message, 'err');
+    document.querySelectorAll('.btn').forEach(b => b.disabled = false);
+  }
+}
+</script>
+</body>
+</html>`;
+
+// Middleware: block all routes while in setup mode
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (!isSetupMode) return next();
+  if (req.path === '/setup' || req.path.startsWith('/api/setup/')) return next();
+  if (req.method === 'GET' && !req.path.startsWith('/api/')) return res.redirect('/setup');
+  return res.status(503).json({ error: 'CMS chưa được cấu hình. Truy cập /setup để thiết lập database.' });
+});
+
+app.get('/setup', (req: Request, res: Response) => {
+  if (!isSetupMode) return res.redirect('/');
+  res.send(SETUP_PAGE_HTML);
+});
+
+app.post('/api/setup/test', async (req: Request, res: Response) => {
+  const { databaseUrl } = req.body;
+  if (!databaseUrl) return res.status(400).json({ ok: false, error: 'Thiếu databaseUrl' });
+  const testPool = new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 8000 });
+  try {
+    const client = await testPool.connect();
+    const result = await client.query('SELECT version()');
+    client.release();
+    await testPool.end();
+    const version = (result.rows[0].version as string).split(' ').slice(0, 2).join(' ');
+    res.json({ ok: true, version });
+  } catch (err: any) {
+    await testPool.end().catch(() => {});
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/setup/save', async (req: Request, res: Response) => {
+  const { databaseUrl } = req.body;
+  if (!databaseUrl) return res.status(400).json({ ok: false, error: 'Thiếu databaseUrl' });
+
+  // Test trước khi lưu
+  const testPool = new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 8000 });
+  try {
+    const client = await testPool.connect();
+    client.release();
+    await testPool.end();
+  } catch (err: any) {
+    await testPool.end().catch(() => {});
+    return res.status(400).json({ ok: false, error: `Không kết nối được: ${err.message}` });
+  }
+
+  // Lưu vào .env
+  try {
+    const envPath = path.join(process.cwd(), '.env');
+    let envContent = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf-8') : '';
+    envContent = envContent.replace(/^DATABASE_URL=.*(\r?\n)?/m, '');
+    envContent = `DATABASE_URL=${databaseUrl}\n${envContent.trimStart()}`;
+    fs.writeFileSync(envPath, envContent, 'utf-8');
+  } catch (err: any) {
+    console.warn('[SETUP] Không thể ghi .env:', err.message);
+  }
+
+  // Cập nhật runtime
+  process.env.DATABASE_URL = databaseUrl;
+  updatePostgresClient(databaseUrl);
+
+  // Load dữ liệu từ DB
+  try {
+    await loadDbFromSupabase();
+    isSetupMode = false;
+    console.log('[SETUP] ✅ Thiết lập hoàn tất. CMS đang chạy với PostgreSQL.');
+    res.json({ ok: true, message: 'Thiết lập thành công! CMS đã được khởi động.' });
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: `Lỗi tải dữ liệu: ${err.message}` });
+  }
+});
 
 // JWT Secret - load from env, or fallback safely to a secure local secret key
 const JWT_SECRET = process.env.JWT_SECRET || "pentair-secret-key-high-entropy-2026-fallback";
@@ -2990,10 +3196,13 @@ app.get("/robots.txt", (req, res) => {
 
 // Vite server boot connection / Static Server in Production
 async function startServer() {
-  // Load all data from PostgreSQL before serving any requests
-  console.log("[BOOT] Đang tải dữ liệu từ PostgreSQL...");
-  await loadDbFromSupabase();
-  console.log("[BOOT] Dữ liệu đã sẵn sàng. Khởi động server...");
+  if (isSetupMode) {
+    console.log("[BOOT] ⚙️  DATABASE_URL chưa được cấu hình. Chạy ở chế độ Setup. Truy cập http://localhost:3000/setup để thiết lập.");
+  } else {
+    console.log("[BOOT] Đang tải dữ liệu từ PostgreSQL...");
+    await loadDbFromSupabase();
+    console.log("[BOOT] Dữ liệu đã sẵn sàng. Khởi động server...");
+  }
 
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");
