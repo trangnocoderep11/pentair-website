@@ -1571,21 +1571,12 @@ function writeDb() {
 app.use(express.json({ limit: '15mb' }));
 app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")));
 
-// Gate: every request waits for the DB boot before hitting any route.
-// Must be BEFORE all routes. Uses a 15 s safety cap so a hung TCP
-// connection never pushes past Vercel's ~30 s edge timeout.
-// startServer() itself already races loadDbFromSupabase() against 10 s,
-// so in practice the gate resolves in ≤ 10 s on any cold start.
-const INIT_TIMEOUT_MS = 15_000;
-app.use(async (req: Request, res: Response, next: NextFunction) => {
-  let t: ReturnType<typeof setTimeout>;
-  await Promise.race([
-    serverInitPromise,
-    new Promise<void>(resolve => { t = setTimeout(resolve, INIT_TIMEOUT_MS); })
-  ]);
-  clearTimeout(t!); // prevent the timer from keeping the event loop alive
-  next();
-});
+// NOTE: No blocking gate middleware — Vercel Hobby plan has a 10 s function
+// timeout, so we cannot await DB boot in the request path. Instead,
+// startServer() loads the DB in the background (capped at 10 s via Promise.race
+// in startServer itself). Warm instances (reused after first cold start) will
+// have the full DB data ready. Cold-start first requests are served with
+// bootstrapData and the frontend auto-refreshes once the instance is warm.
 
 // ===================================================================
 // SETUP WIZARD — runs when DATABASE_URL is not configured
