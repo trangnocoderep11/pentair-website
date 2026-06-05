@@ -14,8 +14,10 @@ import ShoppingCart from './components/ShoppingCart';
 
 export default function App() {
   
-  // VIRTUAL ROUTER PATH
-  const [currentPath, setCurrentPath] = React.useState<string>('/');
+  // REAL URL ROUTER — reads actual pathname so reloads land on the right page
+  const [currentPath, setCurrentPath] = React.useState<string>(
+    () => window.location.pathname || '/'
+  );
   // Is the administrator dashboard currently open?
   const [showAdminCMS, setShowAdminCMS] = React.useState<boolean>(false);
 
@@ -227,12 +229,20 @@ export default function App() {
     };
   }, []);
 
-  // 2. BACKWARD COMPATIBILITY DIRECT REDIRECT virtual Routing OR POPUP LISTENING
+  // 2. URL NAVIGATION — pushes real URL into history so reload works
   const handleVirtualNavigate = (url: string) => {
+    window.history.pushState(null, '', url);
     setCurrentPath(url);
     setShowAdminCMS(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Sync state when user presses browser Back / Forward
+  React.useEffect(() => {
+    const onPopState = () => setCurrentPath(window.location.pathname || '/');
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   // 3. SEO METAS HEADER UPDATE ON FLY (Dynamic meta updating)
   React.useEffect(() => {
