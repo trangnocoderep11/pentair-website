@@ -372,7 +372,7 @@ export default function App() {
           <HelpCircle className="w-12 h-12 text-red-500 mx-auto" />
           <h2 className="text-lg font-bold text-red-900 uppercase">Lỗi Đồng Bộ Hoá Dữ Liệu CMS</h2>
           <p className="text-xs text-red-700 leading-relaxed font-sans font-medium">
-            Có sự cố khi giao tiếp với API backend của website. Nguyên nhân có thể do server Express đang khởi động hoặc cổng bị chồng chéo.
+            {dataError}
           </p>
           <button 
             onClick={loadCMSData}
