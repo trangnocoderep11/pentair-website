@@ -941,16 +941,24 @@ async function dbDeleteVideo(id: string) {
 
 // --- Perspectives ---
 async function dbSavePerspective(p: any) {
-  const { id, title, imageUrl, link, sortOrder, createdAt, ...richFields } = p;
   return withPg(c => c.query(
-    `INSERT INTO public.perspectives (id,title,image_url,link,sort_order,created_at,meta)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)
+    `INSERT INTO public.perspectives
+      (id,title,slug,excerpt,content,featured_image,status,image_url,link,space_type,gallery,product_gallery,related_product_ids,is_featured,sort_order,created_at,updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
      ON CONFLICT (id) DO UPDATE SET
-      title=EXCLUDED.title, image_url=EXCLUDED.image_url, link=EXCLUDED.link,
-      sort_order=EXCLUDED.sort_order, meta=EXCLUDED.meta`,
-    [id, title || null, imageUrl || (p as any).url || null, link || null,
-     sortOrder || 0, createdAt || new Date().toISOString(),
-     JSON.stringify(richFields)]
+      title=EXCLUDED.title, slug=EXCLUDED.slug, excerpt=EXCLUDED.excerpt,
+      content=EXCLUDED.content, featured_image=EXCLUDED.featured_image,
+      status=EXCLUDED.status, image_url=EXCLUDED.image_url, link=EXCLUDED.link,
+      space_type=EXCLUDED.space_type, gallery=EXCLUDED.gallery,
+      product_gallery=EXCLUDED.product_gallery, related_product_ids=EXCLUDED.related_product_ids,
+      is_featured=EXCLUDED.is_featured, sort_order=EXCLUDED.sort_order, updated_at=EXCLUDED.updated_at`,
+    [p.id, p.title || null, p.slug || null, p.excerpt || null, p.content || null,
+     p.featuredImage || null, p.status || 'published',
+     p.imageUrl || p.url || null, p.link || null, p.spaceType || null,
+     JSON.stringify(p.gallery || []), JSON.stringify(p.productGallery || []),
+     JSON.stringify(p.relatedProductIds || []), p.isFeatured || false,
+     p.sortOrder || 0,
+     p.createdAt || new Date().toISOString(), p.updatedAt || new Date().toISOString()]
   ));
 }
 async function dbDeletePerspective(id: string) {
@@ -1066,10 +1074,21 @@ async function ensureTablesExist(client: any) {
     CREATE TABLE IF NOT EXISTS public.perspectives (
       id TEXT PRIMARY KEY,
       title TEXT,
+      slug TEXT UNIQUE,
+      excerpt TEXT,
+      content TEXT,
+      featured_image TEXT,
+      status TEXT DEFAULT 'published',
       image_url TEXT,
       link TEXT,
+      space_type TEXT,
+      gallery JSONB DEFAULT '[]'::jsonb,
+      product_gallery JSONB DEFAULT '[]'::jsonb,
+      related_product_ids JSONB DEFAULT '[]'::jsonb,
+      is_featured BOOLEAN DEFAULT false,
       sort_order INTEGER DEFAULT 0,
-      created_at TIMESTAMPTZ DEFAULT NOW()
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
     );
 
     CREATE TABLE IF NOT EXISTS public.media_folders (
@@ -1118,7 +1137,18 @@ async function ensureTablesExist(client: any) {
     `ALTER TABLE public.submissions ADD COLUMN IF NOT EXISTS source TEXT`,
     `ALTER TABLE public.submissions ADD COLUMN IF NOT EXISTS product_id TEXT`,
     `ALTER TABLE public.submissions ADD COLUMN IF NOT EXISTS meta JSONB DEFAULT '{}'::jsonb`,
-    // perspectives
+    // perspectives — add all rich-content columns missing from original schema
+    `ALTER TABLE public.perspectives ADD COLUMN IF NOT EXISTS slug TEXT`,
+    `ALTER TABLE public.perspectives ADD COLUMN IF NOT EXISTS excerpt TEXT`,
+    `ALTER TABLE public.perspectives ADD COLUMN IF NOT EXISTS content TEXT`,
+    `ALTER TABLE public.perspectives ADD COLUMN IF NOT EXISTS featured_image TEXT`,
+    `ALTER TABLE public.perspectives ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'published'`,
+    `ALTER TABLE public.perspectives ADD COLUMN IF NOT EXISTS space_type TEXT`,
+    `ALTER TABLE public.perspectives ADD COLUMN IF NOT EXISTS gallery JSONB DEFAULT '[]'::jsonb`,
+    `ALTER TABLE public.perspectives ADD COLUMN IF NOT EXISTS product_gallery JSONB DEFAULT '[]'::jsonb`,
+    `ALTER TABLE public.perspectives ADD COLUMN IF NOT EXISTS related_product_ids JSONB DEFAULT '[]'::jsonb`,
+    `ALTER TABLE public.perspectives ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT false`,
+    `ALTER TABLE public.perspectives ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
     `ALTER TABLE public.perspectives ADD COLUMN IF NOT EXISTS meta JSONB DEFAULT '{}'::jsonb`,
     // media_items
     `ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS folder_id TEXT`,
@@ -1307,14 +1337,24 @@ async function saveDbToSupabase() {
       for (const p of (db as any).perspectives || []) {
         try {
           await client.query(
-            `INSERT INTO public.perspectives (id, title, image_url, link, sort_order, created_at)
-             VALUES ($1,$2,$3,$4,$5,$6)
+            `INSERT INTO public.perspectives
+              (id,title,slug,excerpt,content,featured_image,status,image_url,link,space_type,gallery,product_gallery,related_product_ids,is_featured,sort_order,created_at,updated_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
              ON CONFLICT (id) DO UPDATE SET
-               title=EXCLUDED.title, image_url=EXCLUDED.image_url, link=EXCLUDED.link,
-               sort_order=EXCLUDED.sort_order`,
+               title=EXCLUDED.title, slug=EXCLUDED.slug, excerpt=EXCLUDED.excerpt,
+               content=EXCLUDED.content, featured_image=EXCLUDED.featured_image,
+               status=EXCLUDED.status, image_url=EXCLUDED.image_url, link=EXCLUDED.link,
+               space_type=EXCLUDED.space_type, gallery=EXCLUDED.gallery,
+               product_gallery=EXCLUDED.product_gallery, related_product_ids=EXCLUDED.related_product_ids,
+               is_featured=EXCLUDED.is_featured, sort_order=EXCLUDED.sort_order, updated_at=EXCLUDED.updated_at`,
             [
-              p.id, p.title || null, p.imageUrl || p.url || null, p.link || null,
-              p.sortOrder || 0, p.createdAt || new Date().toISOString()
+              p.id, p.title || null, p.slug || null, p.excerpt || null, p.content || null,
+              p.featuredImage || null, p.status || 'published',
+              p.imageUrl || p.url || null, p.link || null, p.spaceType || null,
+              JSON.stringify(p.gallery || []), JSON.stringify(p.productGallery || []),
+              JSON.stringify(p.relatedProductIds || []), p.isFeatured || false,
+              p.sortOrder || 0,
+              p.createdAt || new Date().toISOString(), p.updatedAt || new Date().toISOString()
             ]
           );
         } catch (e: any) { console.warn(`[SYNC] Bỏ qua perspective ${p.id}:`, e.message); }
@@ -1446,18 +1486,25 @@ async function loadDbFromSupabase() {
           description: r.description, sortOrder: r.sort_order, createdAt: r.created_at
         }));
 
-        (db as any).perspectives = perspRes.rows.map((r: any) => {
-          const meta = r.meta || {};
-          return {
-            ...meta,
-            id: r.id,
-            title: r.title || meta.title,
-            imageUrl: r.image_url || meta.imageUrl || null,
-            link: r.link || meta.link || null,
-            sortOrder: r.sort_order ?? meta.sortOrder ?? 0,
-            createdAt: r.created_at || meta.createdAt,
-          };
-        });
+        (db as any).perspectives = perspRes.rows.map((r: any) => ({
+          id: r.id,
+          title: r.title,
+          slug: r.slug,
+          excerpt: r.excerpt,
+          content: r.content,
+          featuredImage: r.featured_image,
+          status: r.status || 'published',
+          imageUrl: r.image_url || null,
+          link: r.link || null,
+          spaceType: r.space_type,
+          gallery: r.gallery || [],
+          productGallery: r.product_gallery || [],
+          relatedProductIds: r.related_product_ids || [],
+          isFeatured: r.is_featured || false,
+          sortOrder: r.sort_order || 0,
+          createdAt: r.created_at,
+          updatedAt: r.updated_at,
+        }));
 
         (db as any).mediaFolders = foldersRes.rows.map((r: any) => ({
           id: r.id, name: r.name, parentId: r.parent_id, createdAt: r.created_at
