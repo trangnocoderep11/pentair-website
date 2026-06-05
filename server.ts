@@ -3257,8 +3257,8 @@ app.post("/api/admin/media/upload", authMiddleware, async (req, res) => {
   try {
     let fileUrl: string;
 
-    if (process.env.VERCEL && process.env.BLOB_READ_WRITE_TOKEN) {
-      // Vercel: upload to Blob Storage (persistent CDN URL)
+    if (process.env.VERCEL && (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID)) {
+      // Vercel: upload to Blob Storage (OIDC or token auth — SDK picks up automatically)
       const blob = await blobPut(uniqueFilename, buffer, {
         access: 'public',
         contentType: mimeType || 'image/jpeg',
