@@ -3,6 +3,16 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install --legacy-peer-deps",
+  "functions": {
+    "api/index.ts": {
+      "excludeFiles": [
+        "public/uploads/**/*",
+        "public/**/*",
+        "dist/**/*",
+        "src/**/*"
+      ]
+    }
+  },
   "rewrites": [
     {
       "source": "/api/:path*",
