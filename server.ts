@@ -1436,8 +1436,8 @@ async function loadDbFromSupabase() {
     console.log("[POSTGRES SYNC] Đang kéo bản sao dữ liệu cao cấp từ PostgreSQL...");
 
     // Phase 1: schema migration — only on first cold start; warm instances skip this
-    // saving the ~1 s cost of 26 sequential ALTER TABLE queries.
-    if (!tablesEnsured) {
+    // saving the ~1 s cost of 26 sequential ALTER TABLE queries. Skip on Vercel to prevent connection hangs.
+    if (!tablesEnsured && !process.env.VERCEL) {
       const client = await postgresPool.connect();
       try {
         await ensureTablesExist(client);
@@ -1445,6 +1445,8 @@ async function loadDbFromSupabase() {
       } finally {
         client.release();
       }
+    } else if (process.env.VERCEL) {
+      tablesEnsured = true;
     }
 
     // Phase 1b: count check via pool (no need to hold a dedicated client)
