@@ -1735,9 +1735,14 @@ async function saveConn() {
 // Middleware: block all routes while in setup mode
 app.use((req: Request, res: Response, next: NextFunction) => {
   if (!isSetupMode) return next();
-  if (req.path === '/setup' || req.path.startsWith('/api/setup/')) return next();
+  if (
+    req.path === '/setup' || 
+    req.path.startsWith('/api/setup/') || 
+    req.path === '/api/health' || 
+    req.path === '/api/ping'
+  ) return next();
   if (req.method === 'GET' && !req.path.startsWith('/api/')) return res.redirect('/setup');
-  return res.status(503).json({ error: 'CMS chưa được cấu hình. Truy cập /setup để thiết lập database.' });
+  return res.status(503).json({ error: 'CMS chưa được cấu hình (Thiếu DATABASE_URL trên Vercel). Hãy cài đặt biến môi trường DATABASE_URL trong Dashboard của Vercel.' });
 });
 
 app.get('/setup', (req: Request, res: Response) => {

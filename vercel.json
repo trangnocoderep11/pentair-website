@@ -5,7 +5,7 @@
   "installCommand": "npm install --legacy-peer-deps",
   "functions": {
     "api/index.ts": {
-      "excludeFiles": "{public/uploads/**/*,public/**/*,dist/**/*,src/**/*}"
+      "excludeFiles": "{public/uploads/**/*,public/**/*,dist/assets/**/*,dist/index.html,src/**/*}"
     }
   },
   "rewrites": [

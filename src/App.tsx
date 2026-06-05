@@ -131,7 +131,21 @@ export default function App() {
         submissionsRes = null;
       }
 
-      if (!postsRes.ok || !termsRes.ok || !optionsRes.ok) {
+      if (!postsRes.ok) {
+        try {
+          const errData = await postsRes.json();
+          if (errData && errData.error) {
+            throw new Error(errData.error);
+          }
+        } catch (jsonErr: any) {
+          if (jsonErr.message && jsonErr.message.includes("DATABASE_URL")) {
+            throw jsonErr;
+          }
+        }
+        throw new Error("Lỗi tải thông tin cơ sở dữ liệu CMS từ máy chủ.");
+      }
+
+      if (!termsRes.ok || !optionsRes.ok) {
         throw new Error("Lỗi tải thông tin cơ sở dữ liệu CMS từ máy chủ.");
       }
 
