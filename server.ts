@@ -15,6 +15,10 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+// db.json is the primary data source — bundled by esbuild, no Supabase needed
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const dbFileData: any = require('./db.json');
+
 const app = express();
 const PORT = 3000;
 
@@ -779,17 +783,22 @@ const defaultMediaItems = [
   }
 ];
 
-// Database helper
-let db: any = { 
-  ...bootstrapData,
-  videos: [...bootstrapData.videos] as any[],
-  perspectives: [...bootstrapData.perspectives] as any[],
-  mediaFolders: defaultMediaFolders as any[],
-  mediaItems: defaultMediaItems as any[]
+// Database helper — initialized from db.json (always available, no Supabase required)
+let db: any = {
+  ...dbFileData,
+  users: [...(dbFileData.users || [])],
+  terms: [...(dbFileData.terms || [])],
+  posts: [...(dbFileData.posts || [])],
+  options: [...(dbFileData.options || [])],
+  submissions: [...(dbFileData.submissions || [])],
+  videos: [...(dbFileData.videos || [])],
+  perspectives: [...(dbFileData.perspectives || [])],
+  mediaFolders: [...(dbFileData.mediaFolders || defaultMediaFolders)],
+  mediaItems: [...(dbFileData.mediaItems || defaultMediaItems)]
 };
 
-// Setup mode: true when DATABASE_URL is not configured
-let isSetupMode = !process.env.DATABASE_URL;
+// Setup mode: always false — db.json serves all data without database configuration
+let isSetupMode = false;
 // Set to true if DB connection fails — blocks API routes returning stale bootstrap data
 let dbLoadFailed = false;
 
@@ -1593,14 +1602,19 @@ async function loadDbFromSupabase() {
   }
 }
 
-// writeDb: Blob backup for disaster recovery only — individual writes use targeted SQL helpers
+// writeDb: persist to db.json locally; no-op on Vercel (ephemeral filesystem)
 function writeDb() {
-  // Blob backup for disaster recovery only — individual writes use targeted SQL helpers
+  try {
+    fs.writeFileSync(path.join(process.cwd(), 'db.json'), JSON.stringify(db, null, 2), 'utf-8');
+  } catch (e: any) {
+    console.warn('[DB WRITE] Cannot persist db.json:', e.message);
+  }
+  // Best-effort Postgres backup if pool is available
   withPg(c => c.query(
     `INSERT INTO public.options (id,option_name,option_value) VALUES ($1,$2,$3)
      ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value`,
     ['opt-database-backup', 'cms_database_backup', JSON.stringify(db)]
-  )).catch(e => console.error('[DB BACKUP]', e));
+  )).catch(() => {});
 }
 
 app.use(express.json({ limit: '15mb' }));
@@ -1611,7 +1625,7 @@ app.get('/api/ping', (_req: Request, res: Response) => {
   res.json({ ok: true, ts: Date.now(), env: process.env.NODE_ENV, vercel: !!process.env.VERCEL, hasDb: !!process.env.DATABASE_URL });
 });
 
-let dbLoaded = false;
+let dbLoaded = true; // db.json loaded at module init — always ready
 let dbLoadPromise: Promise<void> | null = null;
 let dbRetryAfter = 0; // timestamp: don't retry before this time
 
@@ -1914,13 +1928,9 @@ app.post('/api/setup/save', async (req: Request, res: Response) => {
   }
 });
 
-// Block all data-serving routes when the database failed to load
-app.use((req: Request, res: Response, next: NextFunction) => {
-  if (!dbLoadFailed) return next();
-  if (req.path === '/api/ping' || req.path === '/api/health') return next();
-  if (req.method === 'GET' && !req.path.startsWith('/api/')) return next(); // Let SPA static files through
-  return res.status(503).json({ error: 'Database không khả dụng. Vui lòng kiểm tra biến môi trường DATABASE_URL và thử lại.' });
-});
+// db.json is always available — this gate is disabled
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((_req: Request, _res: Response, next: NextFunction) => next());
 
 // JWT Secret - load from env, or fallback safely to a secure local secret key
 const JWT_SECRET = process.env.JWT_SECRET || "pentair-secret-key-high-entropy-2026-fallback";
