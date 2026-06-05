@@ -1583,6 +1583,11 @@ function writeDb() {
 app.use(express.json({ limit: '15mb' }));
 app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")));
 
+// Instant ping — no gate, no DB, used to verify the function boots at all.
+app.get('/api/ping', (_req: Request, res: Response) => {
+  res.json({ ok: true, ts: Date.now(), env: process.env.NODE_ENV, vercel: !!process.env.VERCEL, hasDb: !!process.env.DATABASE_URL });
+});
+
 // Gate: wait for DB boot before serving any route.
 // With PgBouncer the boot takes ~1-2 s; 3 s cap keeps well inside
 // Vercel Hobby's 10 s function timeout.
