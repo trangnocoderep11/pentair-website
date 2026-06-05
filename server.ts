@@ -808,7 +808,8 @@ if (databaseUrl) {
     // max:2 to avoid saturating Supabase session-mode pool (pool_size:15) if wrong URL used.
     max: 2,
     connectionTimeoutMillis: 4_000,
-    idleTimeoutMillis: 10_000
+    idleTimeoutMillis: 10_000,
+    query_timeout: 4_000 // Safeguard: abort query if PgBouncer hangs it
   });
 }
 
@@ -821,7 +822,11 @@ function updatePostgresClient(connectionString: string) {
   }
   postgresPool = new Pool({
     connectionString: connectionString,
-    ssl: { rejectUnauthorized: false }
+    ssl: { rejectUnauthorized: false },
+    max: 2,
+    connectionTimeoutMillis: 4_000,
+    idleTimeoutMillis: 10_000,
+    query_timeout: 4_000
   });
 }
 
