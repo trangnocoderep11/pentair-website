@@ -12,6 +12,7 @@ import nodemailer from "nodemailer";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import { put as blobPut } from "@vercel/blob";
 
 dotenv.config();
 
@@ -3215,7 +3216,7 @@ app.delete("/api/admin/media/folders/:id", authMiddleware, (req, res) => {
   res.json({ success: true });
 });
 
-app.post("/api/admin/media/upload", authMiddleware, (req, res) => {
+app.post("/api/admin/media/upload", authMiddleware, async (req, res) => {
   const { filename, mimeType, base64Data, url, folderId } = req.body;
   
   if (!db.mediaItems) db.mediaItems = [];
@@ -3248,30 +3249,30 @@ app.post("/api/admin/media/upload", authMiddleware, (req, res) => {
     return res.status(400).json({ error: "Thiếu dữ liệu tệp tin upload." });
   }
 
-  const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
-  if (!process.env.VERCEL) {
-    try {
+  const displayTitle = sanitizeString(filename);
+  const safeFilename = path.basename(filename).replace(/[^a-zA-Z0-9.\-_]/g, '_');
+  const uniqueFilename = `${Date.now()}-${safeFilename}`;
+  const buffer = Buffer.from(base64Data, "base64");
+
+  try {
+    let fileUrl: string;
+
+    if (process.env.VERCEL && process.env.BLOB_READ_WRITE_TOKEN) {
+      // Vercel: upload to Blob Storage (persistent CDN URL)
+      const blob = await blobPut(uniqueFilename, buffer, {
+        access: 'public',
+        contentType: mimeType || 'image/jpeg',
+      });
+      fileUrl = blob.url;
+    } else {
+      // Local dev: write to public/uploads/
+      const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
       if (!fs.existsSync(UPLOADS_DIR)) {
         fs.mkdirSync(UPLOADS_DIR, { recursive: true });
       }
-    } catch (err) {
-      console.error("Could not create uploads directory", err);
+      fs.writeFileSync(path.join(UPLOADS_DIR, uniqueFilename), buffer);
+      fileUrl = `/uploads/${uniqueFilename}`;
     }
-  }
-
-  // Tên hiển thị (title) phải trùng khớp 100% với tên ảnh trên thiết bị (filename gốc)
-  const displayTitle = sanitizeString(filename);
-
-  // Tên tệp vật lý lưu trữ trên hệ thống máy chủ cần an toàn (loại bỏ ký tự nguy hiểm)
-  const safeFilename = path.basename(filename).replace(/[^a-zA-Z0-9.\-_]/g, '_');
-  const uniqueFilename = `${Date.now()}-${safeFilename}`;
-  const filePath = path.join(UPLOADS_DIR, uniqueFilename);
-
-  try {
-    const buffer = Buffer.from(base64Data, "base64");
-    fs.writeFileSync(filePath, buffer);
-
-    const fileUrl = `/uploads/${uniqueFilename}`;
 
     const newItem = {
       id: "media-" + crypto.randomUUID(),
