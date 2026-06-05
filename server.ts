@@ -803,9 +803,10 @@ if (databaseUrl) {
   postgresPool = new Pool({
     connectionString: databaseUrl,
     ssl: { rejectUnauthorized: false },
-    max: 10,                         // allow enough parallel connections
-    connectionTimeoutMillis: 15_000, // give up connecting after 15 s
-    idleTimeoutMillis: 30_000        // release idle connections quickly
+    max: 5,                          // conservative — avoids exhausting Supabase free-tier limit
+    connectionTimeoutMillis: 8_000,  // pool-level: give up waiting for a free slot after 8 s
+    connect_timeout: 8,              // TCP-level: abort if the server doesn't accept in 8 s
+    idleTimeoutMillis: 20_000        // release idle connections quickly
   });
 }
 
@@ -1570,15 +1571,19 @@ function writeDb() {
 app.use(express.json({ limit: '15mb' }));
 app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")));
 
-// Gate: every request waits for the DB boot to complete before hitting any route.
-// Must be registered BEFORE routes so Express reaches it first.
-// Race against a 25 s timeout so a hung DB connection never causes a 300 s Vercel timeout.
-const INIT_TIMEOUT_MS = 25_000;
+// Gate: every request waits for the DB boot before hitting any route.
+// Must be BEFORE all routes. Uses a 15 s safety cap so a hung TCP
+// connection never pushes past Vercel's ~30 s edge timeout.
+// startServer() itself already races loadDbFromSupabase() against 10 s,
+// so in practice the gate resolves in ≤ 10 s on any cold start.
+const INIT_TIMEOUT_MS = 15_000;
 app.use(async (req: Request, res: Response, next: NextFunction) => {
+  let t: ReturnType<typeof setTimeout>;
   await Promise.race([
     serverInitPromise,
-    new Promise<void>(resolve => setTimeout(resolve, INIT_TIMEOUT_MS))
+    new Promise<void>(resolve => { t = setTimeout(resolve, INIT_TIMEOUT_MS); })
   ]);
+  clearTimeout(t!); // prevent the timer from keeping the event loop alive
   next();
 });
 
@@ -3476,7 +3481,11 @@ async function startServer() {
     console.log("[BOOT] ⚙️  DATABASE_URL chưa được cấu hình. Chạy ở chế độ Setup. Truy cập http://localhost:3000/setup để thiết lập.");
   } else {
     console.log("[BOOT] Đang tải dữ liệu từ PostgreSQL...");
-    await loadDbFromSupabase();
+    // Hard 10 s cap so a hung TCP connection never blocks startServer() past Vercel's edge timeout.
+    await Promise.race([
+      loadDbFromSupabase(),
+      new Promise<void>(resolve => setTimeout(resolve, 10_000))
+    ]);
     console.log("[BOOT] Dữ liệu đã sẵn sàng. Khởi động server...");
   }
 
