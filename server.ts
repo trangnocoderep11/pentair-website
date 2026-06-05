@@ -1819,18 +1819,28 @@ async function saveConn() {
 app.use((req: Request, res: Response, next: NextFunction) => {
   if (!isSetupMode) return next();
   if (
-    req.path === '/setup' || 
-    req.path.startsWith('/api/setup/') || 
-    req.path === '/api/health' || 
+    req.path === '/api/setup-wizard' ||
+    req.path === '/setup' ||
+    req.path.startsWith('/api/setup/') ||
+    req.path === '/api/health' ||
     req.path === '/api/ping'
   ) return next();
-  if (req.method === 'GET' && !req.path.startsWith('/api/')) return res.redirect('/setup');
-  return res.status(503).json({ error: 'CMS chưa được cấu hình (Thiếu DATABASE_URL trên Vercel). Hãy cài đặt biến môi trường DATABASE_URL trong Dashboard của Vercel.' });
+  // Non-API GET requests (local dev): redirect to the wizard page
+  if (req.method === 'GET' && !req.path.startsWith('/api/')) return res.redirect('/api/setup-wizard');
+  // API requests: return JSON 503 with the wizard URL so the SPA/client knows where to go
+  return res.status(503).json({ error: 'CMS chưa được cấu hình. Truy cập /api/setup-wizard để thiết lập DATABASE_URL.' });
 });
 
-app.get('/setup', (req: Request, res: Response) => {
+// Primary wizard route — accessible on Vercel because /api/* routes reach the serverless function
+app.get('/api/setup-wizard', (req: Request, res: Response) => {
   if (!isSetupMode) return res.redirect('/');
   res.send(SETUP_PAGE_HTML);
+});
+
+// Legacy alias kept for local dev backward compatibility
+app.get('/setup', (req: Request, res: Response) => {
+  if (!isSetupMode) return res.redirect('/');
+  res.redirect('/api/setup-wizard');
 });
 
 app.post('/api/setup/test', async (req: Request, res: Response) => {
