@@ -803,9 +803,9 @@ if (databaseUrl) {
   postgresPool = new Pool({
     connectionString: databaseUrl,
     ssl: { rejectUnauthorized: false },
-    max: 3,                      // cap connections per serverless instance
-    connectionTimeoutMillis: 10_000, // give up connecting after 10 s
-    idleTimeoutMillis: 30_000       // release idle connections quickly
+    max: 10,                         // allow enough parallel connections
+    connectionTimeoutMillis: 15_000, // give up connecting after 15 s
+    idleTimeoutMillis: 30_000        // release idle connections quickly
   });
 }
 
@@ -1388,17 +1388,20 @@ async function loadDbFromSupabase() {
   }
   try {
     console.log("[POSTGRES SYNC] Đang kéo bản sao dữ liệu cao cấp từ PostgreSQL...");
+    // Phase 1: schema setup + count check — use a dedicated client, release it immediately after.
     const client = await postgresPool.connect();
+    let hasRealData = false;
     try {
       await ensureTablesExist(client);
-
-      // Kiểm tra nếu bảng posts có dữ liệu thực (không chỉ blob dự phòng)
       const postsCheck = await client.query("SELECT COUNT(*) as cnt FROM public.posts");
-      const hasRealData = parseInt(postsCheck.rows[0].cnt) > 0;
+      hasRealData = parseInt(postsCheck.rows[0].cnt) > 0;
+    } finally {
+      client.release(); // Free the connection BEFORE running parallel queries below.
+    }
 
       if (hasRealData) {
-        // Load từ các bảng riêng biệt — dùng pool.query() để mỗi query lấy connection riêng,
-        // tránh DeprecationWarning và queue-stuck khi dùng chung 1 client.
+        // Phase 2: load all tables in parallel — each pool.query() takes its own connection
+        // so there is no concurrent-query DeprecationWarning and no connection starvation.
         const [postsRes, termsRes, usersRes, subsRes, videosRes, perspRes, foldersRes, itemsRes, optsRes] = await Promise.all([
           postgresPool.query("SELECT * FROM public.posts ORDER BY menu_order ASC"),
           postgresPool.query("SELECT * FROM public.terms"),
@@ -1477,8 +1480,8 @@ async function loadDbFromSupabase() {
 
         console.log(`[POSTGRES SYNC] ✅ Khôi phục thành công từ bảng riêng: ${db.posts.length} posts, ${db.terms.length} terms, ${db.users.length} users!`);
       } else {
-        // Fallback: thử load từ blob backup
-        const res = await client.query(
+        // Fallback: thử load từ blob backup (client đã release ở Phase 1, dùng pool)
+        const res = await postgresPool.query(
           "SELECT option_value FROM public.options WHERE option_name = $1 LIMIT 1",
           ["cms_database_backup"]
         );
@@ -1496,16 +1499,12 @@ async function loadDbFromSupabase() {
           (db as any).mediaItems = parsed.mediaItems || (db as any).mediaItems;
 
           console.log("[POSTGRES SYNC] Khôi phục từ blob backup. Đang đẩy lên các bảng riêng...");
-          // Đẩy lại vào các bảng riêng để lần sau load nhanh hơn
           await saveDbToSupabase();
         } else {
           console.log("[POSTGRES SYNC] Database trống. Đang đẩy dữ liệu ban đầu lên PostgreSQL...");
           await saveDbToSupabase();
         }
       }
-    } finally {
-      client.release();
-    }
   } catch (err: any) {
     console.warn("[POSTGRES SYNC] Không thể kết nối PostgreSQL. Server chạy với dữ liệu bootstrap trong bộ nhớ (không lưu trữ):", err.message);
   }
