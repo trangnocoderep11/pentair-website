@@ -802,7 +802,10 @@ let postgresPool: any = null;
 if (databaseUrl) {
   postgresPool = new Pool({
     connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false }
+    ssl: { rejectUnauthorized: false },
+    max: 3,                      // cap connections per serverless instance
+    connectionTimeoutMillis: 10_000, // give up connecting after 10 s
+    idleTimeoutMillis: 30_000       // release idle connections quickly
   });
 }
 
@@ -1394,17 +1397,18 @@ async function loadDbFromSupabase() {
       const hasRealData = parseInt(postsCheck.rows[0].cnt) > 0;
 
       if (hasRealData) {
-        // Load từ các bảng riêng biệt
+        // Load từ các bảng riêng biệt — dùng pool.query() để mỗi query lấy connection riêng,
+        // tránh DeprecationWarning và queue-stuck khi dùng chung 1 client.
         const [postsRes, termsRes, usersRes, subsRes, videosRes, perspRes, foldersRes, itemsRes, optsRes] = await Promise.all([
-          client.query("SELECT * FROM public.posts ORDER BY menu_order ASC"),
-          client.query("SELECT * FROM public.terms"),
-          client.query("SELECT * FROM public.users"),
-          client.query("SELECT * FROM public.submissions ORDER BY created_at DESC"),
-          client.query("SELECT * FROM public.videos ORDER BY sort_order ASC"),
-          client.query("SELECT * FROM public.perspectives ORDER BY sort_order ASC"),
-          client.query("SELECT * FROM public.media_folders"),
-          client.query("SELECT * FROM public.media_items ORDER BY created_at DESC"),
-          client.query("SELECT * FROM public.options WHERE option_name != 'cms_database_backup'"),
+          postgresPool.query("SELECT * FROM public.posts ORDER BY menu_order ASC"),
+          postgresPool.query("SELECT * FROM public.terms"),
+          postgresPool.query("SELECT * FROM public.users"),
+          postgresPool.query("SELECT * FROM public.submissions ORDER BY created_at DESC"),
+          postgresPool.query("SELECT * FROM public.videos ORDER BY sort_order ASC"),
+          postgresPool.query("SELECT * FROM public.perspectives ORDER BY sort_order ASC"),
+          postgresPool.query("SELECT * FROM public.media_folders"),
+          postgresPool.query("SELECT * FROM public.media_items ORDER BY created_at DESC"),
+          postgresPool.query("SELECT * FROM public.options WHERE option_name != 'cms_database_backup'"),
         ]);
 
         db.posts = postsRes.rows.map((r: any) => ({
@@ -1522,8 +1526,13 @@ app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")
 
 // Gate: every request waits for the DB boot to complete before hitting any route.
 // Must be registered BEFORE routes so Express reaches it first.
+// Race against a 25 s timeout so a hung DB connection never causes a 300 s Vercel timeout.
+const INIT_TIMEOUT_MS = 25_000;
 app.use(async (req: Request, res: Response, next: NextFunction) => {
-  await serverInitPromise;
+  await Promise.race([
+    serverInitPromise,
+    new Promise<void>(resolve => setTimeout(resolve, INIT_TIMEOUT_MS))
+  ]);
   next();
 });
 
