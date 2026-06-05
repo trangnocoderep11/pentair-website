@@ -825,10 +825,10 @@ if (databaseUrl) {
     connectionString: databaseUrl,
     ssl: { rejectUnauthorized: false },
     max: 5,
-    connectionTimeoutMillis: 4_000,
+    connectionTimeoutMillis: 8_000,
     idleTimeoutMillis: 10_000,
-    query_timeout: 4_000,
-    statement_timeout: 4_000,
+    query_timeout: 8_000,
+    statement_timeout: 8_000,
     // Critical for Vercel/Lambda: allow Node.js event loop to exit when pool is idle
     // Without this, internal pool timers keep the function alive indefinitely after responding
     allowExitOnIdle: true,
@@ -847,10 +847,10 @@ function updatePostgresClient(connectionString: string) {
     connectionString: cleanedUrl,
     ssl: { rejectUnauthorized: false },
     max: 5,
-    connectionTimeoutMillis: 4_000,
+    connectionTimeoutMillis: 8_000,
     idleTimeoutMillis: 10_000,
-    query_timeout: 4_000,
-    statement_timeout: 4_000,
+    query_timeout: 8_000,
+    statement_timeout: 8_000,
     allowExitOnIdle: true,
   });
 }
@@ -1622,40 +1622,49 @@ app.get('/api/ping', (_req: Request, res: Response) => {
 
 let dbLoaded = false;
 let dbLoadPromise: Promise<void> | null = null;
+let dbRetryAfter = 0; // timestamp: don't retry before this time
 
 async function ensureDbLoaded() {
-  if (dbLoaded || isSetupMode) return;
+  if ((dbLoaded && !dbLoadFailed) || isSetupMode) return;
+  // Retry cooldown: if last attempt failed, wait 8s before trying again
+  if (dbLoadFailed && Date.now() < dbRetryAfter) {
+    throw new Error("DB unavailable, retry cooldown active");
+  }
+  if (dbLoadFailed) {
+    // Cooldown expired — reset state and try again
+    dbLoaded = false;
+    dbLoadFailed = false;
+    dbLoadPromise = null;
+    if (!postgresPool && databaseUrl) {
+      postgresPool = new Pool({
+        connectionString: databaseUrl,
+        ssl: { rejectUnauthorized: false },
+        max: 5,
+        connectionTimeoutMillis: 8_000,
+        idleTimeoutMillis: 10_000,
+        query_timeout: 8_000,
+        statement_timeout: 8_000,
+        allowExitOnIdle: true,
+      });
+    }
+  }
   if (!dbLoadPromise) {
     dbLoadPromise = (async () => {
       console.log("[LAZY BOOT] Đang tải dữ liệu từ PostgreSQL (Lazy)...");
-      let timeoutTriggered = false;
-      const timeoutPromise = new Promise<void>((_, reject) => 
-        setTimeout(() => {
-          timeoutTriggered = true;
-          reject(new Error("Timeout tải DB"));
-        }, 4_000)
+      const timeoutPromise = new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout tải DB")), 8_000)
       );
 
       try {
-        await Promise.race([
-          loadDbFromSupabase(),
-          timeoutPromise
-        ]);
+        await Promise.race([loadDbFromSupabase(), timeoutPromise]);
         dbLoaded = true;
         console.log("[LAZY BOOT] Dữ liệu PostgreSQL đã tải xong.");
       } catch (err: any) {
         dbLoadFailed = true;
-        dbLoaded = true; // Prevent retry storm on permanent failure
+        dbLoaded = false;
+        dbLoadPromise = null; // Allow retry after cooldown
+        dbRetryAfter = Date.now() + 8_000;
         console.error("[LAZY BOOT] ❌ Database không khả dụng:", err.message);
-
-        if (timeoutTriggered) {
-          console.warn("[LAZY BOOT] Tiến hành đóng pool kết nối bị kẹt để giải phóng event loop...");
-          if (postgresPool) {
-            const oldPool = postgresPool;
-            postgresPool = null;
-            oldPool.end().catch((e: any) => console.error("[LAZY BOOT] Lỗi khi đóng pool bị kẹt:", e.message));
-          }
-        }
       }
     })();
   }

@@ -5,6 +5,7 @@
   "installCommand": "npm install --legacy-peer-deps",
   "functions": {
     "api/index.ts": {
+      "maxDuration": 10,
       "excludeFiles": "{public/uploads/**/*,public/**/*,dist/assets/**/*,dist/index.html,src/**/*}"
     }
   },
