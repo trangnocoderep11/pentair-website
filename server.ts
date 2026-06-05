@@ -805,7 +805,8 @@ if (databaseUrl) {
     ssl: { rejectUnauthorized: false },
     // Optimised for Supabase PgBouncer (port 6543, Transaction mode).
     // PgBouncer handles the real backend connections; the client pool stays small.
-    max: 3,
+    // max:2 to avoid saturating Supabase session-mode pool (pool_size:15) if wrong URL used.
+    max: 2,
     connectionTimeoutMillis: 4_000, // give up waiting for a pool slot after 4 s
     connect_timeout: 4,             // TCP-level abort after 4 s (crucial for hung connections)
     idleTimeoutMillis: 10_000       // release idle connections quickly in serverless
