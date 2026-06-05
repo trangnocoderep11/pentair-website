@@ -780,7 +780,7 @@ const defaultMediaItems = [
 ];
 
 // Database helper
-let db = { 
+let db: any = { 
   ...bootstrapData,
   videos: [...bootstrapData.videos] as any[],
   perspectives: [...bootstrapData.perspectives] as any[],

@@ -35,6 +35,7 @@ interface PublicPagesProps {
     address: string;
     facebook: string;
     youtube: string;
+    mapIframeUrl?: string;
   };
   showrooms: { name: string; address: string; phone: string }[];
   posts: Post[];
@@ -42,6 +43,7 @@ interface PublicPagesProps {
   currentUser?: any;
   onFormSubmitSuccess: () => void;
   videos: any[];
+  perspectives?: any[];
   onAddToCart?: (product: Post, quantity?: number, autoOpen?: boolean) => void;
   headerSettings?: any;
   homepageSettings?: any;
