@@ -820,9 +820,9 @@ if (databaseUrl) {
     connectionTimeoutMillis: 8_000,
     idleTimeoutMillis: 10_000,
     query_timeout: 8_000,
-    statement_timeout: 8_000,
-    // Critical for Vercel/Lambda: allow Node.js event loop to exit when pool is idle
-    // Without this, internal pool timers keep the function alive indefinitely after responding
+    // statement_timeout intentionally omitted: pg sends it as a startup parameter
+    // and Supabase PgBouncer rejects connections with unknown startup params.
+    // query_timeout provides equivalent client-side enforcement without server round-trip.
     allowExitOnIdle: true,
   });
 }
@@ -842,7 +842,6 @@ function updatePostgresClient(connectionString: string) {
     connectionTimeoutMillis: 8_000,
     idleTimeoutMillis: 10_000,
     query_timeout: 8_000,
-    statement_timeout: 8_000,
     allowExitOnIdle: true,
   });
 }
@@ -1635,7 +1634,6 @@ async function ensureDbLoaded() {
         connectionTimeoutMillis: 8_000,
         idleTimeoutMillis: 10_000,
         query_timeout: 8_000,
-        statement_timeout: 8_000,
         allowExitOnIdle: true,
       });
     }
@@ -1850,12 +1848,11 @@ app.post('/api/setup/test', async (req: Request, res: Response) => {
   const { databaseUrl } = req.body;
   if (!databaseUrl) return res.status(400).json({ ok: false, error: 'Thiếu databaseUrl' });
   const cleanedUrl = getCleanDatabaseUrl(databaseUrl);
-  const testPool = new Pool({ 
-    connectionString: cleanedUrl, 
-    ssl: { rejectUnauthorized: false }, 
+  const testPool = new Pool({
+    connectionString: cleanedUrl,
+    ssl: { rejectUnauthorized: false },
     connectionTimeoutMillis: 4000,
     query_timeout: 4000,
-    statement_timeout: 4000
   });
   try {
     const client = await testPool.connect();
@@ -1876,12 +1873,11 @@ app.post('/api/setup/save', async (req: Request, res: Response) => {
 
   const cleanedUrl = getCleanDatabaseUrl(databaseUrl);
   // Test trước khi lưu
-  const testPool = new Pool({ 
-    connectionString: cleanedUrl, 
-    ssl: { rejectUnauthorized: false }, 
+  const testPool = new Pool({
+    connectionString: cleanedUrl,
+    ssl: { rejectUnauthorized: false },
     connectionTimeoutMillis: 4000,
     query_timeout: 4000,
-    statement_timeout: 4000
   });
   try {
     const client = await testPool.connect();
