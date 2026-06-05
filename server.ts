@@ -798,21 +798,13 @@ let serverInitPromise: Promise<void> = Promise.resolve();
 
 function getCleanDatabaseUrl(url: string): string {
   if (!url) return "";
-  let cleaned = url;
-  if (cleaned.includes(":6543")) {
-    console.log("[DB] DATABASE_URL contains port 6543 (PgBouncer/Supabase Transaction Mode). Auto-converting to port 5432 (Session Mode) to support node-postgres prepared statements.");
-    cleaned = cleaned.replace(":6543", ":5432");
+  // Supabase PgBouncer rejects connections with 'options' startup parameter.
+  // statement_timeout is enforced client-side via Pool config — no URL param needed.
+  if (url.includes(":6543")) {
+    console.log("[DB] Auto-converting port 6543 (Transaction Mode) to 5432 (Session Mode).");
+    url = url.replace(":6543", ":5432");
   }
-  
-  if (cleaned.includes("?")) {
-    if (!cleaned.includes("statement_timeout")) {
-      cleaned += "&options=-c%20statement_timeout=4000";
-    }
-  } else {
-    cleaned += "?options=-c%20statement_timeout=4000";
-  }
-  
-  return cleaned;
+  return url;
 }
 
 // Global PostgreSQL client pool for automated cloud data sync
