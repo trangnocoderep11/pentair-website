@@ -3435,6 +3435,26 @@ async function startServer() {
   }
 }
 
-startServer();
+// Debug endpoint — check server status on Vercel
+app.get('/api/health', (req: Request, res: Response) => {
+  res.json({
+    ok: true,
+    isSetupMode,
+    hasDb: !!postgresPool,
+    posts: db.posts?.length ?? 0,
+    perspectives: (db as any).perspectives?.length ?? 0,
+    videos: (db as any).videos?.length ?? 0,
+    env: { hasDatabaseUrl: !!process.env.DATABASE_URL, nodeEnv: process.env.NODE_ENV, vercel: !!process.env.VERCEL }
+  });
+});
+
+// On serverless: start init immediately and await on first request
+const serverInitPromise = startServer().catch(err => console.error('[BOOT]', err));
+
+// Middleware: wait for initialization before handling any request (critical for Vercel cold starts)
+app.use(async (req: Request, res: Response, next: NextFunction) => {
+  await serverInitPromise;
+  next();
+});
 
 export default app;
