@@ -50,14 +50,13 @@ function sanitizeHtml(html: string): string {
   return clean;
 }
 
-// Data directory for uploaded files only (no more db.json)
-const DATA_DIR = path.join(process.cwd(), "data");
+// Uploads directory — public/uploads/ for Vercel CDN serving
+const UPLOADS_BASE = path.join(process.cwd(), "public", "uploads");
 
-// Ensure uploads directory exists
+// Ensure uploads directory exists (local dev / self-hosted only)
 try {
-  const uploadsDir = path.join(DATA_DIR, "uploads");
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
+  if (!fs.existsSync(UPLOADS_BASE)) {
+    fs.mkdirSync(UPLOADS_BASE, { recursive: true });
   }
 } catch (err) {
   console.warn("Could not create uploads directory.", err);
@@ -1514,7 +1513,7 @@ function writeDb() {
 }
 
 app.use(express.json({ limit: '15mb' }));
-app.use("/uploads", express.static(path.join(process.cwd(), "data", "uploads")));
+app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")));
 
 // ===================================================================
 // SETUP WIZARD — runs when DATABASE_URL is not configured
@@ -3035,7 +3034,7 @@ app.post("/api/admin/media/upload", authMiddleware, (req, res) => {
     return res.status(400).json({ error: "Thiếu dữ liệu tệp tin upload." });
   }
 
-  const UPLOADS_DIR = path.join(process.cwd(), "data", "uploads");
+  const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
   try {
     if (!fs.existsSync(UPLOADS_DIR)) {
       fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -3103,7 +3102,7 @@ app.delete("/api/admin/media/items/:id", authMiddleware, (req, res) => {
   const item = db.mediaItems[idx];
   if (item.url.startsWith("/uploads/")) {
     const filename = item.url.replace("/uploads/", "");
-    const filePath = path.join(process.cwd(), "data", "uploads", filename);
+    const filePath = path.join(process.cwd(), "public", "uploads", filename);
     if (fs.existsSync(filePath)) {
       try {
         fs.unlinkSync(filePath);
