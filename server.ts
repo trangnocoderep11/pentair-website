@@ -805,8 +805,7 @@ if (databaseUrl) {
     ssl: { rejectUnauthorized: false },
     // Optimised for Supabase PgBouncer (port 6543, Transaction mode).
     // PgBouncer handles the real backend connections; the client pool stays small.
-    // max:2 to avoid saturating Supabase session-mode pool (pool_size:15) if wrong URL used.
-    max: 2,
+    max: 5,
     connectionTimeoutMillis: 4_000,
     idleTimeoutMillis: 10_000,
     query_timeout: 4_000 // Safeguard: abort query if PgBouncer hangs it
@@ -823,7 +822,7 @@ function updatePostgresClient(connectionString: string) {
   postgresPool = new Pool({
     connectionString: connectionString,
     ssl: { rejectUnauthorized: false },
-    max: 2,
+    max: 5,
     connectionTimeoutMillis: 4_000,
     idleTimeoutMillis: 10_000,
     query_timeout: 4_000
