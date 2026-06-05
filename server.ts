@@ -817,7 +817,8 @@ if (databaseUrl) {
     max: 5,
     connectionTimeoutMillis: 4_000,
     idleTimeoutMillis: 10_000,
-    query_timeout: 4_000 // Safeguard: abort query if PgBouncer hangs it
+    query_timeout: 4_000, // Safeguard: abort query client-side
+    statement_timeout: 4_000 // Safeguard: abort query server-side
   });
 }
 
@@ -835,7 +836,8 @@ function updatePostgresClient(connectionString: string) {
     max: 5,
     connectionTimeoutMillis: 4_000,
     idleTimeoutMillis: 10_000,
-    query_timeout: 4_000
+    query_timeout: 4_000,
+    statement_timeout: 4_000
   });
 }
 
@@ -1611,16 +1613,33 @@ async function ensureDbLoaded() {
   if (!dbLoadPromise) {
     dbLoadPromise = (async () => {
       console.log("[LAZY BOOT] Đang tải dữ liệu từ PostgreSQL (Lazy)...");
+      let timeoutTriggered = false;
+      const timeoutPromise = new Promise<void>((_, reject) => 
+        setTimeout(() => {
+          timeoutTriggered = true;
+          reject(new Error("Timeout tải DB"));
+        }, 4_000)
+      );
+
       try {
         await Promise.race([
           loadDbFromSupabase(),
-          new Promise<void>((_, reject) => setTimeout(() => reject(new Error("Timeout tải DB")), 4_000))
+          timeoutPromise
         ]);
         dbLoaded = true;
-        console.log("[LAZY BOOT] Dữ liệu PostgreSQL đã tải xong hoặc đã timeout.");
+        console.log("[LAZY BOOT] Dữ liệu PostgreSQL đã tải xong.");
       } catch (err: any) {
         console.warn("[LAZY BOOT] Cảnh báo khi tải PostgreSQL:", err.message);
-        dbLoaded = true; // Prevent block retry loop on permanent failure
+        dbLoaded = true; // Prevent retry loop blocks on permanent failure
+        
+        if (timeoutTriggered) {
+          console.warn("[LAZY BOOT] Tiến hành đóng pool kết nối bị kẹt để giải phóng event loop...");
+          if (postgresPool) {
+            const oldPool = postgresPool;
+            postgresPool = null;
+            oldPool.end().catch((e: any) => console.error("[LAZY BOOT] Lỗi khi đóng pool bị kẹt:", e.message));
+          }
+        }
       }
     })();
   }
@@ -1804,7 +1823,13 @@ app.post('/api/setup/test', async (req: Request, res: Response) => {
   const { databaseUrl } = req.body;
   if (!databaseUrl) return res.status(400).json({ ok: false, error: 'Thiếu databaseUrl' });
   const cleanedUrl = getCleanDatabaseUrl(databaseUrl);
-  const testPool = new Pool({ connectionString: cleanedUrl, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 8000 });
+  const testPool = new Pool({ 
+    connectionString: cleanedUrl, 
+    ssl: { rejectUnauthorized: false }, 
+    connectionTimeoutMillis: 4000,
+    query_timeout: 4000,
+    statement_timeout: 4000
+  });
   try {
     const client = await testPool.connect();
     const result = await client.query('SELECT version()');
@@ -1824,7 +1849,13 @@ app.post('/api/setup/save', async (req: Request, res: Response) => {
 
   const cleanedUrl = getCleanDatabaseUrl(databaseUrl);
   // Test trước khi lưu
-  const testPool = new Pool({ connectionString: cleanedUrl, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 8000 });
+  const testPool = new Pool({ 
+    connectionString: cleanedUrl, 
+    ssl: { rejectUnauthorized: false }, 
+    connectionTimeoutMillis: 4000,
+    query_timeout: 4000,
+    statement_timeout: 4000
+  });
   try {
     const client = await testPool.connect();
     client.release();
