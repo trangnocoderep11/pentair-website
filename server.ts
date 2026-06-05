@@ -53,13 +53,15 @@ function sanitizeHtml(html: string): string {
 // Uploads directory — public/uploads/ for Vercel CDN serving
 const UPLOADS_BASE = path.join(process.cwd(), "public", "uploads");
 
-// Ensure uploads directory exists (local dev / self-hosted only)
-try {
-  if (!fs.existsSync(UPLOADS_BASE)) {
-    fs.mkdirSync(UPLOADS_BASE, { recursive: true });
+// Ensure uploads directory exists (local dev / self-hosted only — skip on Vercel, filesystem is read-only)
+if (!process.env.VERCEL) {
+  try {
+    if (!fs.existsSync(UPLOADS_BASE)) {
+      fs.mkdirSync(UPLOADS_BASE, { recursive: true });
+    }
+  } catch (err) {
+    console.warn("Could not create uploads directory.", err);
   }
-} catch (err) {
-  console.warn("Could not create uploads directory.", err);
 }
 
 // Pre-seeded / bootstrap data
@@ -3035,12 +3037,14 @@ app.post("/api/admin/media/upload", authMiddleware, (req, res) => {
   }
 
   const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
-  try {
-    if (!fs.existsSync(UPLOADS_DIR)) {
-      fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  if (!process.env.VERCEL) {
+    try {
+      if (!fs.existsSync(UPLOADS_DIR)) {
+        fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+      }
+    } catch (err) {
+      console.error("Could not create uploads directory", err);
     }
-  } catch (err) {
-    console.error("Could not create uploads directory", err);
   }
 
   // Tên hiển thị (title) phải trùng khớp 100% với tên ảnh trên thiết bị (filename gốc)
