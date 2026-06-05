@@ -791,6 +791,9 @@ let db = {
 // Setup mode: true when DATABASE_URL is not configured
 let isSetupMode = !process.env.DATABASE_URL;
 
+// Forward-declared so the early gate middleware can reference it before startServer() is called below.
+let serverInitPromise: Promise<void> = Promise.resolve();
+
 // Global PostgreSQL client pool for automated cloud data sync
 const { Pool } = pg;
 const databaseUrl = process.env.DATABASE_URL || "";
@@ -1516,6 +1519,13 @@ function writeDb() {
 
 app.use(express.json({ limit: '15mb' }));
 app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")));
+
+// Gate: every request waits for the DB boot to complete before hitting any route.
+// Must be registered BEFORE routes so Express reaches it first.
+app.use(async (req: Request, res: Response, next: NextFunction) => {
+  await serverInitPromise;
+  next();
+});
 
 // ===================================================================
 // SETUP WIZARD — runs when DATABASE_URL is not configured
@@ -3452,13 +3462,9 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
-// On serverless: start init immediately and await on first request
-const serverInitPromise = startServer().catch(err => console.error('[BOOT]', err));
-
-// Middleware: wait for initialization before handling any request (critical for Vercel cold starts)
-app.use(async (req: Request, res: Response, next: NextFunction) => {
-  await serverInitPromise;
-  next();
-});
+// Kick off DB init immediately at module load. The gate middleware above (registered before
+// all routes) awaits this promise on every request, so cold-start responses always carry
+// fully-loaded PostgreSQL data instead of the in-memory bootstrap defaults.
+serverInitPromise = startServer().catch(err => console.error('[BOOT]', err));
 
 export default app;
