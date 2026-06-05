@@ -824,13 +824,14 @@ if (databaseUrl) {
   postgresPool = new Pool({
     connectionString: databaseUrl,
     ssl: { rejectUnauthorized: false },
-    // Optimised for Supabase PgBouncer (port 6543, Transaction mode).
-    // PgBouncer handles the real backend connections; the client pool stays small.
     max: 5,
     connectionTimeoutMillis: 4_000,
     idleTimeoutMillis: 10_000,
-    query_timeout: 4_000, // Safeguard: abort query client-side
-    statement_timeout: 4_000 // Safeguard: abort query server-side
+    query_timeout: 4_000,
+    statement_timeout: 4_000,
+    // Critical for Vercel/Lambda: allow Node.js event loop to exit when pool is idle
+    // Without this, internal pool timers keep the function alive indefinitely after responding
+    allowExitOnIdle: true,
   });
 }
 
@@ -849,7 +850,8 @@ function updatePostgresClient(connectionString: string) {
     connectionTimeoutMillis: 4_000,
     idleTimeoutMillis: 10_000,
     query_timeout: 4_000,
-    statement_timeout: 4_000
+    statement_timeout: 4_000,
+    allowExitOnIdle: true,
   });
 }
 
