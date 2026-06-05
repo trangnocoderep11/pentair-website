@@ -185,12 +185,6 @@ export default function App() {
     }
 
     loadCMSData();
-
-    // On Vercel cold starts the DB loads in the background after the first
-    // response. Retry once after 6 s so warm-instance data replaces the
-    // bootstrap data that the cold-start response contained.
-    const warmupRetry = setTimeout(() => loadCMSData(), 6000);
-    return () => clearTimeout(warmupRetry);
   }, []);
 
   // SECRET BACKDOOR ACCESS SYSTEM FOR WEBSITE ADMINISTRATORS

@@ -803,12 +803,17 @@ if (databaseUrl) {
   postgresPool = new Pool({
     connectionString: databaseUrl,
     ssl: { rejectUnauthorized: false },
-    max: 5,                          // conservative — avoids exhausting Supabase free-tier limit
-    connectionTimeoutMillis: 8_000,  // pool-level: give up waiting for a free slot after 8 s
-    connect_timeout: 8,              // TCP-level: abort if the server doesn't accept in 8 s
-    idleTimeoutMillis: 20_000        // release idle connections quickly
+    // Optimised for Supabase PgBouncer (port 6543, Transaction mode).
+    // PgBouncer handles the real backend connections; the client pool stays small.
+    max: 3,
+    connectionTimeoutMillis: 4_000, // give up waiting for a pool slot after 4 s
+    connect_timeout: 4,             // TCP-level abort after 4 s (crucial for hung connections)
+    idleTimeoutMillis: 10_000       // release idle connections quickly in serverless
   });
 }
+
+// Warm-instance cache: skip the 26 ALTER TABLE migration queries after first run.
+let tablesEnsured = false;
 
 function updatePostgresClient(connectionString: string) {
   if (postgresPool) {
@@ -1429,16 +1434,22 @@ async function loadDbFromSupabase() {
   }
   try {
     console.log("[POSTGRES SYNC] Đang kéo bản sao dữ liệu cao cấp từ PostgreSQL...");
-    // Phase 1: schema setup + count check — use a dedicated client, release it immediately after.
-    const client = await postgresPool.connect();
-    let hasRealData = false;
-    try {
-      await ensureTablesExist(client);
-      const postsCheck = await client.query("SELECT COUNT(*) as cnt FROM public.posts");
-      hasRealData = parseInt(postsCheck.rows[0].cnt) > 0;
-    } finally {
-      client.release(); // Free the connection BEFORE running parallel queries below.
+
+    // Phase 1: schema migration — only on first cold start; warm instances skip this
+    // saving the ~1 s cost of 26 sequential ALTER TABLE queries.
+    if (!tablesEnsured) {
+      const client = await postgresPool.connect();
+      try {
+        await ensureTablesExist(client);
+        tablesEnsured = true;
+      } finally {
+        client.release();
+      }
     }
+
+    // Phase 1b: count check via pool (no need to hold a dedicated client)
+    const postsCheck = await postgresPool.query("SELECT COUNT(*) as cnt FROM public.posts");
+    let hasRealData = parseInt(postsCheck.rows[0].cnt) > 0;
 
       if (hasRealData) {
         // Phase 2: load all tables in parallel — each pool.query() takes its own connection
@@ -1571,12 +1582,18 @@ function writeDb() {
 app.use(express.json({ limit: '15mb' }));
 app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")));
 
-// NOTE: No blocking gate middleware — Vercel Hobby plan has a 10 s function
-// timeout, so we cannot await DB boot in the request path. Instead,
-// startServer() loads the DB in the background (capped at 10 s via Promise.race
-// in startServer itself). Warm instances (reused after first cold start) will
-// have the full DB data ready. Cold-start first requests are served with
-// bootstrapData and the frontend auto-refreshes once the instance is warm.
+// Gate: wait for DB boot before serving any route.
+// With PgBouncer the boot takes ~1-2 s; 3 s cap keeps well inside
+// Vercel Hobby's 10 s function timeout.
+app.use(async (req: Request, res: Response, next: NextFunction) => {
+  let t: ReturnType<typeof setTimeout>;
+  await Promise.race([
+    serverInitPromise,
+    new Promise<void>(resolve => { t = setTimeout(resolve, 3_000); })
+  ]);
+  clearTimeout(t!);
+  next();
+});
 
 // ===================================================================
 // SETUP WIZARD — runs when DATABASE_URL is not configured
@@ -3472,10 +3489,11 @@ async function startServer() {
     console.log("[BOOT] ⚙️  DATABASE_URL chưa được cấu hình. Chạy ở chế độ Setup. Truy cập http://localhost:3000/setup để thiết lập.");
   } else {
     console.log("[BOOT] Đang tải dữ liệu từ PostgreSQL...");
-    // Hard 10 s cap so a hung TCP connection never blocks startServer() past Vercel's edge timeout.
+    // Hard 4 s cap: connect_timeout=4s means DB errors surface quickly;
+    // this wrapper ensures startServer() always resolves in ≤ 4 s.
     await Promise.race([
       loadDbFromSupabase(),
-      new Promise<void>(resolve => setTimeout(resolve, 10_000))
+      new Promise<void>(resolve => setTimeout(resolve, 4_000))
     ]);
     console.log("[BOOT] Dữ liệu đã sẵn sàng. Khởi động server...");
   }
