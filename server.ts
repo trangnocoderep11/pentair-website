@@ -794,9 +794,18 @@ let isSetupMode = !process.env.DATABASE_URL;
 // Forward-declared so the early gate middleware can reference it before startServer() is called below.
 let serverInitPromise: Promise<void> = Promise.resolve();
 
+function getCleanDatabaseUrl(url: string): string {
+  if (!url) return "";
+  if (url.includes(":6543")) {
+    console.log("[DB] DATABASE_URL contains port 6543 (PgBouncer/Supabase Transaction Mode). Auto-converting to port 5432 (Session Mode) to support node-postgres prepared statements.");
+    return url.replace(":6543", ":5432");
+  }
+  return url;
+}
+
 // Global PostgreSQL client pool for automated cloud data sync
 const { Pool } = pg;
-const databaseUrl = process.env.DATABASE_URL || "";
+const databaseUrl = getCleanDatabaseUrl(process.env.DATABASE_URL || "");
 let postgresPool: any = null;
 
 if (databaseUrl) {
@@ -819,8 +828,9 @@ function updatePostgresClient(connectionString: string) {
   if (postgresPool) {
     postgresPool.end().catch((err: any) => console.error("Lỗi đóng pool kết nối cũ:", err));
   }
+  const cleanedUrl = getCleanDatabaseUrl(connectionString);
   postgresPool = new Pool({
-    connectionString: connectionString,
+    connectionString: cleanedUrl,
     ssl: { rejectUnauthorized: false },
     max: 5,
     connectionTimeoutMillis: 4_000,
@@ -1593,16 +1603,50 @@ app.get('/api/ping', (_req: Request, res: Response) => {
   res.json({ ok: true, ts: Date.now(), env: process.env.NODE_ENV, vercel: !!process.env.VERCEL, hasDb: !!process.env.DATABASE_URL });
 });
 
+let dbLoaded = false;
+let dbLoadPromise: Promise<void> | null = null;
+
+async function ensureDbLoaded() {
+  if (dbLoaded || isSetupMode) return;
+  if (!dbLoadPromise) {
+    dbLoadPromise = (async () => {
+      console.log("[LAZY BOOT] Đang tải dữ liệu từ PostgreSQL (Lazy)...");
+      try {
+        await Promise.race([
+          loadDbFromSupabase(),
+          new Promise<void>((_, reject) => setTimeout(() => reject(new Error("Timeout tải DB")), 4_000))
+        ]);
+        dbLoaded = true;
+        console.log("[LAZY BOOT] Dữ liệu PostgreSQL đã tải xong hoặc đã timeout.");
+      } catch (err: any) {
+        console.warn("[LAZY BOOT] Cảnh báo khi tải PostgreSQL:", err.message);
+        dbLoaded = true; // Prevent block retry loop on permanent failure
+      }
+    })();
+  }
+  await dbLoadPromise;
+}
+
 // Gate: wait for DB boot before serving any route.
 // With PgBouncer the boot takes ~1-2 s; 3 s cap keeps well inside
 // Vercel Hobby's 10 s function timeout.
 app.use(async (req: Request, res: Response, next: NextFunction) => {
-  let t: ReturnType<typeof setTimeout>;
-  await Promise.race([
-    serverInitPromise,
-    new Promise<void>(resolve => { t = setTimeout(resolve, 3_000); })
-  ]);
-  clearTimeout(t!);
+  if (process.env.VERCEL) {
+    if (!isSetupMode && !dbLoaded) {
+      try {
+        await ensureDbLoaded();
+      } catch (e: any) {
+        console.error("[LAZY MIDDLEWARE ERROR]", e.message);
+      }
+    }
+  } else {
+    let t: ReturnType<typeof setTimeout>;
+    await Promise.race([
+      serverInitPromise,
+      new Promise<void>(resolve => { t = setTimeout(resolve, 3_000); })
+    ]);
+    clearTimeout(t!);
+  }
   next();
 });
 
@@ -1759,7 +1803,8 @@ app.get('/setup', (req: Request, res: Response) => {
 app.post('/api/setup/test', async (req: Request, res: Response) => {
   const { databaseUrl } = req.body;
   if (!databaseUrl) return res.status(400).json({ ok: false, error: 'Thiếu databaseUrl' });
-  const testPool = new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 8000 });
+  const cleanedUrl = getCleanDatabaseUrl(databaseUrl);
+  const testPool = new Pool({ connectionString: cleanedUrl, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 8000 });
   try {
     const client = await testPool.connect();
     const result = await client.query('SELECT version()');
@@ -1777,8 +1822,9 @@ app.post('/api/setup/save', async (req: Request, res: Response) => {
   const { databaseUrl } = req.body;
   if (!databaseUrl) return res.status(400).json({ ok: false, error: 'Thiếu databaseUrl' });
 
+  const cleanedUrl = getCleanDatabaseUrl(databaseUrl);
   // Test trước khi lưu
-  const testPool = new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 8000 });
+  const testPool = new Pool({ connectionString: cleanedUrl, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 8000 });
   try {
     const client = await testPool.connect();
     client.release();
@@ -1793,15 +1839,15 @@ app.post('/api/setup/save', async (req: Request, res: Response) => {
     const envPath = path.join(process.cwd(), '.env');
     let envContent = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf-8') : '';
     envContent = envContent.replace(/^DATABASE_URL=.*(\r?\n)?/m, '');
-    envContent = `DATABASE_URL=${databaseUrl}\n${envContent.trimStart()}`;
+    envContent = `DATABASE_URL=${cleanedUrl}\n${envContent.trimStart()}`;
     fs.writeFileSync(envPath, envContent, 'utf-8');
   } catch (err: any) {
     console.warn('[SETUP] Không thể ghi .env:', err.message);
   }
 
   // Cập nhật runtime
-  process.env.DATABASE_URL = databaseUrl;
-  updatePostgresClient(databaseUrl);
+  process.env.DATABASE_URL = cleanedUrl;
+  updatePostgresClient(cleanedUrl);
 
   // Load dữ liệu từ DB
   try {
@@ -3503,7 +3549,7 @@ app.get("/robots.txt", (req, res) => {
 async function startServer() {
   if (isSetupMode) {
     console.log("[BOOT] ⚙️  DATABASE_URL chưa được cấu hình. Chạy ở chế độ Setup. Truy cập http://localhost:3000/setup để thiết lập.");
-  } else {
+  } else if (!process.env.VERCEL) {
     console.log("[BOOT] Đang tải dữ liệu từ PostgreSQL...");
     // Hard 4 s cap: connect_timeout=4s means DB errors surface quickly;
     // this wrapper ensures startServer() always resolves in ≤ 4 s.
@@ -3512,6 +3558,8 @@ async function startServer() {
       new Promise<void>(resolve => setTimeout(resolve, 4_000))
     ]);
     console.log("[BOOT] Dữ liệu đã sẵn sàng. Khởi động server...");
+  } else {
+    console.log("[BOOT] Đang chạy trong môi trường Vercel. Trì hoãn đồng bộ PostgreSQL cho đến khi có request (Lazy loading).");
   }
 
   if (process.env.NODE_ENV !== "production") {
