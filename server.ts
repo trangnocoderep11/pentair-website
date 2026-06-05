@@ -3562,7 +3562,7 @@ async function startServer() {
     console.log("[BOOT] Đang chạy trong môi trường Vercel. Trì hoãn đồng bộ PostgreSQL cho đến khi có request (Lazy loading).");
   }
 
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
