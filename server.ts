@@ -790,6 +790,8 @@ let db: any = {
 
 // Setup mode: true when DATABASE_URL is not configured
 let isSetupMode = !process.env.DATABASE_URL;
+// Set to true if DB connection fails — blocks API routes returning stale bootstrap data
+let dbLoadFailed = false;
 
 // Forward-declared so the early gate middleware can reference it before startServer() is called below.
 let serverInitPromise: Promise<void> = Promise.resolve();
@@ -1593,7 +1595,8 @@ async function loadDbFromSupabase() {
         }
       }
   } catch (err: any) {
-    console.warn("[POSTGRES SYNC] Không thể kết nối PostgreSQL. Server chạy với dữ liệu bootstrap trong bộ nhớ (không lưu trữ):", err.message);
+    dbLoadFailed = true;
+    console.error("[POSTGRES SYNC] ❌ Database không khả dụng — server từ chối phục vụ dữ liệu cho đến khi kết nối được khôi phục:", err.message);
   }
 }
 
@@ -1639,9 +1642,10 @@ async function ensureDbLoaded() {
         dbLoaded = true;
         console.log("[LAZY BOOT] Dữ liệu PostgreSQL đã tải xong.");
       } catch (err: any) {
-        console.warn("[LAZY BOOT] Cảnh báo khi tải PostgreSQL:", err.message);
-        dbLoaded = true; // Prevent retry loop blocks on permanent failure
-        
+        dbLoadFailed = true;
+        dbLoaded = true; // Prevent retry storm on permanent failure
+        console.error("[LAZY BOOT] ❌ Database không khả dụng:", err.message);
+
         if (timeoutTriggered) {
           console.warn("[LAZY BOOT] Tiến hành đóng pool kết nối bị kẹt để giải phóng event loop...");
           if (postgresPool) {
@@ -1899,6 +1903,14 @@ app.post('/api/setup/save', async (req: Request, res: Response) => {
   } catch (err: any) {
     res.status(500).json({ ok: false, error: `Lỗi tải dữ liệu: ${err.message}` });
   }
+});
+
+// Block all data-serving routes when the database failed to load
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (!dbLoadFailed) return next();
+  if (req.path === '/api/ping' || req.path === '/api/health') return next();
+  if (req.method === 'GET' && !req.path.startsWith('/api/')) return next(); // Let SPA static files through
+  return res.status(503).json({ error: 'Database không khả dụng. Vui lòng kiểm tra biến môi trường DATABASE_URL và thử lại.' });
 });
 
 // JWT Secret - load from env, or fallback safely to a secure local secret key
