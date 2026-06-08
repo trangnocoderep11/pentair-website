@@ -17,8 +17,7 @@ import { put as blobPut } from "@vercel/blob";
 dotenv.config();
 
 // db.json is the primary data source — bundled by esbuild, no Supabase needed
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const dbFileData: any = require('./db.json');
+import dbFileData from "./db.json";
 
 const app = express();
 const PORT = 3000;
@@ -875,6 +874,7 @@ async function withPg<T>(fn: (client: any) => Promise<T>): Promise<T | null> {
 
 // --- Posts / Products / Pages ---
 async function dbSavePost(p: any) {
+  writeDb();
   return withPg(c => c.query(
     `INSERT INTO public.posts
       (id,title,slug,content,excerpt,type,status,author_id,featured_image,menu_order,meta,terms,created_at,updated_at,published_at)
@@ -894,11 +894,13 @@ async function dbSavePost(p: any) {
   ));
 }
 async function dbDeletePost(id: string) {
+  writeDb();
   return withPg(c => c.query('DELETE FROM public.posts WHERE id=$1', [id]));
 }
 
 // --- Terms (categories / product_cat) ---
 async function dbSaveTerm(t: any) {
+  writeDb();
   return withPg(c => c.query(
     `INSERT INTO public.terms (id,name,slug,taxonomy,description,parent_id,meta)
      VALUES ($1,$2,$3,$4,$5,$6,$7)
@@ -910,11 +912,13 @@ async function dbSaveTerm(t: any) {
   ));
 }
 async function dbDeleteTerm(id: string) {
+  writeDb();
   return withPg(c => c.query('DELETE FROM public.terms WHERE id=$1', [id]));
 }
 
 // --- Users ---
 async function dbSaveUser(u: any) {
+  writeDb();
   return withPg(c => c.query(
     `INSERT INTO public.users (id,username,password_hash,email,role,two_factor_enabled,two_factor_secret)
      VALUES ($1,$2,$3,$4,$5,$6,$7)
@@ -928,11 +932,13 @@ async function dbSaveUser(u: any) {
   ));
 }
 async function dbDeleteUser(id: string) {
+  writeDb();
   return withPg(c => c.query('DELETE FROM public.users WHERE id=$1', [id]));
 }
 
 // --- Options (site settings) ---
 async function dbSaveOption(opt: any) {
+  writeDb();
   return withPg(c => c.query(
     `INSERT INTO public.options (id,option_name,option_value)
      VALUES ($1,$2,$3)
@@ -943,6 +949,7 @@ async function dbSaveOption(opt: any) {
 
 // --- Submissions ---
 async function dbSaveSubmission(s: any) {
+  writeDb();
   return withPg(c => c.query(
     `INSERT INTO public.submissions (id,name,email,phone,message,status,source,product_id,created_at,meta)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
@@ -956,11 +963,13 @@ async function dbSaveSubmission(s: any) {
   ));
 }
 async function dbDeleteSubmission(id: string) {
+  writeDb();
   return withPg(c => c.query('DELETE FROM public.submissions WHERE id=$1', [id]));
 }
 
 // --- Videos ---
 async function dbSaveVideo(v: any) {
+  writeDb();
   return withPg(c => c.query(
     `INSERT INTO public.videos (id,title,url,thumbnail,description,sort_order,created_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7)
@@ -973,11 +982,13 @@ async function dbSaveVideo(v: any) {
   ));
 }
 async function dbDeleteVideo(id: string) {
+  writeDb();
   return withPg(c => c.query('DELETE FROM public.videos WHERE id=$1', [id]));
 }
 
 // --- Perspectives ---
 async function dbSavePerspective(p: any) {
+  writeDb();
   return withPg(c => c.query(
     `INSERT INTO public.perspectives
       (id,title,slug,excerpt,content,featured_image,status,image_url,link,space_type,gallery,product_gallery,related_product_ids,is_featured,sort_order,created_at,updated_at)
@@ -999,11 +1010,13 @@ async function dbSavePerspective(p: any) {
   ));
 }
 async function dbDeletePerspective(id: string) {
+  writeDb();
   return withPg(c => c.query('DELETE FROM public.perspectives WHERE id=$1', [id]));
 }
 
 // --- Media Folders ---
 async function dbSaveMediaFolder(f: any) {
+  writeDb();
   return withPg(c => c.query(
     `INSERT INTO public.media_folders (id,name,parent_id,created_at)
      VALUES ($1,$2,$3,$4)
@@ -1012,11 +1025,13 @@ async function dbSaveMediaFolder(f: any) {
   ));
 }
 async function dbDeleteMediaFolder(id: string) {
+  writeDb();
   return withPg(c => c.query('DELETE FROM public.media_folders WHERE id=$1', [id]));
 }
 
 // --- Media Items ---
 async function dbSaveMediaItem(item: any) {
+  writeDb();
   return withPg(c => c.query(
     `INSERT INTO public.media_items (id,folder_id,filename,url,mime_type,size,width,height,alt,created_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
@@ -1031,6 +1046,7 @@ async function dbSaveMediaItem(item: any) {
   ));
 }
 async function dbDeleteMediaItem(id: string) {
+  writeDb();
   return withPg(c => c.query('DELETE FROM public.media_items WHERE id=$1', [id]));
 }
 
@@ -1597,6 +1613,9 @@ async function loadDbFromSupabase() {
           await saveDbToSupabase();
         }
       }
+      dbLoaded = true;
+      dbLastLoadedAt = Date.now();
+      dbLoadFailed = false;
   } catch (err: any) {
     dbLoadFailed = true;
     console.error("[POSTGRES SYNC] ❌ Database không khả dụng — server từ chối phục vụ dữ liệu cho đến khi kết nối được khôi phục:", err.message);
@@ -1605,6 +1624,7 @@ async function loadDbFromSupabase() {
 
 // writeDb: persist to db.json locally; no-op on Vercel (ephemeral filesystem)
 function writeDb() {
+  dbLastLoadedAt = 0; // Force reload on next request/instance
   try {
     fs.writeFileSync(path.join(process.cwd(), 'db.json'), JSON.stringify(db, null, 2), 'utf-8');
   } catch (e: any) {
@@ -1626,11 +1646,21 @@ app.get('/api/ping', (_req: Request, res: Response) => {
   res.json({ ok: true, ts: Date.now(), env: process.env.NODE_ENV, vercel: !!process.env.VERCEL, hasDb: !!process.env.DATABASE_URL });
 });
 
-let dbLoaded = true; // db.json loaded at module init — always ready
+let dbLoaded = !databaseUrl; // If databaseUrl is set, we need to load from PostgreSQL first
+let dbLastLoadedAt = 0; // Keep track of the last load timestamp
+const CACHE_TTL = 10_000; // 10 seconds cache TTL for Vercel
 let dbLoadPromise: Promise<void> | null = null;
 let dbRetryAfter = 0; // timestamp: don't retry before this time
 
 async function ensureDbLoaded() {
+  const now = Date.now();
+  const needsReload = !dbLoaded || (process.env.VERCEL && (now - dbLastLoadedAt > CACHE_TTL));
+
+  if (needsReload && dbLoaded) {
+    dbLoaded = false;
+    dbLoadPromise = null;
+  }
+
   if ((dbLoaded && !dbLoadFailed) || isSetupMode) return;
   // Retry cooldown: if last attempt failed, wait 8s before trying again
   if (dbLoadFailed && Date.now() < dbRetryAfter) {
@@ -1663,6 +1693,7 @@ async function ensureDbLoaded() {
       try {
         await Promise.race([loadDbFromSupabase(), timeoutPromise]);
         dbLoaded = true;
+        dbLastLoadedAt = Date.now();
         console.log("[LAZY BOOT] Dữ liệu PostgreSQL đã tải xong.");
       } catch (err: any) {
         dbLoadFailed = true;
