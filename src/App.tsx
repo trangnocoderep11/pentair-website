@@ -357,6 +357,7 @@ export default function App() {
   ];
 
   const headerSettingsValue = options.find(o => o.optionName === 'header_settings')?.optionValue || {};
+  const globalHQsValue = options.find(o => o.optionName === 'global_hqs')?.optionValue || [];
   const homepageSettingsValue = {
     ...(options.find(o => o.optionName === 'homepage_settings')?.optionValue || {}),
     softener_slides: options.find(o => o.optionName === 'softener_slides')?.optionValue || []
@@ -468,6 +469,7 @@ export default function App() {
             logoText={headerSettingsValue.footerLogoText}
             logoImageUrl={headerSettingsValue.footerLogoImageUrl}
             logoTextFull={headerSettingsValue.footerLogoTextFull}
+            globalHQs={globalHQsValue}
           />
 
           <ShoppingCart 

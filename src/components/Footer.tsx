@@ -23,9 +23,10 @@ interface FooterProps {
   logoText?: string;
   logoImageUrl?: string;
   logoTextFull?: string;
+  globalHQs?: any[];
 }
 
-const globalHQs = [
+const defaultGlobalHQs = [
   {
     name: 'Pentair Global HQ (UK)',
     address: 'Regal House, 70 London Road, Twickenham, London, United Kingdom',
@@ -109,6 +110,11 @@ const globalHQs = [
   }
 ];
 
+const isImageUrl = (url?: string) => {
+  if (!url) return false;
+  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/') || url.startsWith('data:image/');
+};
+
 export default function Footer({ 
   brandSettings, 
   policies, 
@@ -117,11 +123,15 @@ export default function Footer({
   onOpenAdmin,
   logoText = 'P',
   logoImageUrl = '',
-  logoTextFull = 'PENTAIR VN'
+  logoTextFull = 'PENTAIR VN',
+  globalHQs: propGlobalHQs
 }: FooterProps) {
   const [activePolicyIdx, setActivePolicyIdx] = React.useState<number | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedHQIdx, setSelectedHQIdx] = React.useState<number>(0);
+
+  const globalHQs = (propGlobalHQs && propGlobalHQs.length > 0) ? propGlobalHQs : defaultGlobalHQs;
+  const activeHQ = globalHQs[selectedHQIdx] || globalHQs[0] || defaultGlobalHQs[0];
 
   const filteredShowrooms = React.useMemo(() => {
     if (!searchQuery.trim()) return showrooms;
@@ -180,7 +190,7 @@ export default function Footer({
               </p>
             </div>
             <div className="flex items-center gap-2 text-[11px] bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-blue-200">
-              <span className="font-semibold text-white">Đang xem:</span> {globalHQs[selectedHQIdx].name}
+              <span className="font-semibold text-white">Đang xem:</span> {activeHQ.name}
             </div>
           </div>
 
@@ -205,8 +215,12 @@ export default function Footer({
                         : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/20'
                     }`}
                   >
-                    <span className="text-xl shrink-0 select-none group-hover:scale-110 transition-transform duration-200">
-                      {hq.flag}
+                    <span className="text-xl shrink-0 select-none group-hover:scale-110 transition-transform duration-200 flex items-center justify-center w-6 h-6">
+                      {isImageUrl(hq.flag) ? (
+                        <img src={hq.flag} className="w-6 h-4 object-cover rounded-sm shadow-sm" alt="" />
+                      ) : (
+                        hq.flag
+                      )}
                     </span>
                     <div className="space-y-1">
                       <h6 className={`text-xs font-bold transition-colors ${
@@ -272,7 +286,7 @@ export default function Footer({
 
                 {/* Animated Line connecting dot to label */}
                 {(() => {
-                  const active = globalHQs[selectedHQIdx];
+                  const active = activeHQ;
                   const horizontalLength = active.dx > 0 ? 8 : -8;
                   return (
                     <g key={selectedHQIdx}>
@@ -313,7 +327,7 @@ export default function Footer({
 
               {/* Floating HQ Info Card */}
               {(() => {
-                const active = globalHQs[selectedHQIdx];
+                const active = activeHQ;
                 const isLeft = active.dx < 0;
                 return (
                   <div 
@@ -323,7 +337,13 @@ export default function Footer({
                     }`}
                   >
                     <div className="flex items-center gap-1.5 border-b border-[#E6C073]/20 pb-1 mb-0.5">
-                      <span className="text-sm shrink-0 select-none">{active.flag}</span>
+                      <span className="text-sm shrink-0 select-none flex items-center justify-center w-5 h-5">
+                        {isImageUrl(active.flag) ? (
+                          <img src={active.flag} className="w-5 h-3.5 object-cover rounded-sm shadow-sm" alt="" />
+                        ) : (
+                          active.flag
+                        )}
+                      </span>
                       <h6 className="text-[10px] font-bold text-[#E6C073] uppercase tracking-wider truncate">
                         {active.name}
                       </h6>

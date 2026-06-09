@@ -562,7 +562,7 @@
       "optionValue": true
     },
     {
-      "id": "opt-footer",
+      "id": "opt-footer-policies",
       "optionName": "footer_policies",
       "optionValue": [
         {
@@ -589,13 +589,13 @@
       "optionValue": {
         "logoText": "",
         "logoImageUrl": "/uploads/1780038955596-Pentair-Logo.webp",
-        "mapIframeUrl": "",
-        "topBarAddress": "90 Đinh Thị Thi, Vạn Phúc City, Thủ Đức",
         "topBarHotline": "1800 8134",
+        "topBarAddress": "90 Đinh Thị Thi, Vạn Phúc City, Thủ Đức",
         "topBarTagline": "Pentair USA - Leading the Water Revolution",
         "footerLogoText": "P",
         "footerLogoImageUrl": "/uploads/1780562324673-Pentair-Logo.png",
-        "footerLogoTextFull": ""
+        "footerLogoTextFull": "",
+        "mapIframeUrl": ""
       }
     },
     {
@@ -622,7 +622,7 @@
       }
     },
     {
-      "id": "opt-menus",
+      "id": "opt-header-menu",
       "optionName": "header_menu",
       "optionValue": [
         {
@@ -855,6 +855,93 @@
         {
           "title": "Chính sách bảo mật",
           "content": "Mọi thông tin của khách hàng được bảo mật tuyệt mật SSL, cam kết hoàn toàn không chia sẻ cho bên thứ ba."
+        }
+      ]
+    },
+    {
+      "id": "opt-global-hqs",
+      "optionName": "global_hqs",
+      "optionValue": [
+        {
+          "name": "Pentair Global HQ (UK)",
+          "address": "Regal House, 70 London Road, Twickenham, London, United Kingdom",
+          "x": 47.5,
+          "y": 30.5,
+          "dx": -6,
+          "dy": -8,
+          "flag": "🇬🇧"
+        },
+        {
+          "name": "Pentair USA (Head Office)",
+          "address": "5500 Wayzata Blvd, Suite 900, Golden Valley, Minnesota, USA",
+          "x": 20,
+          "y": 33.5,
+          "dx": 6,
+          "dy": -8,
+          "flag": "/uploads/1780971903666-Flag_of_the_United_States.svg"
+        },
+        {
+          "name": "Pentair Switzerland (EMEA HQ)",
+          "address": "Pentair International Sàrl, Avenue de Sévelin 18, 1004 Lausanne, Switzerland",
+          "x": 49,
+          "y": 33,
+          "dx": 6,
+          "dy": -8,
+          "flag": "🇨🇭"
+        },
+        {
+          "name": "Pentair Singapore (APAC Hub)",
+          "address": "390 Havelock Road, King’s Centre, Singapore 169662",
+          "x": 76.5,
+          "y": 57.5,
+          "dx": -6,
+          "dy": -8,
+          "flag": "🇸🇬"
+        },
+        {
+          "name": "Pentair China",
+          "address": "Cloud Nine Plaza, No.1118 West Yan’an Road, Changning District, Shanghai, China",
+          "x": 81,
+          "y": 41.5,
+          "dx": 6,
+          "dy": -8,
+          "flag": "🇨🇳"
+        },
+        {
+          "name": "Pentair UAE (Middle East)",
+          "address": "Sheikh Rashid Tower, Dubai World Trade Centre, Dubai, UAE",
+          "x": 60.5,
+          "y": 43.5,
+          "dx": -6,
+          "dy": -8,
+          "flag": "🇦🇪"
+        },
+        {
+          "name": "Pentair Australia",
+          "address": "1–21 Monash Drive, Dandenong South, Victoria, Australia",
+          "x": 88.5,
+          "y": 79.5,
+          "dx": -6,
+          "dy": -8,
+          "flag": "🇦🇺"
+        },
+        {
+          "name": "Pentair India",
+          "address": "Lunkad Sky Vista, Viman Nagar, Pune, Maharashtra, India",
+          "x": 69.5,
+          "y": 48.5,
+          "dx": -6,
+          "dy": -8,
+          "flag": "🇮🇳"
+        },
+        {
+          "name": "Pentair South Africa",
+          "address": "Johannesburg, South Africa",
+          "x": 54,
+          "y": 71.5,
+          "dx": 6,
+          "dy": -8,
+          "flag": "🇿🇦"
         }
       ]
     }
@@ -1396,6 +1483,11 @@
       "name": "Phối cảnh",
       "parentId": "folder-83a143b9-a31c-4022-8a9d-f243f369ecf9",
       "createdAt": "2026-06-04T05:34:15.369Z"
+    },
+    {
+      "id": "folder-fcbe8baf-fe1f-48c0-a59a-52025ee50691",
+      "name": "Flag",
+      "createdAt": "2026-06-09T02:23:09.704Z"
     }
   ],
   "mediaItems": [
@@ -3441,6 +3533,26 @@
       "mimeType": "image/png",
       "createdAt": "2026-06-04T08:38:44.673Z",
       "updatedAt": "2026-06-04T08:38:44.673Z"
+    },
+    {
+      "id": "media-800d3859-38f9-4662-92e0-5725732fb39f",
+      "title": "Flag_of_the_United_Kingdom_(1-2).svg",
+      "url": "/uploads/1780971821347-Flag_of_the_United_Kingdom__1-2_.svg",
+      "mimeType": "image/svg+xml",
+      "fileSize": 641,
+      "folderId": "folder-fcbe8baf-fe1f-48c0-a59a-52025ee50691",
+      "createdAt": "2026-06-09T02:23:41.348Z",
+      "updatedAt": "2026-06-09T02:23:41.348Z"
+    },
+    {
+      "id": "media-cdde1593-ab13-4c31-86c4-eb454aa51749",
+      "title": "Flag_of_the_United_States.svg",
+      "url": "/uploads/1780971903666-Flag_of_the_United_States.svg",
+      "mimeType": "image/svg+xml",
+      "fileSize": 823,
+      "folderId": "folder-fcbe8baf-fe1f-48c0-a59a-52025ee50691",
+      "createdAt": "2026-06-09T02:25:03.686Z",
+      "updatedAt": "2026-06-09T02:25:03.686Z"
     }
   ]
 }

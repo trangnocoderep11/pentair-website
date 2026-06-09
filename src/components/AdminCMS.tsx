@@ -8,7 +8,7 @@ import {
   BarChart3, FileText, ShoppingBag, FolderTree, MessageSquare, Settings2, Sliders,
   Database, ShieldCheck, KeyRound, UserCheck, Plus, Pencil, Trash2, 
   Eye, FileCode, CheckCircle, AlertTriangle, Save, LogOut, ArrowRight, Download, Upload, Shield, RefreshCw, Server,
-  Mail, Video, LayoutTemplate, Image, Search, ChevronDown, X, Layout, Link, GripVertical, ChevronUp, Youtube, Loader2, MapPin
+  Mail, Video, LayoutTemplate, Image, Search, ChevronDown, X, Layout, Link, GripVertical, ChevronUp, Youtube, Loader2, MapPin, Globe
 } from 'lucide-react';
 import { Post, Term, FormSubmission, CMSBackup } from '../types';
 import MediaLibrary from './MediaLibrary';
@@ -35,6 +35,11 @@ function cleanVietnameseSlug(str: string): string {
   slug = slug.replace(/^-+|-+$/g, "");      // Strip leading/trailing -
   return slug;
 }
+
+const isImageUrl = (url?: string) => {
+  if (!url) return false;
+  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/') || url.startsWith('data:image/');
+};
 
 interface AdminCMSProps {
   onNewLogin: (user: any, token: string) => void;
@@ -213,7 +218,7 @@ export default function AdminCMS({
 
   // MEDIA SELECTOR MODAL STATE
   const [activeMediaSelector, setActiveMediaSelector] = React.useState<{
-    target: 'post_featured' | 'video_thumbnail' | 'perspective_featured' | 'perspective_gallery' | 'perspective_product_gallery' | 'logo_image' | 'footer_logo_image' | 'post_content_editor' | 'softener_slide';
+    target: 'post_featured' | 'video_thumbnail' | 'perspective_featured' | 'perspective_gallery' | 'perspective_product_gallery' | 'logo_image' | 'footer_logo_image' | 'post_content_editor' | 'softener_slide' | 'global_hq_flag';
     slideIndex?: number;
   } | null>(null);
 
@@ -1018,7 +1023,103 @@ export default function AdminCMS({
   const [hfPolicyEditItem, setHfPolicyEditItem] = React.useState({ title: '', content: '' });
   const [hfShowroomEditIdx, setHfShowroomEditIdx] = React.useState<number | null>(null);
   const [hfShowroomEditItem, setHfShowroomEditItem] = React.useState({ name: '', address: '', phone: '' });
-  const [hfSubTab, setHfSubTab] = React.useState<'logo' | 'menu' | 'footer' | 'showrooms'>('logo');
+  const [hfSubTab, setHfSubTab] = React.useState<'logo' | 'menu' | 'footer' | 'showrooms' | 'global-hqs'>('logo');
+
+  const defaultGlobalHQs = [
+    {
+      name: 'Pentair Global HQ (UK)',
+      address: 'Regal House, 70 London Road, Twickenham, London, United Kingdom',
+      x: 47.5,
+      y: 30.5,
+      dx: -6,
+      dy: -8,
+      flag: '🇬🇧'
+    },
+    {
+      name: 'Pentair USA (Head Office)',
+      address: '5500 Wayzata Blvd, Suite 900, Golden Valley, Minnesota, USA',
+      x: 20,
+      y: 33.5,
+      dx: 6,
+      dy: -8,
+      flag: '🇺🇸'
+    },
+    {
+      name: 'Pentair Switzerland (EMEA HQ)',
+      address: 'Pentair International Sàrl, Avenue de Sévelin 18, 1004 Lausanne, Switzerland',
+      x: 49,
+      y: 33,
+      dx: 6,
+      dy: -8,
+      flag: '🇨🇭'
+    },
+    {
+      name: 'Pentair Singapore (APAC Hub)',
+      address: '390 Havelock Road, King’s Centre, Singapore 169662',
+      x: 76.5,
+      y: 57.5,
+      dx: -6,
+      dy: -8,
+      flag: '🇸🇬'
+    },
+    {
+      name: 'Pentair China',
+      address: 'Cloud Nine Plaza, No.1118 West Yan’an Road, Changning District, Shanghai, China',
+      x: 81,
+      y: 41.5,
+      dx: 6,
+      dy: -8,
+      flag: '🇨🇳'
+    },
+    {
+      name: 'Pentair UAE (Middle East)',
+      address: 'Sheikh Rashid Tower, Dubai World Trade Centre, Dubai, UAE',
+      x: 60.5,
+      y: 43.5,
+      dx: -6,
+      dy: -8,
+      flag: '🇦🇪'
+    },
+    {
+      name: 'Pentair Australia',
+      address: '1–21 Monash Drive, Dandenong South, Victoria, Australia',
+      x: 88.5,
+      y: 79.5,
+      dx: -6,
+      dy: -8,
+      flag: '🇦🇺'
+    },
+    {
+      name: 'Pentair India',
+      address: 'Lunkad Sky Vista, Viman Nagar, Pune, Maharashtra, India',
+      x: 69.5,
+      y: 48.5,
+      dx: -6,
+      dy: -8,
+      flag: '🇮🇳'
+    },
+    {
+      name: 'Pentair South Africa',
+      address: 'Johannesburg, South Africa',
+      x: 54,
+      y: 71.5,
+      dx: 6,
+      dy: -8,
+      flag: '🇿🇦'
+    }
+  ];
+
+  const [globalHQs, setGlobalHQs] = React.useState<any[]>(defaultGlobalHQs);
+  const [hfHQEditIdx, setHfHQEditIdx] = React.useState<number | null>(null);
+  const [hfHQEditItem, setHfHQEditItem] = React.useState({
+    name: '',
+    address: '',
+    x: 0,
+    y: 0,
+    dx: 0,
+    dy: 0,
+    flag: ''
+  });
   const [hpSubTab, setHpSubTab] = React.useState<'hero' | 'intro' | 'softener'>('hero');
   const [heroImageUploading, setHeroImageUploading] = React.useState(false);
 
@@ -1075,6 +1176,10 @@ export default function AdminCMS({
       const softenerSlidesOpt = options.find(o => o.optionName === 'softener_slides')?.optionValue;
       if (softenerSlidesOpt && Array.isArray(softenerSlidesOpt) && softenerSlidesOpt.length > 0) {
         setSoftenerSlides(softenerSlidesOpt);
+      }
+      const gHQs = options.find(o => o.optionName === 'global_hqs')?.optionValue;
+      if (gHQs && Array.isArray(gHQs)) {
+        setGlobalHQs(gHQs);
       }
     }
   }, [options]);
@@ -1588,6 +1693,7 @@ export default function AdminCMS({
         { id: 'opt-header-menu', optionName: 'header_menu', optionValue: headerMenuItems },
         { id: 'opt-footer-policies', optionName: 'footer_policies', optionValue: footerPolicies },
         { id: 'opt-showrooms', optionName: 'showrooms', optionValue: showroomList },
+        { id: 'opt-global-hqs', optionName: 'global_hqs', optionValue: globalHQs }
       ];
 
       const res = await fetch('/api/options', {
@@ -5225,6 +5331,7 @@ export default function AdminCMS({
                 { key: 'menu', label: 'Menu Điều Hướng', icon: <Link className="w-4 h-4" /> },
                 { key: 'footer', label: 'Chính Sách Footer', icon: <Layout className="w-4 h-4" /> },
                 { key: 'showrooms', label: 'Hệ Thống Showroom', icon: <MapPin className="w-4 h-4" /> },
+                { key: 'global-hqs', label: 'Trụ sở toàn cầu', icon: <Globe className="w-4 h-4" /> },
               ] as const).map(tab => (
                 <button
                   key={tab.key}
@@ -5868,6 +5975,257 @@ export default function AdminCMS({
                         </div>
                       ))}
                       {showroomList.length === 0 && <p className="text-blue-300/50 text-[11px] col-span-2">Chưa có showroom</p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {hfSubTab === 'global-hqs' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fadeIn">
+                {/* Global HQs List */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+                  <div className="flex justify-between items-center border-b pb-3">
+                    <h3 className="text-sm font-black uppercase text-gray-800 flex items-center gap-2">
+                      <Globe className="w-4 h-4 text-indigo-500" />
+                      Danh sách trụ sở toàn cầu ({globalHQs.length} trụ sở)
+                    </h3>
+                    <button
+                      onClick={() => {
+                        setHfHQEditIdx(globalHQs.length);
+                        setHfHQEditItem({ name: '', address: '', x: 50, y: 50, dx: 6, dy: -8, flag: '' });
+                      }}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white text-[11px] font-bold rounded-lg hover:bg-indigo-700 transition-all cursor-pointer"
+                      id="btn-hf-add-hq"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Thêm Trụ Sở
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {globalHQs.map((hq, idx) => (
+                      <div key={idx} className="p-3 bg-gray-50 rounded-xl border border-gray-100 group">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0 flex items-start gap-2.5">
+                            <span className="text-xl shrink-0 select-none flex items-center justify-center w-6 h-6 border bg-white rounded-sm shadow-sm">
+                              {isImageUrl(hq.flag) ? (
+                                <img src={hq.flag} className="w-6 h-4 object-cover rounded-sm" alt="" />
+                              ) : (
+                                hq.flag
+                              )}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold text-gray-800">{hq.name}</div>
+                              <div className="text-[10px] text-gray-500 mt-0.5 leading-relaxed">{hq.address}</div>
+                              <div className="text-[10px] text-indigo-600 mt-0.5 font-semibold">
+                                Tọa độ: X={hq.x}%, Y={hq.y}% | Chỉ hướng: dx={hq.dx}, dy={hq.dy}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <button
+                              onClick={() => {
+                                setHfHQEditIdx(idx);
+                                setHfHQEditItem({
+                                  name: hq.name || '',
+                                  address: hq.address || '',
+                                  x: hq.x !== undefined ? hq.x : 50,
+                                  y: hq.y !== undefined ? hq.y : 50,
+                                  dx: hq.dx !== undefined ? hq.dx : 6,
+                                  dy: hq.dy !== undefined ? hq.dy : -8,
+                                  flag: hq.flag || ''
+                                });
+                              }}
+                              className="p-1 text-indigo-500 hover:bg-indigo-50 rounded cursor-pointer"
+                              title="Sửa"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Xóa trụ sở "${hq.name}"?`)) {
+                                  setGlobalHQs(prev => prev.filter((_, i) => i !== idx));
+                                }
+                              }}
+                              className="p-1 text-rose-500 hover:bg-rose-50 rounded cursor-pointer"
+                              title="Xóa"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {globalHQs.length === 0 && (
+                      <p className="text-xs text-center text-gray-400 py-6">Chưa có trụ sở nào.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Edit Form */}
+                <div className="space-y-4">
+                  {hfHQEditIdx !== null ? (
+                    <div className="bg-white rounded-2xl border border-indigo-200 shadow-sm p-6 space-y-4">
+                      <h3 className="text-sm font-black uppercase text-indigo-700 border-b pb-2">
+                        {hfHQEditIdx === globalHQs.length ? '➕ Thêm trụ sở mới' : `✏️ Sửa trụ sở #${hfHQEditIdx + 1}`}
+                      </h3>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Tên Trụ Sở *</label>
+                        <input
+                          type="text"
+                          value={hfHQEditItem.name}
+                          onChange={e => setHfHQEditItem(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Ví dụ: Pentair USA (Head Office)"
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Địa chỉ Trụ Sở *</label>
+                        <input
+                          type="text"
+                          value={hfHQEditItem.address}
+                          onChange={e => setHfHQEditItem(prev => ({ ...prev, address: e.target.value }))}
+                          placeholder="Địa chỉ cụ thể của trụ sở"
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Tọa độ X (%) *</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={hfHQEditItem.x}
+                            onChange={e => setHfHQEditItem(prev => ({ ...prev, x: parseFloat(e.target.value) || 0 }))}
+                            placeholder="0 - 100"
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Tọa độ Y (%) *</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={hfHQEditItem.y}
+                            onChange={e => setHfHQEditItem(prev => ({ ...prev, y: parseFloat(e.target.value) || 0 }))}
+                            placeholder="0 - 100"
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Offset chỉ hướng dX *</label>
+                          <input
+                            type="number"
+                            value={hfHQEditItem.dx}
+                            onChange={e => setHfHQEditItem(prev => ({ ...prev, dx: parseInt(e.target.value) || 0 }))}
+                            placeholder="Offset trục X vẽ đường chỉ dòng"
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Offset chỉ hướng dY *</label>
+                          <input
+                            type="number"
+                            value={hfHQEditItem.dy}
+                            onChange={e => setHfHQEditItem(prev => ({ ...prev, dy: parseInt(e.target.value) || 0 }))}
+                            placeholder="Offset trục Y vẽ đường chỉ dòng"
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Lá cờ (Hình ảnh hoặc Emoji) *</label>
+                        <ImageThumbInput
+                          value={hfHQEditItem.flag}
+                          onChange={v => setHfHQEditItem(prev => ({ ...prev, flag: v }))}
+                          onPick={() => setActiveMediaSelector({ target: 'global_hq_flag' })}
+                          placeholder="Emoji hoặc chọn ảnh/tải lên từ thư viện"
+                        />
+                      </div>
+
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          onClick={() => {
+                            if (!hfHQEditItem.name.trim() || !hfHQEditItem.address.trim() || !hfHQEditItem.flag.trim()) {
+                              alert('Vui lòng điền đầy đủ các thông tin: Tên, địa chỉ và biểu tượng lá cờ.');
+                              return;
+                            }
+                            const next = [...globalHQs];
+                            if (hfHQEditIdx === globalHQs.length) {
+                              next.push(hfHQEditItem);
+                            } else {
+                              next[hfHQEditIdx] = hfHQEditItem;
+                            }
+                            setGlobalHQs(next);
+                            setHfHQEditIdx(null);
+                            setHfHQEditItem({ name: '', address: '', x: 50, y: 50, dx: 6, dy: -8, flag: '' });
+                          }}
+                          className="flex-1 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-all cursor-pointer flex items-center justify-center gap-1"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          {hfHQEditIdx === globalHQs.length ? 'Thêm Trụ Sở' : 'Cập nhật'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setHfHQEditIdx(null);
+                            setHfHQEditItem({ name: '', address: '', x: 50, y: 50, dx: 6, dy: -8, flag: '' });
+                          }}
+                          className="px-4 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-lg hover:bg-gray-200 transition-all cursor-pointer"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-[#0C3471]/5 border border-[#0C3471]/10 rounded-2xl p-5 text-xs text-[#0C3471] font-sans space-y-2">
+                      <strong className="block text-[11px] uppercase">💡 Hướng dẫn tọa độ & Offset:</strong>
+                      <p>
+                        - Tọa độ X và Y là tỷ lệ phần trăm (0 - 100) theo chiều rộng và chiều cao trên bản đồ thế giới.
+                      </p>
+                      <p>
+                        - Offset dX và dY quyết định chiều hướng và khoảng cách từ chấm tròn đỏ (tọa độ của trụ sở) tới thẻ thông tin chi tiết nổi lên khi được chọn.
+                      </p>
+                      <p>
+                        - Trường "Lá cờ" chấp nhận cả Emoji (như 🇬🇧, 🇺🇸, 🇨🇳...) lẫn các tệp tin hình ảnh lá cờ tải lên trực tiếp. Với Windows, nên tải lên ảnh lá cờ để hiển thị đẹp mắt và đầy đủ màu sắc.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* World map layout debug overlay */}
+                  <div className="bg-slate-900 rounded-2xl p-4 space-y-3 text-white relative overflow-hidden">
+                    <h4 className="text-[11px] font-black uppercase text-blue-300">Xem trước vị trí trên bản đồ</h4>
+                    <div className="aspect-[3/2] w-full rounded-lg border border-white/10 relative bg-slate-950 overflow-hidden">
+                      <img 
+                        src="/uploads/world_map_dark.png" 
+                        className="absolute inset-0 w-full h-full object-cover opacity-40 pointer-events-none" 
+                        alt="" 
+                      />
+                      <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        {globalHQs.map((hq, idx) => (
+                          <g key={idx}>
+                            <circle cx={hq.x} cy={hq.y} r="1.5" fill="#3B82F6" />
+                            <text x={hq.x + 2} y={hq.y + 1} fill="#ffffff" fontSize="2.5" fontWeight="bold">{idx + 1}</text>
+                          </g>
+                        ))}
+                        {hfHQEditIdx !== null && (
+                          <circle cx={hfHQEditItem.x} cy={hfHQEditItem.y} r="2" fill="#E6C073" stroke="#ffffff" strokeWidth="0.3">
+                            <animate attributeName="r" from="2" to="6" dur="1.5s" repeatCount="indefinite" />
+                            <animate attributeName="opacity" from="1" to="0" dur="1.5s" repeatCount="indefinite" />
+                          </circle>
+                        )}
+                      </svg>
+                      {/* Form overlay coordinates display */}
+                      {hfHQEditIdx !== null && (
+                        <div className="absolute bottom-2 left-2 bg-black/80 px-2 py-1 rounded text-[9px] font-mono text-[#E6C073]">
+                          Đang định vị: X={hfHQEditItem.x}%, Y={hfHQEditItem.y}%
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -6892,6 +7250,8 @@ export default function AdminCMS({
                     setHeaderSettings(prev => ({ ...prev, logoImageUrl: url }));
                   } else if (target === 'footer_logo_image') {
                     setHeaderSettings(prev => ({ ...prev, footerLogoImageUrl: url }));
+                  } else if (target === 'global_hq_flag') {
+                    setHfHQEditItem(prev => ({ ...prev, flag: url }));
                   } else if (target === 'softener_slide') {
                     const slideIdx = activeMediaSelector?.slideIndex;
                     if (slideIdx !== undefined) {
