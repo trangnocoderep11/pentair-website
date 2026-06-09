@@ -449,8 +449,8 @@ const bootstrapData = {
       optionValue: {
         metaTitle: "Pentair Việt Nam | Máy lọc nước tổng cao cấp nhập khẩu Mỹ",
         metaDescription: "Pentair VN là đơn vị phân phối giải pháp lọc nước Pentair Hoa Kỳ cao cấp cho lâu đài, biệt thự sang trọng. Hotline: 1800 8134.",
-        canonicalUrl: "https://thegioiloctong.com",
-        robotsTxt: "User-agent: *\nDisallow: /admin/\nAllow: /\n\nSitemap: https://thegioiloctong.com/sitemap.xml",
+        canonicalUrl: "https://pentairvietnam.vn",
+        robotsTxt: "User-agent: *\nDisallow: /admin/\nAllow: /\n\nSitemap: https://pentairvietnam.vn/sitemap.xml",
         googleAnalyticsId: "G-PENTAIR123",
         ogImage: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1200&q=80"
       }
@@ -942,7 +942,7 @@ async function dbSaveOption(opt: any) {
   return withPg(c => c.query(
     `INSERT INTO public.options (id,option_name,option_value)
      VALUES ($1,$2,$3)
-     ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value`,
+     ON CONFLICT (id) DO UPDATE SET option_name=EXCLUDED.option_name, option_value=EXCLUDED.option_value`,
     [opt.id || `opt-${opt.optionName}`, opt.optionName, JSON.stringify(opt)]
   ));
 }
@@ -1451,7 +1451,7 @@ async function saveDbToSupabase() {
           await client.query(
             `INSERT INTO public.options (id, option_name, option_value)
              VALUES ($1,$2,$3)
-             ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value`,
+             ON CONFLICT (id) DO UPDATE SET option_name=EXCLUDED.option_name, option_value=EXCLUDED.option_value`,
             [opt.id || `opt-${opt.optionName}`, opt.optionName, JSON.stringify(opt)]
           );
         } catch (e: any) { console.warn(`[SYNC] Bỏ qua option ${opt.optionName}:`, e.message); }
@@ -1461,7 +1461,7 @@ async function saveDbToSupabase() {
       await client.query(
         `INSERT INTO public.options (id, option_name, option_value)
          VALUES ($1, $2, $3)
-         ON CONFLICT (option_name) DO UPDATE SET option_value = EXCLUDED.option_value`,
+         ON CONFLICT (id) DO UPDATE SET option_name = EXCLUDED.option_name, option_value = EXCLUDED.option_value`,
         ["opt-database-backup", "cms_database_backup", JSON.stringify(db)]
       );
 
@@ -1633,7 +1633,7 @@ function writeDb() {
   // Best-effort Postgres backup if pool is available
   withPg(c => c.query(
     `INSERT INTO public.options (id,option_name,option_value) VALUES ($1,$2,$3)
-     ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value`,
+     ON CONFLICT (id) DO UPDATE SET option_name=EXCLUDED.option_name, option_value=EXCLUDED.option_value`,
     ['opt-database-backup', 'cms_database_backup', JSON.stringify(db)]
   )).catch(() => {});
 }
@@ -2556,6 +2556,7 @@ app.post("/api/supabase/push-data", authMiddleware, requireRole('administrator')
 });
 
 app.get("/api/options", (req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   res.json(db.options);
 });
 
@@ -3611,7 +3612,7 @@ app.post("/api/backup/import", authMiddleware, requireRole('administrator'), (re
 app.get("/sitemap.xml", (req, res) => {
   res.header("Content-Type", "application/xml");
   const seoOptIdx = db.options.findIndex(o => o.optionName === "seo_settings");
-  let baseUrl = "https://thegioiloctong.com";
+  let baseUrl = `${req.protocol}://${req.get('host')}`;
   
   if (seoOptIdx !== -1 && (db.options[seoOptIdx].optionValue as any).canonicalUrl) {
     baseUrl = (db.options[seoOptIdx].optionValue as any).canonicalUrl.replace(/\/$/, "");
@@ -3646,7 +3647,7 @@ app.get("/robots.txt", (req, res) => {
   if (seoOptIdx !== -1 && (db.options[seoOptIdx].optionValue as any).robotsTxt) {
     return res.send((db.options[seoOptIdx].optionValue as any).robotsTxt);
   }
-  res.send("User-agent: *\nDisallow: /admin/\nAllow: /\n\nSitemap: https://thegioiloctong.com/sitemap.xml");
+  res.send(`User-agent: *\nDisallow: /admin/\nAllow: /\n\nSitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`);
 });
 
 // Vite server boot connection / Static Server in Production

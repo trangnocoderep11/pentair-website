@@ -1797,7 +1797,7 @@ export default function PublicPages({
                 </div>
                 
                 <div className="flex justify-between items-center pt-4 border-t border-gray-50">
-                  <span className="text-[10px] text-gray-400 font-semibold uppercase font-mono">thegioiloctong.com specs</span>
+                  <span className="text-[10px] text-gray-400 font-semibold uppercase font-mono">pentairvietnam.vn specs</span>
                   <span className="text-xs font-bold text-pentair flex items-center gap-1 group-hover:translate-x-1.5 transition-transform">
                     Xem thông số
                     <ChevronRight className="w-4 h-4" />

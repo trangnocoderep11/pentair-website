@@ -658,8 +658,8 @@
       "optionValue": {
         "ogImage": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1200&q=80",
         "metaTitle": "Pentair Việt Nam | Máy lọc nước tổng cao cấp nhập khẩu Mỹ",
-        "robotsTxt": "User-agent: *\nDisallow: /admin/\nAllow: /\n\nSitemap: https://thegioiloctong.com/sitemap.xml",
-        "canonicalUrl": "https://thegioiloctong.com",
+        "robotsTxt": "User-agent: *\nDisallow: /admin/\nAllow: /\n\nSitemap: https://pentairvietnam.vn/sitemap.xml",
+        "canonicalUrl": "https://pentairvietnam.vn/",
         "metaDescription": "Pentair VN là đơn vị phân phối giải pháp lọc nước Pentair Hoa Kỳ cao cấp cho lâu đài, biệt thự sang trọng. Hotline: 1800 8134.",
         "googleAnalyticsId": "G-PENTAIR123"
       }

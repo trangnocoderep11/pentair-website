@@ -304,7 +304,7 @@ export default function App() {
       relCanonicalEl.setAttribute('rel', 'canonical');
       document.head.appendChild(relCanonicalEl);
     }
-    relCanonicalEl.setAttribute('href', (seoSettingsOption?.canonicalUrl || 'https://thegioiloctong.com') + currentPath);
+    relCanonicalEl.setAttribute('href', (seoSettingsOption?.canonicalUrl || window.location.origin) + currentPath);
 
   }, [currentPath, options, posts]);
 

@@ -945,7 +945,7 @@ export default function AdminCMS({
   const [seoForm, setSeoForm] = React.useState({
     metaTitle: 'Pentair Việt Nam | Máy lọc nước tổng cao cấp nhập khẩu Mỹ',
     metaDescription: 'Phân phối chính hãng màng sợi rỗng, van điều khiển fleck sừng sỏ',
-    canonicalUrl: 'https://thegioiloctong.com',
+    canonicalUrl: 'https://pentairvietnam.vn',
     robotsTxt: ''
   });
 
@@ -1381,9 +1381,12 @@ export default function AdminCMS({
   const handleSaveAllConfigs = async () => {
     setActionLoading(true);
     try {
+      const existingBrand = options.find(o => o.optionName === 'brand_settings')?.optionValue || {};
+      const existingSeo = options.find(o => o.optionName === 'seo_settings')?.optionValue || {};
+
       const payload = [
-        { id: "opt-brand", optionName: "brand_settings", optionValue: brandForm },
-        { id: "opt-seo", optionName: "seo_settings", optionValue: seoForm },
+        { id: "opt-brand", optionName: "brand_settings", optionValue: { ...existingBrand, ...brandForm } },
+        { id: "opt-seo", optionName: "seo_settings", optionValue: { ...existingSeo, ...seoForm } },
         { id: "opt-showrooms", optionName: "showrooms", optionValue: showroomList }
       ];
 
@@ -2090,7 +2093,7 @@ export default function AdminCMS({
                 <div>
                   <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block">Thiết Bị Lọc Nước</span>
                   <strong className="text-xl font-black text-gray-900">{posts.filter(p => p.type === 'product').length} Sản Phẩm</strong>
-                  <span className="text-[10px] text-emerald-500 tracking-wide block">thegioiloctong Specs</span>
+                  <span className="text-[10px] text-emerald-500 tracking-wide block">pentairvietnam Specs</span>
                 </div>
               </div>
 
@@ -3723,7 +3726,7 @@ export default function AdminCMS({
                             value={userForm.email}
                             onChange={e => setUserForm({ ...userForm, email: e.target.value })}
                             className="w-full px-3 py-2 text-xs rounded border bg-white focus:outline-none"
-                            placeholder="email@thegioiloctong.com"
+                            placeholder="email@pentairvietnam.vn"
                           />
                         </div>
                         <div className="space-y-1">
