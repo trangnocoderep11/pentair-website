@@ -29,55 +29,82 @@ const globalHQs = [
   {
     name: 'Pentair Global HQ (UK)',
     address: 'Regal House, 70 London Road, Twickenham, London, United Kingdom',
-    query: 'Pentair, Regal House, 70 London Rd, Twickenham TW1 3QS, United Kingdom',
+    x: 47.5,
+    y: 30.5,
+    dx: -6,
+    dy: -8,
     flag: '🇬🇧'
   },
   {
     name: 'Pentair USA (Head Office)',
     address: '5500 Wayzata Blvd, Suite 900, Golden Valley, Minnesota, USA',
-    query: 'Pentair, 5500 Wayzata Blvd #900, Golden Valley, MN 55416, United States',
+    x: 20.0,
+    y: 33.5,
+    dx: 6,
+    dy: -8,
     flag: '🇺🇸'
   },
   {
     name: 'Pentair Switzerland (EMEA HQ)',
     address: 'Pentair International Sàrl, Avenue de Sévelin 18, 1004 Lausanne, Switzerland',
-    query: 'Pentair International Sàrl, Avenue de Sévelin 18, 1004 Lausanne, Switzerland',
+    x: 49.0,
+    y: 33.0,
+    dx: 6,
+    dy: -8,
     flag: '🇨🇭'
   },
   {
     name: 'Pentair Singapore (APAC Hub)',
     address: '390 Havelock Road, King’s Centre, Singapore 169662',
-    query: 'Pentair, 390 Havelock Rd, Singapore 169662',
+    x: 76.5,
+    y: 57.5,
+    dx: -6,
+    dy: -8,
     flag: '🇸🇬'
   },
   {
     name: 'Pentair China',
     address: 'Cloud Nine Plaza, No.1118 West Yan’an Road, Changning District, Shanghai, China',
-    query: 'Pentair, Cloud Nine Plaza, No.1118 West Yanan Road, Changning District, Shanghai, China',
+    x: 81.0,
+    y: 41.5,
+    dx: 6,
+    dy: -8,
     flag: '🇨🇳'
   },
   {
     name: 'Pentair UAE (Middle East)',
     address: 'Sheikh Rashid Tower, Dubai World Trade Centre, Dubai, UAE',
-    query: 'Pentair, Sheikh Rashid Tower, Dubai World Trade Centre, Dubai, UAE',
+    x: 60.5,
+    y: 43.5,
+    dx: -6,
+    dy: -8,
     flag: '🇦🇪'
   },
   {
     name: 'Pentair Australia',
     address: '1–21 Monash Drive, Dandenong South, Victoria, Australia',
-    query: 'Pentair, 1-21 Monash Dr, Dandenong South VIC 3175, Australia',
+    x: 88.5,
+    y: 79.5,
+    dx: -6,
+    dy: -8,
     flag: '🇦🇺'
   },
   {
     name: 'Pentair India',
     address: 'Lunkad Sky Vista, Viman Nagar, Pune, Maharashtra, India',
-    query: 'Pentair, Lunkad Sky Vista, Viman Nagar, Pune, Maharashtra, India',
+    x: 69.5,
+    y: 48.5,
+    dx: -6,
+    dy: -8,
     flag: '🇮🇳'
   },
   {
     name: 'Pentair South Africa',
     address: 'Johannesburg, South Africa',
-    query: 'Pentair, Johannesburg, South Africa',
+    x: 54.0,
+    y: 71.5,
+    dx: 6,
+    dy: -8,
     flag: '🇿🇦'
   }
 ];
@@ -197,18 +224,116 @@ export default function Footer({
             </div>
 
             {/* Map Area */}
-            <div className="lg:col-span-7 h-[350px] rounded-2xl overflow-hidden border border-white/10 relative bg-pentair-dark/40 shadow-inner flex items-center justify-center">
-              <iframe 
-                src={`https://maps.google.com/maps?q=${encodeURIComponent(globalHQs[selectedHQIdx].query)}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
-                width="100%" 
-                height="100%" 
-                style={{ border: 0 }} 
-                allowFullScreen={false} 
-                loading="lazy" 
-                referrerPolicy="no-referrer-when-downgrade"
-                className="absolute inset-0"
-                title={`Pentair Map - ${globalHQs[selectedHQIdx].name}`}
-              ></iframe>
+            <div className="lg:col-span-7 aspect-[3/2] w-full rounded-2xl overflow-hidden border border-white/10 relative bg-slate-950 shadow-2xl flex items-center justify-center select-none">
+              {/* World map background */}
+              <img 
+                src="/uploads/world_map_dark.png" 
+                alt="Pentair World Map" 
+                className="absolute inset-0 w-full h-full object-cover opacity-60"
+              />
+
+              {/* SVG Overlay for dots and lines */}
+              <svg 
+                className="absolute inset-0 w-full h-full pointer-events-none z-10" 
+                viewBox="0 0 100 100" 
+                preserveAspectRatio="none"
+              >
+                {/* Dots for all HQs */}
+                {globalHQs.map((hq, idx) => {
+                  const isSelected = selectedHQIdx === idx;
+                  return (
+                    <g key={idx}>
+                      <circle 
+                        cx={hq.x} 
+                        cy={hq.y} 
+                        r="0.8" 
+                        fill={isSelected ? "#E6C073" : "#3B82F6"} 
+                        className="transition-all duration-300"
+                      />
+                      {isSelected && (
+                        <>
+                          <circle cx={hq.x} cy={hq.y} r="0.8" fill="none" stroke="#E6C073" strokeWidth="0.15" opacity="1">
+                            <animate attributeName="r" from="0.8" to="6" dur="2.4s" begin="0s" repeatCount="indefinite" />
+                            <animate attributeName="opacity" from="1" to="0" dur="2.4s" begin="0s" repeatCount="indefinite" />
+                          </circle>
+                          <circle cx={hq.x} cy={hq.y} r="0.8" fill="none" stroke="#E6C073" strokeWidth="0.15" opacity="1">
+                            <animate attributeName="r" from="0.8" to="6" dur="2.4s" begin="0.8s" repeatCount="indefinite" />
+                            <animate attributeName="opacity" from="1" to="0" dur="2.4s" begin="0.8s" repeatCount="indefinite" />
+                          </circle>
+                          <circle cx={hq.x} cy={hq.y} r="0.8" fill="none" stroke="#E6C073" strokeWidth="0.15" opacity="1">
+                            <animate attributeName="r" from="0.8" to="6" dur="2.4s" begin="1.6s" repeatCount="indefinite" />
+                            <animate attributeName="opacity" from="1" to="0" dur="2.4s" begin="1.6s" repeatCount="indefinite" />
+                          </circle>
+                        </>
+                      )}
+                    </g>
+                  );
+                })}
+
+                {/* Animated Line connecting dot to label */}
+                {(() => {
+                  const active = globalHQs[selectedHQIdx];
+                  const horizontalLength = active.dx > 0 ? 8 : -8;
+                  return (
+                    <g key={selectedHQIdx}>
+                      <path 
+                        d={`M ${active.x} ${active.y} L ${active.x + active.dx} ${active.y + active.dy} h ${horizontalLength}`}
+                        fill="none"
+                        stroke="#E6C073"
+                        strokeWidth="0.3"
+                        strokeDasharray="100"
+                        strokeDashoffset="100"
+                      >
+                        <animate 
+                          attributeName="stroke-dashoffset" 
+                          from="100" 
+                          to="0" 
+                          dur="0.8s" 
+                          fill="freeze" 
+                        />
+                      </path>
+                      <circle cx={active.x + active.dx} cy={active.y + active.dy} r="0.4" fill="#E6C073" />
+                    </g>
+                  );
+                })()}
+              </svg>
+
+              {/* Clickable Overlay Dots (so users can click map directly) */}
+              {globalHQs.map((hq, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedHQIdx(idx)}
+                  style={{ left: `${hq.x}%`, top: `${hq.y}%` }}
+                  className="absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 rounded-full cursor-pointer z-20 flex items-center justify-center group focus:outline-none bg-transparent border-0"
+                  title={hq.name}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-transparent border border-transparent group-hover:bg-[#E6C073]/20 group-hover:border-[#E6C073]/50 group-hover:scale-125 transition-all duration-200" />
+                </button>
+              ))}
+
+              {/* Floating HQ Info Card */}
+              {(() => {
+                const active = globalHQs[selectedHQIdx];
+                const isLeft = active.dx < 0;
+                return (
+                  <div 
+                    style={{ left: `${active.x + active.dx}%`, top: `${active.y + active.dy - 1.5}%` }}
+                    className={`absolute z-20 p-3 bg-slate-950/90 border border-[#E6C073]/40 rounded-xl shadow-2xl backdrop-blur-md max-w-[220px] transform -translate-y-full animate-fadeIn transition-all duration-300 pointer-events-auto flex flex-col gap-1.5 ${
+                      isLeft ? '-translate-x-full pr-4' : 'pl-4'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 border-b border-[#E6C073]/20 pb-1 mb-0.5">
+                      <span className="text-sm shrink-0 select-none">{active.flag}</span>
+                      <h6 className="text-[10px] font-bold text-[#E6C073] uppercase tracking-wider truncate">
+                        {active.name}
+                      </h6>
+                    </div>
+                    <p className="text-[9px] text-blue-150 leading-normal font-sans font-light">
+                      {active.address}
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
