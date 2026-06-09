@@ -17,8 +17,16 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 
 dotenv.config();
 
-// db.json is the primary data source — bundled by esbuild, no Supabase needed
-import dbFileData from "./db.json";
+// db.json is the primary data source — loaded dynamically to prevent tsx watcher restarts in dev mode
+const dbPath = path.join(process.cwd(), "db.json");
+let dbFileData: any = {};
+if (fs.existsSync(dbPath)) {
+  try {
+    dbFileData = JSON.parse(fs.readFileSync(dbPath, "utf-8"));
+  } catch (e: any) {
+    console.error("[DB INIT] Cannot read db.json, using empty object:", e.message);
+  }
+}
 
 const app = express();
 const PORT = 3000;

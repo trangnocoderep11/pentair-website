@@ -367,6 +367,9 @@ export default function MediaLibrary({
 
     if (newItems.length > 0) {
       setItems(prev => [...newItems, ...prev]);
+      if (errors.length === 0) {
+        alert(`Tải lên thành công ${newItems.length} hình ảnh!`);
+      }
     }
 
     if (errors.length > 0) {
@@ -430,6 +433,7 @@ export default function MediaLibrary({
       setItems(prev => [data, ...prev]);
       setUrlForm({ url: '', filename: '' });
       setShowUploadModal(false);
+      alert('Tải lên hình ảnh thành công!');
     } catch (err: any) {
       alert(err.message || 'Không thể lấy ảnh từ URL.');
     } finally {

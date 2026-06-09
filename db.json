@@ -3563,6 +3563,16 @@
       "folderId": "folder-fcbe8baf-fe1f-48c0-a59a-52025ee50691",
       "createdAt": "2026-06-09T02:29:53.909Z",
       "updatedAt": "2026-06-09T02:29:53.909Z"
+    },
+    {
+      "id": "media-c18d75c3-5a0f-4063-848d-a76ffc0c2001",
+      "title": "Pentair C500_01.webp",
+      "url": "/uploads/1781013827521-Pentair_C500_01.webp",
+      "mimeType": "image/webp",
+      "fileSize": 72730,
+      "folderId": "folder-fcbe8baf-fe1f-48c0-a59a-52025ee50691",
+      "createdAt": "2026-06-09T14:03:47.549Z",
+      "updatedAt": "2026-06-09T14:03:47.549Z"
     }
   ]
 }
