@@ -25,6 +25,63 @@ interface FooterProps {
   logoTextFull?: string;
 }
 
+const globalHQs = [
+  {
+    name: 'Pentair Global HQ (UK)',
+    address: 'Regal House, 70 London Road, Twickenham, London, United Kingdom',
+    query: 'Pentair, Regal House, 70 London Rd, Twickenham TW1 3QS, United Kingdom',
+    flag: '🇬🇧'
+  },
+  {
+    name: 'Pentair USA (Head Office)',
+    address: '5500 Wayzata Blvd, Suite 900, Golden Valley, Minnesota, USA',
+    query: 'Pentair, 5500 Wayzata Blvd #900, Golden Valley, MN 55416, United States',
+    flag: '🇺🇸'
+  },
+  {
+    name: 'Pentair Switzerland (EMEA HQ)',
+    address: 'Pentair International Sàrl, Avenue de Sévelin 18, 1004 Lausanne, Switzerland',
+    query: 'Pentair International Sàrl, Avenue de Sévelin 18, 1004 Lausanne, Switzerland',
+    flag: '🇨🇭'
+  },
+  {
+    name: 'Pentair Singapore (APAC Hub)',
+    address: '390 Havelock Road, King’s Centre, Singapore 169662',
+    query: 'Pentair, 390 Havelock Rd, Singapore 169662',
+    flag: '🇸🇬'
+  },
+  {
+    name: 'Pentair China',
+    address: 'Cloud Nine Plaza, No.1118 West Yan’an Road, Changning District, Shanghai, China',
+    query: 'Pentair, Cloud Nine Plaza, No.1118 West Yanan Road, Changning District, Shanghai, China',
+    flag: '🇨🇳'
+  },
+  {
+    name: 'Pentair UAE (Middle East)',
+    address: 'Sheikh Rashid Tower, Dubai World Trade Centre, Dubai, UAE',
+    query: 'Pentair, Sheikh Rashid Tower, Dubai World Trade Centre, Dubai, UAE',
+    flag: '🇦🇪'
+  },
+  {
+    name: 'Pentair Australia',
+    address: '1–21 Monash Drive, Dandenong South, Victoria, Australia',
+    query: 'Pentair, 1-21 Monash Dr, Dandenong South VIC 3175, Australia',
+    flag: '🇦🇺'
+  },
+  {
+    name: 'Pentair India',
+    address: 'Lunkad Sky Vista, Viman Nagar, Pune, Maharashtra, India',
+    query: 'Pentair, Lunkad Sky Vista, Viman Nagar, Pune, Maharashtra, India',
+    flag: '🇮🇳'
+  },
+  {
+    name: 'Pentair South Africa',
+    address: 'Johannesburg, South Africa',
+    query: 'Pentair, Johannesburg, South Africa',
+    flag: '🇿🇦'
+  }
+];
+
 export default function Footer({ 
   brandSettings, 
   policies, 
@@ -37,6 +94,7 @@ export default function Footer({
 }: FooterProps) {
   const [activePolicyIdx, setActivePolicyIdx] = React.useState<number | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [selectedHQIdx, setSelectedHQIdx] = React.useState<number>(0);
 
   const filteredShowrooms = React.useMemo(() => {
     if (!searchQuery.trim()) return showrooms;
@@ -78,6 +136,80 @@ export default function Footer({
               Kênh YouTube Official
               <ArrowUpRight className="w-3 h-3" />
             </a>
+          </div>
+        </div>
+      </div>
+
+      {/* Interactive Global HQs Section */}
+      <div className="border-b border-white/10 bg-pentair-dark/20 py-10 px-4">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h5 className="text-sm font-bold tracking-wider uppercase text-blue-300">
+                🌍 Hệ Thống Trụ Sở Pentair Toàn Cầu
+              </h5>
+              <p className="text-xs text-blue-200/80 mt-1">
+                Nhấp vào một trụ sở để xem vị trí chi tiết trên bản đồ vệ tinh thế giới.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-[11px] bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-blue-200">
+              <span className="font-semibold text-white">Đang xem:</span> {globalHQs[selectedHQIdx].name}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+            {/* HQs List */}
+            <div 
+              className="lg:col-span-5 max-h-[350px] overflow-y-auto pr-2 space-y-2.5 scrollbar-thin"
+              style={{ 
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'rgba(255, 255, 255, 0.15) transparent' 
+              }}
+            >
+              {globalHQs.map((hq, idx) => {
+                const isSelected = selectedHQIdx === idx;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedHQIdx(idx)}
+                    className={`w-full text-left p-3.5 rounded-xl border transition-all duration-300 flex items-start gap-3 cursor-pointer group ${
+                      isSelected 
+                        ? 'bg-[#E6C073]/10 border-[#E6C073] shadow-md shadow-[#E6C073]/5' 
+                        : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <span className="text-xl shrink-0 select-none group-hover:scale-110 transition-transform duration-200">
+                      {hq.flag}
+                    </span>
+                    <div className="space-y-1">
+                      <h6 className={`text-xs font-bold transition-colors ${
+                        isSelected ? 'text-[#E6C073]' : 'text-white group-hover:text-blue-300'
+                      }`}>
+                        {hq.name}
+                      </h6>
+                      <p className="text-[10px] text-blue-200/80 leading-relaxed font-sans font-light">
+                        {hq.address}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Map Area */}
+            <div className="lg:col-span-7 h-[350px] rounded-2xl overflow-hidden border border-white/10 relative bg-pentair-dark/40 shadow-inner flex items-center justify-center">
+              <iframe 
+                src={`https://maps.google.com/maps?q=${encodeURIComponent(globalHQs[selectedHQIdx].query)}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
+                width="100%" 
+                height="100%" 
+                style={{ border: 0 }} 
+                allowFullScreen={false} 
+                loading="lazy" 
+                referrerPolicy="no-referrer-when-downgrade"
+                className="absolute inset-0"
+                title={`Pentair Map - ${globalHQs[selectedHQIdx].name}`}
+              ></iframe>
+            </div>
           </div>
         </div>
       </div>
