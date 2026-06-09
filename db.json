@@ -869,7 +869,7 @@
           "y": 30.5,
           "dx": -6,
           "dy": -8,
-          "flag": "🇬🇧"
+          "flag": "/uploads/1780971821347-Flag_of_the_United_Kingdom__1-2_.svg"
         },
         {
           "name": "Pentair USA (Head Office)",
@@ -887,7 +887,7 @@
           "y": 33,
           "dx": 6,
           "dy": -8,
-          "flag": "🇨🇭"
+          "flag": "/uploads/1780972193908-Flag_of_Switzerland.svg.png"
         },
         {
           "name": "Pentair Singapore (APAC Hub)",
@@ -3553,6 +3553,16 @@
       "folderId": "folder-fcbe8baf-fe1f-48c0-a59a-52025ee50691",
       "createdAt": "2026-06-09T02:25:03.686Z",
       "updatedAt": "2026-06-09T02:25:03.686Z"
+    },
+    {
+      "id": "media-ba9b889e-65bc-4060-8622-23792b14162f",
+      "title": "Flag_of_Switzerland.svg.png",
+      "url": "/uploads/1780972193908-Flag_of_Switzerland.svg.png",
+      "mimeType": "image/png",
+      "fileSize": 726,
+      "folderId": "folder-fcbe8baf-fe1f-48c0-a59a-52025ee50691",
+      "createdAt": "2026-06-09T02:29:53.909Z",
+      "updatedAt": "2026-06-09T02:29:53.909Z"
     }
   ]
 }

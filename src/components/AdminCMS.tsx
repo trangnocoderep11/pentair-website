@@ -3994,19 +3994,42 @@ export default function AdminCMS({
 
                 <hr className="border-gray-200" />
 
-                <div className="space-y-1.5">
+                <div className="space-y-3">
                   <h4 className="text-xs font-black text-gray-900 uppercase">Khôi phục dữ liệu (Import Backup File)</h4>
-                  <p className="text-xs text-gray-500 font-sans leading-relaxed col-span-2">
-                    Dán chuỗi JSON đã xuất phía bên phải vào phần ô nhập liệu và nhấn nút để khôi phục trạng thái nguyên trạng.
+                  <p className="text-xs text-gray-500 font-sans leading-relaxed">
+                    Bạn có thể chọn tải tệp tin backup `.json` trực tiếp từ máy tính hoặc dán chuỗi JSON đã xuất vào ô văn bản bên cạnh.
                   </p>
-                  <button 
-                    onClick={handleImportJson}
-                    disabled={actionLoading}
-                    className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold uppercase rounded-lg shadow-md transition-all flex items-center gap-1 cursor-pointer"
-                    id="btn-import-backup"
-                  >
-                    <Upload className="w-4 h-4" /> {actionLoading ? 'Đang khôi phục...' : 'Kích hoạt Import dữ liệu'}
-                  </button>
+                  
+                  <div className="flex flex-wrap gap-3">
+                    <label className="flex items-center gap-1.5 px-4 py-2 bg-indigo-50 border border-indigo-200 hover:bg-indigo-150 text-indigo-700 text-xs font-bold rounded-lg cursor-pointer transition-all">
+                      <Upload className="w-4 h-4" /> Tải tệp backup (.json) lên
+                      <input 
+                        type="file" 
+                        accept=".json"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            const txt = event.target?.result as string;
+                            setBackupJsonText(txt);
+                            triggerToast("Đã tải tệp JSON từ máy tính vào ô nhập liệu thành công!");
+                          };
+                          reader.readAsText(file);
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <button 
+                      onClick={handleImportJson}
+                      disabled={actionLoading}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold uppercase rounded-lg shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      id="btn-import-backup"
+                    >
+                      <CheckCircle className="w-4 h-4" /> {actionLoading ? 'Đang khôi phục...' : 'Kích hoạt Import dữ liệu'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
