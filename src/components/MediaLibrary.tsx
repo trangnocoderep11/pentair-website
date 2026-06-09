@@ -300,6 +300,9 @@ export default function MediaLibrary({
           access: 'public',
           handleUploadUrl: '/api/admin/media/client-upload',
           clientPayload: currentFolderId || undefined,
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+          }
         });
 
         // Register URL in DB
@@ -319,8 +322,43 @@ export default function MediaLibrary({
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `Lỗi đăng ký ${file.name}`);
         newItems.push(data);
-      } catch (err: any) {
-        errors.push(`${file.name}: ${err.message || 'Lỗi upload'}`);
+      } catch (blobErr: any) {
+        console.warn("Vercel Blob client upload failed, attempting local fallback upload:", blobErr);
+        try {
+          // Read file as Base64 to upload directly to our server
+          const base64Data = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const result = e.target?.result as string;
+              if (result) {
+                resolve(result.split(',')[1]);
+              } else {
+                reject(new Error("Không thể đọc file."));
+              }
+            };
+            reader.onerror = () => reject(new Error("Lỗi đọc file."));
+            reader.readAsDataURL(file);
+          });
+
+          const res = await fetch('/api/admin/media/upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+            },
+            body: JSON.stringify({
+              filename: file.name,
+              mimeType: file.type,
+              base64Data,
+              folderId: currentFolderId || undefined
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || `Lỗi tải lên trực tiếp ${file.name}`);
+          newItems.push(data);
+        } catch (localErr: any) {
+          errors.push(`${file.name}: ${localErr.message || 'Lỗi upload'}`);
+        }
       } finally {
         completedCount++;
         setUploadProgress({ completed: completedCount, total: totalFiles });
