@@ -3341,7 +3341,7 @@ app.post("/api/admin/media/upload", authMiddleware, async (req, res) => {
     return res.json(newItem);
   } catch (err: any) {
     console.error("Lỗi upload file", err);
-    return res.status(500).json({ error: "Không thể lưu tệp tin lên máy chủ." });
+    return res.status(500).json({ error: `Upload thất bại: ${err?.message || err}` });
   }
 });
 
