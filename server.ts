@@ -3289,13 +3289,32 @@ app.post("/api/admin/media/upload", authMiddleware, async (req, res) => {
   try {
     let fileUrl: string;
 
-    if (process.env.VERCEL && (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID)) {
-      // Vercel: upload to Blob Storage (OIDC or token auth — SDK picks up automatically)
-      const blob = await blobPut(uniqueFilename, buffer, {
-        access: 'public',
-        contentType: mimeType || 'image/jpeg',
-      });
-      fileUrl = blob.url;
+    if (process.env.VERCEL) {
+      if (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID) {
+        // Option 1: Vercel Blob Storage
+        const blob = await blobPut(uniqueFilename, buffer, {
+          access: 'public',
+          contentType: mimeType || 'image/jpeg',
+        });
+        fileUrl = blob.url;
+      } else if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        // Option 2: Supabase Storage
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabase = createClient(
+          process.env.SUPABASE_URL,
+          process.env.SUPABASE_SERVICE_ROLE_KEY
+        );
+        // Tạo bucket nếu chưa có
+        await supabase.storage.createBucket('media', { public: true }).catch(() => {});
+        const { error: uploadError } = await supabase.storage
+          .from('media')
+          .upload(uniqueFilename, buffer, { contentType: mimeType || 'image/jpeg', upsert: false });
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(uniqueFilename);
+        fileUrl = publicUrl;
+      } else {
+        throw new Error('Chưa cấu hình storage. Cần BLOB_READ_WRITE_TOKEN (Vercel Blob) hoặc SUPABASE_SERVICE_ROLE_KEY (Supabase Storage).');
+      }
     } else {
       // Local dev: write to public/uploads/
       const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
