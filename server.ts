@@ -13,6 +13,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { put as blobPut } from "@vercel/blob";
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 
 dotenv.config();
 
@@ -3342,6 +3343,38 @@ app.post("/api/admin/media/upload", authMiddleware, async (req, res) => {
   } catch (err: any) {
     console.error("Lỗi upload file", err);
     return res.status(500).json({ error: `Upload thất bại: ${err?.message || err}` });
+  }
+});
+
+// Direct client-side upload token — bypasses 4.5MB serverless body limit
+app.post("/api/admin/media/client-upload", authMiddleware, async (req, res) => {
+  try {
+    const jsonResponse = await handleUpload({
+      body: req.body as HandleUploadBody,
+      request: req as any,
+      onBeforeGenerateToken: async () => ({
+        allowedContentTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp'],
+        maximumSizeInBytes: 100 * 1024 * 1024,
+      }),
+      onUploadCompleted: async ({ blob }: { blob: any }) => {
+        const newItem = {
+          id: "media-" + crypto.randomUUID(),
+          title: blob.pathname.split('/').pop() || blob.pathname,
+          url: blob.url,
+          mimeType: blob.contentType || 'image/jpeg',
+          fileSize: blob.size || 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        if (!db.mediaItems) db.mediaItems = [];
+        db.mediaItems.push(newItem);
+        dbSaveMediaItem(newItem).catch((e: any) => console.error('[DB]', e));
+      },
+    });
+    return res.json(jsonResponse);
+  } catch (err: any) {
+    console.error("Client upload error:", err);
+    return res.status(400).json({ error: err.message });
   }
 });
 

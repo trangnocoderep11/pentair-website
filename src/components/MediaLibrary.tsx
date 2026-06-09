@@ -1,4 +1,5 @@
 import React from 'react';
+import { upload as blobClientUpload } from '@vercel/blob/client';
 import { 
   Folder, FolderPlus, Image, UploadCloud, X, Edit2, Trash2, 
   Download, Copy, Check, ChevronRight, CornerDownRight, Search, 
@@ -292,40 +293,38 @@ export default function MediaLibrary({
         setUploadProgress({ completed: completedCount, total: totalFiles });
         continue;
       }
-      
-      await new Promise<void>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = async () => {
-          try {
-            const base64 = (reader.result as string).split(',')[1];
-            const res = await fetch('/api/admin/media/upload', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
-              },
-              body: JSON.stringify({
-                filename: file.name,
-                mimeType: file.type,
-                base64Data: base64,
-                folderId: currentFolderId || undefined
-              })
-            });
 
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || `Lỗi upload ${file.name}`);
+      try {
+        // Direct upload to Vercel Blob (no 4.5MB serverless limit)
+        const blob = await blobClientUpload(file.name, file, {
+          access: 'public',
+          handleUploadUrl: '/api/admin/media/client-upload',
+          clientPayload: currentFolderId || undefined,
+        });
 
-            newItems.push(data);
-          } catch (err: any) {
-            errors.push(`${file.name}: ${err.message || 'Lỗi upload'}`);
-          } finally {
-            completedCount++;
-            setUploadProgress({ completed: completedCount, total: totalFiles });
-            resolve();
-          }
-        };
-        reader.readAsDataURL(file);
-      });
+        // Register URL in DB
+        const res = await fetch('/api/admin/media/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+          },
+          body: JSON.stringify({
+            url: blob.url,
+            filename: file.name,
+            mimeType: file.type,
+            folderId: currentFolderId || undefined
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Lỗi đăng ký ${file.name}`);
+        newItems.push(data);
+      } catch (err: any) {
+        errors.push(`${file.name}: ${err.message || 'Lỗi upload'}`);
+      } finally {
+        completedCount++;
+        setUploadProgress({ completed: completedCount, total: totalFiles });
+      }
     }
 
     if (newItems.length > 0) {
