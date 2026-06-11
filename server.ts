@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import express, { Request, Response, NextFunction } from "express";
+import express from "express";
+import type { Request, Response, NextFunction } from "express";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
@@ -12,7 +13,7 @@ import nodemailer from "nodemailer";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import { put as blobPut } from "@vercel/blob";
+import { put as blobPut, get as blobGet } from "@vercel/blob";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 
 dotenv.config();
@@ -1654,6 +1655,82 @@ async function loadDbFromSupabase() {
   }
 }
 
+// ===================================================================
+// Vercel Blob persistence — primary backup/restore channel when no
+// PostgreSQL DATABASE_URL is configured. Stores the entire `db` object
+// as a single private JSON blob so data survives across cold starts and
+// different serverless instances.
+// ===================================================================
+const DB_BACKUP_BLOB_PATH = 'cms-data/db-snapshot.json';
+const hasBlobConfig = !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
+
+let blobDbLastLoadedAt = 0;
+const BLOB_CACHE_TTL = 10_000; // 10 seconds, mirrors Postgres CACHE_TTL
+
+async function loadDbFromBlob() {
+  if (!hasBlobConfig) return;
+  try {
+    const result = await blobGet(DB_BACKUP_BLOB_PATH, { access: 'private', useCache: false });
+    if (!result || result.statusCode !== 200) return;
+    const text = await new Response(result.stream).text();
+    const parsed = JSON.parse(text);
+    db.users = parsed.users || db.users;
+    db.posts = parsed.posts || db.posts;
+    db.terms = parsed.terms || db.terms;
+    db.options = parsed.options || db.options;
+    db.submissions = parsed.submissions || db.submissions;
+    (db as any).videos = parsed.videos || (db as any).videos;
+    (db as any).perspectives = parsed.perspectives || (db as any).perspectives;
+    (db as any).mediaFolders = parsed.mediaFolders || (db as any).mediaFolders;
+    (db as any).mediaItems = parsed.mediaItems || (db as any).mediaItems;
+    console.log(`[BLOB SYNC] Đã khôi phục dữ liệu từ Vercel Blob: ${db.posts.length} posts, ${(db as any).mediaItems.length} media items`);
+  } catch (err: any) {
+    console.error('[BLOB SYNC] ❌ Lỗi tải dữ liệu từ Vercel Blob:', err.message);
+  }
+}
+
+async function saveDbToBlob() {
+  if (!hasBlobConfig) return;
+  try {
+    await blobPut(DB_BACKUP_BLOB_PATH, JSON.stringify(db), {
+      access: 'private',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      contentType: 'application/json',
+    });
+    blobDbLastLoadedAt = Date.now();
+  } catch (err: any) {
+    console.error('[BLOB SYNC] ❌ Lỗi lưu dữ liệu lên Vercel Blob:', err.message);
+  }
+}
+
+// Refresh `db` from the Blob snapshot at most once every BLOB_CACHE_TTL — picks up
+// writes made by other serverless instances. Only used when Postgres is not configured.
+async function ensureDbLoadedFromBlob() {
+  if (postgresPool || !hasBlobConfig) return;
+  const now = Date.now();
+  if (now - blobDbLastLoadedAt < BLOB_CACHE_TTL) return;
+  blobDbLastLoadedAt = now;
+  await loadDbFromBlob();
+}
+
+// Track in-flight persistence writes so the Vercel handler (api/index.ts) can await
+// them before the function freezes. Without this, the response is sent and the
+// instance can freeze before the background Blob/Postgres write completes, causing
+// newly-created items to "disappear" on the next request.
+let pendingWrites: Promise<any>[] = [];
+function trackWrite(p: Promise<any>) {
+  pendingWrites.push(p);
+  p.finally(() => {
+    pendingWrites = pendingWrites.filter(x => x !== p);
+  });
+  return p;
+}
+async function flushPendingWrites() {
+  if (pendingWrites.length === 0) return;
+  await Promise.allSettled(pendingWrites);
+}
+
 // writeDb: persist to db.json locally; no-op on Vercel (ephemeral filesystem)
 function writeDb() {
   dbLastLoadedAt = 0; // Force reload on next request/instance
@@ -1663,11 +1740,15 @@ function writeDb() {
     console.warn('[DB WRITE] Cannot persist db.json:', e.message);
   }
   // Best-effort Postgres backup if pool is available
-  withPg(c => c.query(
+  trackWrite(withPg(c => c.query(
     `INSERT INTO public.options (id,option_name,option_value) VALUES ($1,$2,$3)
      ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value, id=EXCLUDED.id`,
     ['opt-database-backup', 'cms_database_backup', JSON.stringify(db)]
-  )).catch(() => {});
+  )).catch(() => {}));
+  // Vercel Blob backup — primary persistence when no DATABASE_URL is configured
+  if (!postgresPool) {
+    trackWrite(saveDbToBlob());
+  }
 }
 
 app.use(express.json({ limit: '15mb' }));
@@ -1750,6 +1831,11 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
       } catch (e: any) {
         console.error("[LAZY MIDDLEWARE ERROR]", e.message);
       }
+    }
+    try {
+      await ensureDbLoadedFromBlob();
+    } catch (e: any) {
+      console.error("[BLOB MIDDLEWARE ERROR]", e.message);
     }
   } else {
     let t: ReturnType<typeof setTimeout>;
@@ -3816,9 +3902,11 @@ app.get('/api/health', (req: Request, res: Response) => {
     ok: true,
     isSetupMode,
     hasDb: !!postgresPool,
+    hasBlob: hasBlobConfig,
     posts: db.posts?.length ?? 0,
     perspectives: (db as any).perspectives?.length ?? 0,
     videos: (db as any).videos?.length ?? 0,
+    mediaItems: (db as any).mediaItems?.length ?? 0,
     env: { hasDatabaseUrl: !!process.env.DATABASE_URL, nodeEnv: process.env.NODE_ENV, vercel: !!process.env.VERCEL }
   });
 });
@@ -3828,4 +3916,5 @@ app.get('/api/health', (req: Request, res: Response) => {
 // fully-loaded PostgreSQL data instead of the in-memory bootstrap defaults.
 serverInitPromise = startServer().catch(err => console.error('[BOOT]', err));
 
+export { flushPendingWrites };
 export default app;
