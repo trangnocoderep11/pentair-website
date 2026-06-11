@@ -1706,10 +1706,17 @@ async function saveDbToBlob() {
 
 // Refresh `db` from the Blob snapshot at most once every BLOB_CACHE_TTL — picks up
 // writes made by other serverless instances. Only used when Postgres is not configured.
-async function ensureDbLoadedFromBlob(force?: boolean) {
+//
+// Deliberately NOT force-reloaded on every write/admin request: Vercel Blob reads can
+// briefly lag behind a just-completed write (read-after-write isn't immediate), so an
+// unconditional reload right after this instance saves can pull back the pre-write
+// snapshot and revert the change that was just made (e.g. a deleted item reappearing).
+// The TTL gives Blob storage time to catch up while still picking up cross-instance
+// writes within a few seconds.
+async function ensureDbLoadedFromBlob() {
   if (postgresPool || !hasBlobConfig) return;
   const now = Date.now();
-  if (!force && (now - blobDbLastLoadedAt < BLOB_CACHE_TTL)) return;
+  if (now - blobDbLastLoadedAt < BLOB_CACHE_TTL) return;
   blobDbLastLoadedAt = now;
   await loadDbFromBlob();
 }
@@ -1837,7 +1844,7 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
       }
     }
     try {
-      await ensureDbLoadedFromBlob(forceReload);
+      await ensureDbLoadedFromBlob();
     } catch (e: any) {
       console.error("[BLOB MIDDLEWARE ERROR]", e.message);
     }
