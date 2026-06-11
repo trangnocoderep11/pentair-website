@@ -886,20 +886,24 @@ export default function MediaLibrary({
                     : `Danh sách hình ảnh ở thư mục gốc (${activeItems.length})`}
                 </h4>
 
-                {onSelect && selectedItems.length > 0 && (
+                {selectedItems.length > 0 && (
                   <div className="mb-4 p-4 rounded-2xl border border-emerald-600/20 bg-emerald-950/10 text-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="space-y-1">
                       <p className="text-xs font-bold uppercase tracking-widest text-emerald-300">{selectedItems.length} hình đã chọn</p>
-                      <p className="text-[10px] text-slate-400">Nhấn nút bên dưới để chèn toàn bộ ảnh đã chọn vào nội dung.</p>
+                      <p className="text-[10px] text-slate-400">
+                        {onSelect ? 'Nhấn nút bên dưới để chèn toàn bộ ảnh đã chọn vào nội dung.' : 'Thực hiện thao tác hàng loạt với các ảnh đã chọn.'}
+                      </p>
                     </div>
                     <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={insertSelectedItems}
-                        className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase rounded-lg transition-all"
-                      >
-                        Chèn {selectedItems.length} ảnh vào nội dung
-                      </button>
+                      {onSelect && (
+                        <button
+                          type="button"
+                          onClick={insertSelectedItems}
+                          className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold uppercase rounded-lg transition-all"
+                        >
+                          Chèn {selectedItems.length} ảnh vào nội dung
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => setSelectedItems([])}
@@ -1037,18 +1041,16 @@ export default function MediaLibrary({
                               )}
                             </div>
 
-                            {onSelect && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleItemSelection(item, e);
-                                }}
-                                className={`mt-3 w-full py-2 text-[10px] font-bold rounded-xl transition-all ${isItemSelected(item) ? 'bg-emerald-600 text-white border border-emerald-500' : 'bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700'}`}
-                              >
-                                {isItemSelected(item) ? 'Bỏ chọn' : 'Chọn nhiều'}
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleItemSelection(item, e);
+                              }}
+                              className={`mt-3 w-full py-2 text-[10px] font-bold rounded-xl transition-all ${isItemSelected(item) ? 'bg-emerald-600 text-white border border-emerald-500' : 'bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700'}`}
+                            >
+                              {isItemSelected(item) ? 'Bỏ chọn' : 'Chọn nhiều'}
+                            </button>
                             
                             <div className="flex items-center justify-between text-[9px] font-mono text-slate-500 mt-2 pt-2 border-t border-slate-850">
                               <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString('vi-VN') : 'Mới'}</span>
