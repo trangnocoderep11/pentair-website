@@ -1706,10 +1706,10 @@ async function saveDbToBlob() {
 
 // Refresh `db` from the Blob snapshot at most once every BLOB_CACHE_TTL — picks up
 // writes made by other serverless instances. Only used when Postgres is not configured.
-async function ensureDbLoadedFromBlob() {
+async function ensureDbLoadedFromBlob(force?: boolean) {
   if (postgresPool || !hasBlobConfig) return;
   const now = Date.now();
-  if (now - blobDbLastLoadedAt < BLOB_CACHE_TTL) return;
+  if (!force && (now - blobDbLastLoadedAt < BLOB_CACHE_TTL)) return;
   blobDbLastLoadedAt = now;
   await loadDbFromBlob();
 }
@@ -1765,9 +1765,9 @@ const CACHE_TTL = 10_000; // 10 seconds cache TTL for Vercel
 let dbLoadPromise: Promise<void> | null = null;
 let dbRetryAfter = 0; // timestamp: don't retry before this time
 
-async function ensureDbLoaded() {
+async function ensureDbLoaded(force?: boolean) {
   const now = Date.now();
-  const needsReload = !dbLoaded || (process.env.VERCEL && (now - dbLastLoadedAt > CACHE_TTL));
+  const needsReload = force || !dbLoaded || (process.env.VERCEL && (now - dbLastLoadedAt > CACHE_TTL));
 
   if (needsReload && dbLoaded) {
     dbLoaded = false;
@@ -1825,15 +1825,19 @@ async function ensureDbLoaded() {
 // Vercel Hobby's 10 s function timeout.
 app.use(async (req: Request, res: Response, next: NextFunction) => {
   if (process.env.VERCEL) {
-    if (!isSetupMode && !dbLoaded) {
+    const isWrite = req.method !== 'GET' && req.method !== 'HEAD';
+    const isAdmin = !!req.headers.authorization;
+    const forceReload = isWrite || isAdmin;
+
+    if (!isSetupMode && (!dbLoaded || forceReload)) {
       try {
-        await ensureDbLoaded();
+        await ensureDbLoaded(forceReload);
       } catch (e: any) {
         console.error("[LAZY MIDDLEWARE ERROR]", e.message);
       }
     }
     try {
-      await ensureDbLoadedFromBlob();
+      await ensureDbLoadedFromBlob(forceReload);
     } catch (e: any) {
       console.error("[BLOB MIDDLEWARE ERROR]", e.message);
     }
