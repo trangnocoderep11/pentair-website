@@ -110,6 +110,45 @@ const defaultGlobalHQs = [
   }
 ];
 
+const getFlag = (hq: any) => {
+  if (!hq) return '';
+  let flag = hq.flag;
+  
+  // Normalize flags for UAE / South Africa override issue
+  if (hq.name && hq.name.includes('UAE') && flag && flag.includes('South_Africa')) {
+    return 'https://flagcdn.com/w40/ae.png';
+  }
+  
+  const name = (hq.name || '').toLowerCase();
+  
+  // Check emoji or standard country name
+  if (name.includes('uk') || name.includes('united kingdom') || flag === '🇬🇧') return 'https://flagcdn.com/w40/gb.png';
+  if (name.includes('usa') || name.includes('united states') || flag === '🇺🇸') return 'https://flagcdn.com/w40/us.png';
+  if (name.includes('switzerland') || name.includes('thụy sĩ') || flag === '🇨🇭') return 'https://flagcdn.com/w40/ch.png';
+  if (name.includes('singapore') || flag === '🇸🇬') return 'https://flagcdn.com/w40/sg.png';
+  if (name.includes('china') || name.includes('trung quốc') || flag === '🇨🇳') return 'https://flagcdn.com/w40/cn.png';
+  if (name.includes('uae') || name.includes('dubai') || flag === '🇦🇪') return 'https://flagcdn.com/w40/ae.png';
+  if (name.includes('australia') || name.includes('úc') || flag === '🇦🇺') return 'https://flagcdn.com/w40/au.png';
+  if (name.includes('india') || name.includes('ấn độ') || flag === '🇮🇳') return 'https://flagcdn.com/w40/in.png';
+  if (name.includes('south africa') || name.includes('nam phi') || flag === '🇿🇦') return 'https://flagcdn.com/w40/za.png';
+  
+  // Check local broken URLs
+  if (flag && typeof flag === 'string' && flag.includes('/uploads/')) {
+    const fLower = flag.toLowerCase();
+    if (fLower.includes('kingdom') || fLower.includes('united_kingdom') || fLower.includes('gb') || fLower.includes('uk')) return 'https://flagcdn.com/w40/gb.png';
+    if (fLower.includes('states') || fLower.includes('united_states') || fLower.includes('us') || fLower.includes('usa')) return 'https://flagcdn.com/w40/us.png';
+    if (fLower.includes('switzerland') || fLower.includes('ch')) return 'https://flagcdn.com/w40/ch.png';
+    if (fLower.includes('singapore') || fLower.includes('sg')) return 'https://flagcdn.com/w40/sg.png';
+    if (fLower.includes('china') || fLower.includes('cn')) return 'https://flagcdn.com/w40/cn.png';
+    if (fLower.includes('uae') || fLower.includes('emirates') || fLower.includes('ae')) return 'https://flagcdn.com/w40/ae.png';
+    if (fLower.includes('australia') || fLower.includes('au')) return 'https://flagcdn.com/w40/au.png';
+    if (fLower.includes('india') || fLower.includes('in')) return 'https://flagcdn.com/w40/in.png';
+    if (fLower.includes('south_africa') || fLower.includes('za') || fLower.includes('south%20africa')) return 'https://flagcdn.com/w40/za.png';
+  }
+  
+  return flag;
+};
+
 const isImageUrl = (url?: string) => {
   if (!url) return false;
   return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/') || url.startsWith('data:image/');
@@ -130,7 +169,46 @@ export default function Footer({
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedHQIdx, setSelectedHQIdx] = React.useState<number>(0);
 
-  const globalHQs = (propGlobalHQs && propGlobalHQs.length > 0) ? propGlobalHQs : defaultGlobalHQs;
+  const rawGlobalHQs = (propGlobalHQs && propGlobalHQs.length > 0) ? propGlobalHQs : defaultGlobalHQs;
+  const globalHQs = rawGlobalHQs.map(hq => {
+    const defMatch = defaultGlobalHQs.find(d => d.name.toLowerCase() === hq.name.toLowerCase());
+    let x = hq.x;
+    let y = hq.y;
+    let dx = hq.dx !== undefined ? hq.dx : (defMatch ? defMatch.dx : 6);
+    let dy = hq.dy !== undefined ? hq.dy : (defMatch ? defMatch.dy : -8);
+    let flag = hq.flag || (defMatch ? defMatch.flag : '🏳️');
+
+    if (x === undefined || x === null || isNaN(x) || x === 0) {
+      if (defMatch) {
+        x = defMatch.x;
+        y = defMatch.y;
+      } else if (hq.lat !== undefined && hq.lng !== undefined) {
+        x = Number((((hq.lng + 180) / 360) * 100).toFixed(1));
+        y = Number(((90 - hq.lat) / 180 * 100).toFixed(1));
+      } else {
+        x = 50;
+        y = 50;
+      }
+    }
+    if (y === undefined || y === null || isNaN(y) || y === 0) {
+      if (defMatch) {
+        y = defMatch.y;
+      } else if (hq.lat !== undefined && hq.lng !== undefined) {
+        y = Number(((90 - hq.lat) / 180 * 100).toFixed(1));
+      } else {
+        y = 50;
+      }
+    }
+
+    return {
+      ...hq,
+      x,
+      y,
+      dx,
+      dy,
+      flag
+    };
+  });
   const activeHQ = globalHQs[selectedHQIdx] || globalHQs[0] || defaultGlobalHQs[0];
 
   const filteredShowrooms = React.useMemo(() => {
@@ -216,10 +294,10 @@ export default function Footer({
                     }`}
                   >
                     <span className="text-xl shrink-0 select-none group-hover:scale-110 transition-transform duration-200 flex items-center justify-center w-6 h-6">
-                      {isImageUrl(hq.flag) ? (
-                        <img src={hq.flag} className="w-6 h-4 object-cover rounded-sm shadow-sm" alt="" />
+                      {isImageUrl(getFlag(hq)) ? (
+                        <img src={getFlag(hq)} className="w-6 h-4 object-cover rounded-sm shadow-sm" alt="" />
                       ) : (
-                        hq.flag
+                        getFlag(hq)
                       )}
                     </span>
                     <div className="space-y-1">
@@ -338,10 +416,10 @@ export default function Footer({
                   >
                     <div className="flex items-center gap-1.5 border-b border-[#E6C073]/20 pb-1 mb-0.5">
                       <span className="text-sm shrink-0 select-none flex items-center justify-center w-5 h-5">
-                        {isImageUrl(active.flag) ? (
-                          <img src={active.flag} className="w-5 h-3.5 object-cover rounded-sm shadow-sm" alt="" />
+                        {isImageUrl(getFlag(active)) ? (
+                          <img src={getFlag(active)} className="w-5 h-3.5 object-cover rounded-sm shadow-sm" alt="" />
                         ) : (
-                          active.flag
+                          getFlag(active)
                         )}
                       </span>
                       <h6 className="text-[10px] font-bold text-[#E6C073] uppercase tracking-wider truncate">

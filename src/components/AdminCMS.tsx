@@ -91,6 +91,45 @@ function ImageThumbInput({ value, onChange, onPick, placeholder, required }: {
   );
 }
 
+const getFlag = (hq: any) => {
+  if (!hq) return '';
+  let flag = hq.flag;
+  
+  // Normalize flags for UAE / South Africa override issue
+  if (hq.name && hq.name.includes('UAE') && flag && flag.includes('South_Africa')) {
+    return 'https://flagcdn.com/w40/ae.png';
+  }
+  
+  const name = (hq.name || '').toLowerCase();
+  
+  // Check emoji or standard country name
+  if (name.includes('uk') || name.includes('united kingdom') || flag === '🇬🇧') return 'https://flagcdn.com/w40/gb.png';
+  if (name.includes('usa') || name.includes('united states') || flag === '🇺🇸') return 'https://flagcdn.com/w40/us.png';
+  if (name.includes('switzerland') || name.includes('thụy sĩ') || flag === '🇨🇭') return 'https://flagcdn.com/w40/ch.png';
+  if (name.includes('singapore') || flag === '🇸🇬') return 'https://flagcdn.com/w40/sg.png';
+  if (name.includes('china') || name.includes('trung quốc') || flag === '🇨🇳') return 'https://flagcdn.com/w40/cn.png';
+  if (name.includes('uae') || name.includes('dubai') || flag === '🇦🇪') return 'https://flagcdn.com/w40/ae.png';
+  if (name.includes('australia') || name.includes('úc') || flag === '🇦🇺') return 'https://flagcdn.com/w40/au.png';
+  if (name.includes('india') || name.includes('ấn độ') || flag === '🇮🇳') return 'https://flagcdn.com/w40/in.png';
+  if (name.includes('south africa') || name.includes('nam phi') || flag === '🇿🇦') return 'https://flagcdn.com/w40/za.png';
+  
+  // Check local broken URLs
+  if (flag && typeof flag === 'string' && flag.includes('/uploads/')) {
+    const fLower = flag.toLowerCase();
+    if (fLower.includes('kingdom') || fLower.includes('united_kingdom') || fLower.includes('gb') || fLower.includes('uk')) return 'https://flagcdn.com/w40/gb.png';
+    if (fLower.includes('states') || fLower.includes('united_states') || fLower.includes('us') || fLower.includes('usa')) return 'https://flagcdn.com/w40/us.png';
+    if (fLower.includes('switzerland') || fLower.includes('ch')) return 'https://flagcdn.com/w40/ch.png';
+    if (fLower.includes('singapore') || fLower.includes('sg')) return 'https://flagcdn.com/w40/sg.png';
+    if (fLower.includes('china') || fLower.includes('cn')) return 'https://flagcdn.com/w40/cn.png';
+    if (fLower.includes('uae') || fLower.includes('emirates') || fLower.includes('ae')) return 'https://flagcdn.com/w40/ae.png';
+    if (fLower.includes('australia') || fLower.includes('au')) return 'https://flagcdn.com/w40/au.png';
+    if (fLower.includes('india') || fLower.includes('in')) return 'https://flagcdn.com/w40/in.png';
+    if (fLower.includes('south_africa') || fLower.includes('za') || fLower.includes('south%20africa')) return 'https://flagcdn.com/w40/za.png';
+  }
+  
+  return flag;
+};
+
 export default function AdminCMS({
   onNewLogin,
   currentUser,
@@ -1179,7 +1218,38 @@ export default function AdminCMS({
       }
       const gHQs = options.find(o => o.optionName === 'global_hqs')?.optionValue;
       if (gHQs && Array.isArray(gHQs)) {
-        setGlobalHQs(gHQs);
+        const normalized = gHQs.map(hq => {
+          const defMatch = defaultGlobalHQs.find(d => d.name.toLowerCase() === hq.name.toLowerCase());
+          let x = hq.x;
+          let y = hq.y;
+          let dx = hq.dx !== undefined ? hq.dx : (defMatch ? defMatch.dx : 6);
+          let dy = hq.dy !== undefined ? hq.dy : (defMatch ? defMatch.dy : -8);
+          let flag = hq.flag || (defMatch ? defMatch.flag : '🏳️');
+
+          if (x === undefined || x === null || isNaN(x) || x === 0) {
+            if (defMatch) {
+              x = defMatch.x;
+              y = defMatch.y;
+            } else if (hq.lat !== undefined && hq.lng !== undefined) {
+              x = Number((((hq.lng + 180) / 360) * 100).toFixed(1));
+              y = Number(((90 - hq.lat) / 180 * 100).toFixed(1));
+            } else {
+              x = 50;
+              y = 50;
+            }
+          }
+          if (y === undefined || y === null || isNaN(y) || y === 0) {
+            if (defMatch) {
+              y = defMatch.y;
+            } else if (hq.lat !== undefined && hq.lng !== undefined) {
+              y = Number(((90 - hq.lat) / 180 * 100).toFixed(1));
+            } else {
+              y = 50;
+            }
+          }
+          return { ...hq, x, y, dx, dy, flag };
+        });
+        setGlobalHQs(normalized);
       }
     }
   }, [options]);
@@ -6032,10 +6102,10 @@ export default function AdminCMS({
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0 flex items-start gap-2.5">
                             <span className="text-xl shrink-0 select-none flex items-center justify-center w-6 h-6 border bg-white rounded-sm shadow-sm">
-                              {isImageUrl(hq.flag) ? (
-                                <img src={hq.flag} className="w-6 h-4 object-cover rounded-sm" alt="" />
+                              {isImageUrl(getFlag(hq)) ? (
+                                <img src={getFlag(hq)} className="w-6 h-4 object-cover rounded-sm" alt="" />
                               ) : (
-                                hq.flag
+                                getFlag(hq)
                               )}
                             </span>
                             <div className="min-w-0">

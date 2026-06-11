@@ -961,7 +961,7 @@ async function dbSaveOption(opt: any) {
   return withPg(c => c.query(
     `INSERT INTO public.options (id,option_name,option_value)
      VALUES ($1,$2,$3)
-     ON CONFLICT (id) DO UPDATE SET option_name=EXCLUDED.option_name, option_value=EXCLUDED.option_value`,
+     ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value, id=EXCLUDED.id`,
     [opt.id || `opt-${opt.optionName}`, opt.optionName, JSON.stringify(opt)]
   ));
 }
@@ -1052,15 +1052,16 @@ async function dbDeleteMediaFolder(id: string) {
 async function dbSaveMediaItem(item: any) {
   writeDb();
   return withPg(c => c.query(
-    `INSERT INTO public.media_items (id,folder_id,filename,url,mime_type,size,width,height,alt,created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+    `INSERT INTO public.media_items (id,folder_id,filename,url,mime_type,size,width,height,alt,title,description,created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
      ON CONFLICT (id) DO UPDATE SET
       folder_id=EXCLUDED.folder_id, filename=EXCLUDED.filename, url=EXCLUDED.url,
       mime_type=EXCLUDED.mime_type, size=EXCLUDED.size, width=EXCLUDED.width,
-      height=EXCLUDED.height, alt=EXCLUDED.alt`,
+      height=EXCLUDED.height, alt=EXCLUDED.alt, title=EXCLUDED.title, description=EXCLUDED.description`,
     [item.id, item.folderId || null, item.filename || item.url?.split('/').pop(),
-     item.url, item.mimeType || null, item.size || 0,
+     item.url, item.mimeType || null, item.fileSize || item.size || 0,
      item.width || null, item.height || null, item.altText || item.alt || null,
+     item.title || null, item.description || null,
      item.createdAt || new Date().toISOString()]
   ));
 }
@@ -1180,6 +1181,8 @@ async function ensureTablesExist(client: any) {
       width INTEGER,
       height INTEGER,
       alt TEXT,
+      title TEXT,
+      description TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
@@ -1229,6 +1232,8 @@ async function ensureTablesExist(client: any) {
     `ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS width INTEGER`,
     `ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS height INTEGER`,
     `ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS alt TEXT`,
+    `ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS title TEXT`,
+    `ALTER TABLE public.media_items ADD COLUMN IF NOT EXISTS description TEXT`,
   ];
 
   for (const q of alterQueries) {
@@ -1448,16 +1453,16 @@ async function saveDbToSupabase() {
       for (const item of (db as any).mediaItems || []) {
         try {
           await client.query(
-            `INSERT INTO public.media_items (id, folder_id, filename, url, mime_type, size, width, height, alt, created_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+            `INSERT INTO public.media_items (id, folder_id, filename, url, mime_type, size, width, height, alt, title, description, created_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
              ON CONFLICT (id) DO UPDATE SET
                folder_id=EXCLUDED.folder_id, filename=EXCLUDED.filename, url=EXCLUDED.url,
                mime_type=EXCLUDED.mime_type, size=EXCLUDED.size, width=EXCLUDED.width,
-               height=EXCLUDED.height, alt=EXCLUDED.alt`,
+               height=EXCLUDED.height, alt=EXCLUDED.alt, title=EXCLUDED.title, description=EXCLUDED.description`,
             [
-              item.id, item.folderId || null, item.filename, item.url,
-              item.mimeType || null, item.size || 0, item.width || null,
-              item.height || null, item.alt || null,
+              item.id, item.folderId || null, item.filename || item.url?.split('/').pop(), item.url,
+              item.mimeType || null, item.fileSize || item.size || 0, item.width || null,
+              item.height || null, item.altText || item.alt || null, item.title || null, item.description || null,
               item.createdAt || new Date().toISOString()
             ]
           );
@@ -1470,7 +1475,7 @@ async function saveDbToSupabase() {
           await client.query(
             `INSERT INTO public.options (id, option_name, option_value)
              VALUES ($1,$2,$3)
-             ON CONFLICT (id) DO UPDATE SET option_name=EXCLUDED.option_name, option_value=EXCLUDED.option_value`,
+             ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value, id=EXCLUDED.id`,
             [opt.id || `opt-${opt.optionName}`, opt.optionName, JSON.stringify(opt)]
           );
         } catch (e: any) { console.warn(`[SYNC] Bỏ qua option ${opt.optionName}:`, e.message); }
@@ -1480,7 +1485,7 @@ async function saveDbToSupabase() {
       await client.query(
         `INSERT INTO public.options (id, option_name, option_value)
          VALUES ($1, $2, $3)
-         ON CONFLICT (id) DO UPDATE SET option_name = EXCLUDED.option_name, option_value = EXCLUDED.option_value`,
+         ON CONFLICT (option_name) DO UPDATE SET option_value = EXCLUDED.option_value, id = EXCLUDED.id`,
         ["opt-database-backup", "cms_database_backup", JSON.stringify(db)]
       );
 
@@ -1502,8 +1507,7 @@ async function loadDbFromSupabase() {
     console.log("[POSTGRES SYNC] Đang kéo bản sao dữ liệu cao cấp từ PostgreSQL...");
 
     // Phase 1: schema migration — only on first cold start; warm instances skip this
-    // saving the ~1 s cost of 26 sequential ALTER TABLE queries. Skip on Vercel to prevent connection hangs.
-    if (!tablesEnsured && !process.env.VERCEL) {
+    if (!tablesEnsured) {
       const client = await postgresPool.connect();
       try {
         await ensureTablesExist(client);
@@ -1511,8 +1515,6 @@ async function loadDbFromSupabase() {
       } finally {
         client.release();
       }
-    } else if (process.env.VERCEL) {
-      tablesEnsured = true;
     }
 
     // Phase 1b: count check via pool (no need to hold a dedicated client)
@@ -1591,9 +1593,20 @@ async function loadDbFromSupabase() {
         }));
 
         (db as any).mediaItems = itemsRes.rows.map((r: any) => ({
-          id: r.id, folderId: r.folder_id, filename: r.filename, url: r.url,
-          mimeType: r.mime_type, size: r.size, width: r.width, height: r.height,
-          alt: r.alt, createdAt: r.created_at
+          id: r.id,
+          folderId: r.folder_id,
+          filename: r.filename,
+          url: r.url,
+          mimeType: r.mime_type,
+          fileSize: r.size,
+          size: r.size,
+          width: r.width,
+          height: r.height,
+          alt: r.alt,
+          altText: r.alt,
+          title: r.title || r.filename || (r.url ? r.url.split('/').pop() : 'Image'),
+          description: r.description || '',
+          createdAt: r.created_at
         }));
 
         // Merge site options từ database
@@ -1652,7 +1665,7 @@ function writeDb() {
   // Best-effort Postgres backup if pool is available
   withPg(c => c.query(
     `INSERT INTO public.options (id,option_name,option_value) VALUES ($1,$2,$3)
-     ON CONFLICT (id) DO UPDATE SET option_name=EXCLUDED.option_name, option_value=EXCLUDED.option_value`,
+     ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value, id=EXCLUDED.id`,
     ['opt-database-backup', 'cms_database_backup', JSON.stringify(db)]
   )).catch(() => {});
 }
@@ -3273,6 +3286,15 @@ app.post("/api/admin/media/upload", authMiddleware, async (req, res) => {
   if (!db.mediaItems) db.mediaItems = [];
 
   if (url) {
+    // Check if item with this URL already exists to avoid duplicates
+    const existingItem = db.mediaItems.find((i: any) => i.url === url);
+    if (existingItem) {
+      existingItem.folderId = folderId || undefined;
+      if (filename) existingItem.title = sanitizeString(filename.trim());
+      dbSaveMediaItem(existingItem).catch(e => console.error('[DB]', e));
+      return res.json(existingItem);
+    }
+
     // Trích xuất tên ảnh sạch từ URL (loại bỏ query params, hash và giải mã URL)
     let urlPath = url.split('?')[0].split('#')[0];
     let extractedName = "Image";
@@ -3365,7 +3387,27 @@ app.post("/api/admin/media/upload", authMiddleware, async (req, res) => {
 });
 
 // Direct client-side upload token — bypasses 4.5MB serverless body limit
-app.post("/api/admin/media/client-upload", authMiddleware, async (req, res) => {
+app.post("/api/admin/media/client-upload", async (req, res) => {
+  // Only authenticate when generating upload tokens. 
+  // Completion webhook callback is signed by Vercel and handled by handleUpload.
+  if (req.body && req.body.type === 'blob.generate-token') {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Không được phép truy cập. Thiếu Token xác thực." });
+    }
+    const token = authHeader.split(" ")[1];
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string, role: string };
+      const user = db.users.find(u => u.id === decoded.userId);
+      if (!user) {
+        return res.status(401).json({ error: "Người dùng liên kết với token này không tồn tại." });
+      }
+      (req as any).user = user;
+    } catch (err: any) {
+      return res.status(401).json({ error: "Phiên làm việc đã hết hạn hoặc token không hợp lệ." });
+    }
+  }
+
   try {
     const jsonResponse = await handleUpload({
       body: req.body as HandleUploadBody,
@@ -3375,6 +3417,14 @@ app.post("/api/admin/media/client-upload", authMiddleware, async (req, res) => {
         maximumSizeInBytes: 100 * 1024 * 1024,
       }),
       onUploadCompleted: async ({ blob }: { blob: any }) => {
+        if (!db.mediaItems) db.mediaItems = [];
+        
+        // Skip duplicate registration if already registered by client POST
+        const existingItem = db.mediaItems.find((i: any) => i.url === blob.url);
+        if (existingItem) {
+          return;
+        }
+
         const newItem = {
           id: "media-" + crypto.randomUUID(),
           title: blob.pathname.split('/').pop() || blob.pathname,
@@ -3384,7 +3434,6 @@ app.post("/api/admin/media/client-upload", authMiddleware, async (req, res) => {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
-        if (!db.mediaItems) db.mediaItems = [];
         db.mediaItems.push(newItem);
         dbSaveMediaItem(newItem).catch((e: any) => console.error('[DB]', e));
       },
