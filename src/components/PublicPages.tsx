@@ -37,7 +37,7 @@ interface PublicPagesProps {
     youtube: string;
     mapIframeUrl?: string;
   };
-  showrooms: { name: string; address: string; phone: string }[];
+  showrooms: { name: string; address: string; phone: string; mapUrl?: string; coordinates?: string }[];
   posts: Post[];
   terms: Term[];
   currentUser?: any;
@@ -2248,7 +2248,7 @@ export default function PublicPages({
                       {/* Action buttons */}
                       <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-50">
                         <a 
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(show.name + ' ' + show.address)}`}
+                          href={show.mapUrl || (show.coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(show.coordinates)}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(show.name + ' ' + show.address)}`)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="py-2.5 bg-slate-50 hover:bg-slate-100 text-gray-600 border border-gray-150 hover:border-gray-200 text-[10px] md:text-xs font-bold rounded-2xl flex items-center justify-center gap-1.5 transition-all text-center"

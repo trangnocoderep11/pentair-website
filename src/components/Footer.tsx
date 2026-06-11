@@ -17,7 +17,7 @@ interface FooterProps {
     youtube: string;
   };
   policies: { title: string; content: string }[];
-  showrooms: { name: string; address: string; phone: string }[];
+  showrooms: { name: string; address: string; phone: string; mapUrl?: string; coordinates?: string }[];
   onNavigate: (url: string) => void;
   onOpenAdmin?: () => void;
   logoText?: string;
@@ -316,12 +316,12 @@ export default function Footer({
             </div>
 
             {/* Map Area */}
-            <div className="lg:col-span-7 aspect-[3/2] w-full rounded-2xl overflow-hidden border border-white/10 relative bg-slate-950 shadow-2xl flex items-center justify-center select-none">
+            <div className="lg:col-span-7 aspect-[3/2] w-full relative flex items-center justify-center select-none">
               {/* World map background */}
               <img 
                 src="/uploads/world_map_dark.png" 
                 alt="Pentair World Map" 
-                className="absolute inset-0 w-full h-full object-cover opacity-60"
+                className="absolute inset-0 w-full h-full object-cover mix-blend-screen contrast-200 brightness-90"
               />
 
               {/* SVG Overlay for dots and lines */}

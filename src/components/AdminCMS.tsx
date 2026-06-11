@@ -1061,7 +1061,7 @@ export default function AdminCMS({
   const [hfPolicyEditIdx, setHfPolicyEditIdx] = React.useState<number | null>(null);
   const [hfPolicyEditItem, setHfPolicyEditItem] = React.useState({ title: '', content: '' });
   const [hfShowroomEditIdx, setHfShowroomEditIdx] = React.useState<number | null>(null);
-  const [hfShowroomEditItem, setHfShowroomEditItem] = React.useState({ name: '', address: '', phone: '' });
+  const [hfShowroomEditItem, setHfShowroomEditItem] = React.useState({ name: '', address: '', phone: '', mapUrl: '', coordinates: '' });
   const [hfSubTab, setHfSubTab] = React.useState<'logo' | 'menu' | 'footer' | 'showrooms' | 'global-hqs'>('logo');
 
   const defaultGlobalHQs = [
@@ -5930,7 +5930,7 @@ export default function AdminCMS({
                      <button
                        onClick={() => {
                          setHfShowroomEditIdx(showroomList.length);
-                         setHfShowroomEditItem({ name: '', address: '', phone: '' });
+                         setHfShowroomEditItem({ name: '', address: '', phone: '', mapUrl: '', coordinates: '' });
                        }}
                        className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white text-[11px] font-bold rounded-lg hover:bg-indigo-700 transition-all cursor-pointer"
                        id="btn-hf-add-showroom"
@@ -5953,7 +5953,7 @@ export default function AdminCMS({
                              <button
                                onClick={() => {
                                  setHfShowroomEditIdx(idx);
-                                 setHfShowroomEditItem({ name: show.name || '', address: show.address || '', phone: show.phone || '' });
+                                 setHfShowroomEditItem({ name: show.name || '', address: show.address || '', phone: show.phone || '', mapUrl: show.mapUrl || '', coordinates: show.coordinates || '' });
                                }}
                                className="p-1 text-indigo-500 hover:bg-indigo-50 rounded cursor-pointer"
                                title="Sửa"
@@ -6021,6 +6021,26 @@ export default function AdminCMS({
                           id="input-showroom-phone"
                         />
                       </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Link Google Maps (Showroom URL)</label>
+                        <input
+                          type="text"
+                          value={hfShowroomEditItem.mapUrl || ''}
+                          onChange={e => setHfShowroomEditItem(prev => ({ ...prev, mapUrl: e.target.value }))}
+                          placeholder="Ví dụ: https://maps.app.goo.gl/... hoặc https://google.com/maps/..."
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Tọa độ định vị (Latitude, Longitude)</label>
+                        <input
+                          type="text"
+                          value={hfShowroomEditItem.coordinates || ''}
+                          onChange={e => setHfShowroomEditItem(prev => ({ ...prev, coordinates: e.target.value }))}
+                          placeholder="Ví dụ: 10.852445, 106.758963"
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                        />
+                      </div>
                       <div className="flex gap-2">
                         <button
                           onClick={() => {
@@ -6033,7 +6053,7 @@ export default function AdminCMS({
                             }
                             setShowroomList(next);
                             setHfShowroomEditIdx(null);
-                            setHfShowroomEditItem({ name: '', address: '', phone: '' });
+                            setHfShowroomEditItem({ name: '', address: '', phone: '', mapUrl: '', coordinates: '' });
                           }}
                           className="flex-1 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-all cursor-pointer flex items-center justify-center gap-1"
                           id="btn-hf-save-showroom-item"
@@ -6042,7 +6062,7 @@ export default function AdminCMS({
                           {hfShowroomEditIdx === showroomList.length ? 'Thêm Showroom' : 'Cập nhật'}
                         </button>
                         <button
-                          onClick={() => { setHfShowroomEditIdx(null); setHfShowroomEditItem({ name: '', address: '', phone: '' }); }}
+                          onClick={() => { setHfShowroomEditIdx(null); setHfShowroomEditItem({ name: '', address: '', phone: '', mapUrl: '', coordinates: '' }); }}
                           className="px-4 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-lg hover:bg-gray-200 transition-all cursor-pointer"
                         >
                           Hủy
@@ -6293,10 +6313,10 @@ export default function AdminCMS({
                   {/* World map layout debug overlay */}
                   <div className="bg-slate-900 rounded-2xl p-4 space-y-3 text-white relative overflow-hidden">
                     <h4 className="text-[11px] font-black uppercase text-blue-300">Xem trước vị trí trên bản đồ</h4>
-                    <div className="aspect-[3/2] w-full rounded-lg border border-white/10 relative bg-slate-950 overflow-hidden">
+                    <div className="aspect-[3/2] w-full relative overflow-hidden">
                       <img 
                         src="/uploads/world_map_dark.png" 
-                        className="absolute inset-0 w-full h-full object-cover opacity-40 pointer-events-none" 
+                        className="absolute inset-0 w-full h-full object-cover pointer-events-none mix-blend-screen contrast-200 brightness-80" 
                         alt="" 
                       />
                       <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">

@@ -670,53 +670,73 @@
       "optionValue": [
         {
           "name": "Flagship Showroom Lê Quang Định",
+          "address": "509 Lê Quang Định, Phường Hạnh Thông (Đoạn giao giữa Bình Thạnh với Gò Vấp), TP. Hồ Chí Minh",
           "phone": "1800 8134",
-          "address": "509 Lê Quang Định, Phường Hạnh Thông (Đoạn giao giữa Bình Thạnh với Gò Vấp), TP. Hồ Chí Minh"
+          "mapUrl": "https://maps.app.goo.gl/j8fdrjTwGFu1UFBg6",
+          "coordinates": "10.8176529,106.689013"
         },
         {
           "name": "Mega Center Vạn Phúc City",
+          "address": "118 Đường số 2 Vạn Phúc City, Phường Hiệp Bình (Phường Hiệp Bình Phước, TP. Thủ Đức cũ), TP. Hồ Chí Minh",
           "phone": "1800 8134",
-          "address": "118 Đường số 2 Vạn Phúc City, Phường Hiệp Bình (Phường Hiệp Bình Phước, TP. Thủ Đức cũ), TP. Hồ Chí Minh"
+          "mapUrl": "https://maps.app.goo.gl/sypQJY2TQEBZjesN8",
+          "coordinates": ""
         },
         {
           "name": " Premium Showroom An Khánh",
+          "address": "45 Vành Đai Tây, Phường An Khánh (Phường An Khánh, TP. Thủ Đức cũ), TP. Hồ Chí Minh",
           "phone": "1800 8134",
-          "address": "45 Vành Đai Tây, Phường An Khánh (Phường An Khánh, TP. Thủ Đức cũ), TP. Hồ Chí Minh"
+          "mapUrl": "https://maps.app.goo.gl/hjXnj9HgHZpFMRHt9",
+          "coordinates": ""
         },
         {
           "name": "Premium Showroom Hoà Bình",
+          "address": "Cổng 1 - Block RS7 Khu Shophouse Richstar Novaland số 239-241-278 Hòa Bình, Phường Phú Thạnh (Phường Hiệp Tân, Quận Tân Phú cũ)",
           "phone": "1800 8134",
-          "address": "Cổng 1 - Block RS7 Khu Shophouse Richstar Novaland số 239-241-278 Hòa Bình, Phường Phú Thạnh (Phường Hiệp Tân, Quận Tân Phú cũ)"
+          "mapUrl": "https://maps.app.goo.gl/vrAKAwvudHYsGASJ9",
+          "coordinates": ""
         },
         {
           "name": "Experience Center Quận 7",
+          "address": "118A Đường Võ Thị Đặng, Phường Tân Mỹ (Phường Tân Phú, Quận 7 cũ), TP. Hồ Chí Minh",
           "phone": "1800 8134",
-          "address": "118A Đường Võ Thị Đặng, Phường Tân Mỹ (Phường Tân Phú, Quận 7 cũ), TP. Hồ Chí Minh"
+          "mapUrl": "https://maps.app.goo.gl/Zx6VbqEMJRwcZkc79",
+          "coordinates": ""
         },
         {
           "name": "Experience Center Lý Chính Thắng",
+          "address": "200 Bis Lý Chính Thắng, Phường Nhiêu Lộc (Phường 9, Quận 3 cũ), TP. Hồ Chí Minh",
           "phone": "1800 8134",
-          "address": "200 Bis Lý Chính Thắng, Phường Nhiêu Lộc (Phường 9, Quận 3 cũ), TP. Hồ Chí Minh"
+          "mapUrl": "https://maps.app.goo.gl/48mPru1xeqgDeFYj7",
+          "coordinates": ""
         },
         {
           "name": "Premium Showroom Thủ Dầu Một",
+          "address": "214 Thích Quảng Đức, Phường Thủ Dầu Một (Phường Phú Cường, TP. Thủ Dầu Một cũ), Tỉnh Bình Dương",
           "phone": "1800 8134",
-          "address": "214 Thích Quảng Đức, Phường Thủ Dầu Một (Phường Phú Cường, TP. Thủ Dầu Một cũ), Tỉnh Bình Dương"
+          "mapUrl": "https://maps.app.goo.gl/QcfzC43thr4C2qRi7",
+          "coordinates": ""
         },
         {
           "name": "Experience Center Vũng Tàu",
+          "address": "114 Hoàng Văn Thụ, Phường Tam Thắng (Phường 7, TP. Vũng Tàu cũ), Tỉnh Bà Rịa - Vũng Tàu",
           "phone": "1800 8134",
-          "address": "114 Hoàng Văn Thụ, Phường Tam Thắng (Phường 7, TP. Vũng Tàu cũ), Tỉnh Bà Rịa - Vũng Tàu"
+          "mapUrl": "https://maps.app.goo.gl/s6VYt9DvSuq1D8tH6",
+          "coordinates": ""
         },
         {
           "name": "Experience Center Cần Thơ",
+          "address": "216 Võ Văn Kiệt, Phường Cái Khế (Phường An Hòa, Quận Ninh Kiều cũ), TP. Cần Thơ",
           "phone": "1800 8134",
-          "address": "216 Võ Văn Kiệt, Phường Cái Khế (Phường An Hòa, Quận Ninh Kiều cũ), TP. Cần Thơ"
+          "mapUrl": "https://maps.app.goo.gl/v5UrmFB6nzFv3P8t8",
+          "coordinates": ""
         },
         {
           "name": "Premium Showroom Biên Hòa",
+          "address": "65 Đồng Khởi, Phường Tam Hiệp (TP. Biên Hòa cũ), Tỉnh Đồng Nai",
           "phone": "1800 8134",
-          "address": "65 Đồng Khởi, Phường Tam Hiệp (TP. Biên Hòa cũ), Tỉnh Đồng Nai"
+          "mapUrl": "https://maps.app.goo.gl/zJHyEd2secTR6VR86",
+          "coordinates": ""
         },
         {
           "name": "Premium Akanwa",
@@ -725,53 +745,73 @@
         },
         {
           "name": "Premium Showroom Đà Nẵng",
+          "address": "576 Trần Cao Vân, Phường Thanh Khê (Phường Xuân Hà, Quận Thanh Khê cũ), TP. Đà Nẵng",
           "phone": "1800 8134",
-          "address": "576 Trần Cao Vân, Phường Thanh Khê (Phường Xuân Hà, Quận Thanh Khê cũ), TP. Đà Nẵng"
+          "mapUrl": "https://maps.app.goo.gl/gtivvCEDZ6wAZ92f6",
+          "coordinates": ""
         },
         {
           "name": "Premium Showroom Nha Trang",
+          "address": "51 Văn Tiến Dũng, Phường Nam Nha Trang (Phường Phước Hải, TP. Nha Trang cũ), Tỉnh Khánh Hòa",
           "phone": "1800 8134",
-          "address": "51 Văn Tiến Dũng, Phường Nam Nha Trang (Phường Phước Hải, TP. Nha Trang cũ), Tỉnh Khánh Hòa"
+          "mapUrl": "https://maps.app.goo.gl/nU9FtCBEL9TrAJRS8",
+          "coordinates": ""
         },
         {
           "name": "Premium Showroom Quy Nhơn",
+          "address": "309 Tây Sơn, Phường Quy Nhơn Nam (Phường Quang Trung, TP. Quy Nhơn cũ), Tỉnh Gia Lai",
           "phone": "1800 8134",
-          "address": "309 Tây Sơn, Phường Quy Nhơn Nam (Phường Quang Trung, TP. Quy Nhơn cũ), Tỉnh Gia Lai"
+          "mapUrl": "https://maps.app.goo.gl/Ds1y8nq7N9ttyebg7",
+          "coordinates": ""
         },
         {
           "name": "Premium Showroom Buôn Ma Thuột",
+          "address": "01 Trần Phú, Phường Buôn Ma Thuột (Phường Thành Công, TP. Buôn Ma Thuột cũ), Tỉnh Đắk Lắk",
           "phone": "1800 8134",
-          "address": "01 Trần Phú, Phường Buôn Ma Thuột (Phường Thành Công, TP. Buôn Ma Thuột cũ), Tỉnh Đắk Lắk"
+          "mapUrl": "https://maps.app.goo.gl/Kw15LWco7gXkuTxM6",
+          "coordinates": ""
         },
         {
           "name": "Experience Center Thanh Xuân",
+          "address": "4 Ngõ 183, Hoàng Văn Thái, Phường Khương Đình (Phường Khương Trung, Quận Thanh Xuân cũ), TP. Hà Nội",
           "phone": "1800 8134",
-          "address": "4 Ngõ 183, Hoàng Văn Thái, Phường Khương Đình (Phường Khương Trung, Quận Thanh Xuân cũ), TP. Hà Nội"
+          "mapUrl": "https://maps.app.goo.gl/wWW3pkTmLPYSk3Yb7",
+          "coordinates": ""
         },
         {
           "name": "Premium Showroom Ba Đình",
+          "address": "43 Ngõ 130 Đốc Ngữ, Phường Ngọc Hà (Phường Vĩnh Phúc, Quận Ba Đình cũ), TP. Hà Nội",
           "phone": "1800 8134",
-          "address": "43 Ngõ 130 Đốc Ngữ, Phường Ngọc Hà (Phường Vĩnh Phúc, Quận Ba Đình cũ), TP. Hà Nội"
+          "mapUrl": "https://maps.app.goo.gl/ny8BmSf1N3tDaNvC9",
+          "coordinates": ""
         },
         {
           "name": "Experience Center Long Biên",
+          "address": "79 Chu Huy Mân, Phường Phúc Lợi (Phường Phúc Đồng, Quận Long Biên cũ), TP. Hà Nội",
           "phone": "1800 8134",
-          "address": "79 Chu Huy Mân, Phường Phúc Lợi (Phường Phúc Đồng, Quận Long Biên cũ), TP. Hà Nội"
+          "mapUrl": "https://maps.app.goo.gl/ebbzQWQyUJWz68VJ6",
+          "coordinates": ""
         },
         {
           "name": "Premium Showroom Hà Đông",
+          "address": "B-TT11-1 - B5 Khu Him Lam Vạn Phúc, Phường Hà Đông (Phường Vạn Phúc, Quận Hà Đông cũ), TP. Hà Nội",
           "phone": "1800 8134",
-          "address": "B-TT11-1 - B5 Khu Him Lam Vạn Phúc, Phường Hà Đông (Phường Vạn Phúc, Quận Hà Đông cũ), TP. Hà Nội"
+          "mapUrl": "https://maps.app.goo.gl/iaK3jm1GskVK7AoP7",
+          "coordinates": ""
         },
         {
           "name": "Premium Showroom Hải Phòng",
+          "address": "BH06-29 Vinhomes imperia, Phường Hồng Bàng, Thành phố Hải Phòng (Phường Thượng Lý, Quận Hồng Bàng cũ)",
           "phone": "1800 8134",
-          "address": "BH06-29 Vinhomes imperia, Phường Hồng Bàng, Thành phố Hải Phòng (Phường Thượng Lý, Quận Hồng Bàng cũ)"
+          "mapUrl": "https://maps.app.goo.gl/EhgmqvQiy94gTgkp9",
+          "coordinates": ""
         },
         {
           "name": "Premium Showroom Hạ Long",
+          "address": "Số 7 Lô A5 Khu đô thị Monbay, Đường Phan Đăng Lưu, Phường Hạ Long (Phường Hồng Hải, TP. Hạ Long cũ), Tỉnh Quảng Ninh",
           "phone": "1800 8134",
-          "address": "Số 7 Lô A5 Khu đô thị Monbay, Đường Phan Đăng Lưu, Phường Hạ Long (Phường Hồng Hải, TP. Hạ Long cũ), Tỉnh Quảng Ninh"
+          "mapUrl": "https://maps.app.goo.gl/wfUW7WBwkWdcLv4x6",
+          "coordinates": ""
         }
       ]
     },
@@ -887,7 +927,7 @@
           "y": 33,
           "dx": 6,
           "dy": -8,
-          "flag": "/uploads/1780972193908-Flag_of_Switzerland.svg.png"
+          "flag": "/uploads/1781078751115-Flag_of_Switzerland.svg.png"
         },
         {
           "name": "Pentair Singapore (APAC Hub)",
@@ -896,7 +936,7 @@
           "y": 57.5,
           "dx": -6,
           "dy": -8,
-          "flag": "🇸🇬"
+          "flag": "/uploads/1781077244519-Flag_of_Singapore.svg.webp"
         },
         {
           "name": "Pentair China",
@@ -905,7 +945,7 @@
           "y": 41.5,
           "dx": 6,
           "dy": -8,
-          "flag": "🇨🇳"
+          "flag": "/uploads/1781077244493-Flag_of_the_People_s_Republic_of_China.svg.png"
         },
         {
           "name": "Pentair UAE (Middle East)",
@@ -914,7 +954,7 @@
           "y": 43.5,
           "dx": -6,
           "dy": -8,
-          "flag": "🇦🇪"
+          "flag": "/uploads/1781077219763-Flag_of_South_Africa.svg.png"
         },
         {
           "name": "Pentair Australia",
@@ -923,7 +963,7 @@
           "y": 79.5,
           "dx": -6,
           "dy": -8,
-          "flag": "🇦🇺"
+          "flag": "/uploads/1781077244439-Flag_of_Australia__converted_.svg"
         },
         {
           "name": "Pentair India",
@@ -932,7 +972,7 @@
           "y": 48.5,
           "dx": -6,
           "dy": -8,
-          "flag": "🇮🇳"
+          "flag": "/uploads/1781077244415-Flag_of_India.svg"
         },
         {
           "name": "Pentair South Africa",
@@ -941,7 +981,7 @@
           "y": 71.5,
           "dx": 6,
           "dy": -8,
-          "flag": "🇿🇦"
+          "flag": "/uploads/1781077219763-Flag_of_South_Africa.svg.png"
         }
       ]
     }
@@ -3555,34 +3595,74 @@
       "updatedAt": "2026-06-09T02:25:03.686Z"
     },
     {
-      "id": "media-ba9b889e-65bc-4060-8622-23792b14162f",
+      "id": "media-5b99a352-d05b-4df4-aa8e-92fdbc405754",
+      "title": "Flag_of_South_Africa.svg.png",
+      "url": "/uploads/1781077219763-Flag_of_South_Africa.svg.png",
+      "mimeType": "image/png",
+      "fileSize": 3684,
+      "folderId": "folder-fcbe8baf-fe1f-48c0-a59a-52025ee50691",
+      "createdAt": "2026-06-10T07:40:19.764Z",
+      "updatedAt": "2026-06-10T07:40:19.764Z"
+    },
+    {
+      "id": "media-7c554709-a050-4433-9dac-44f01a5dcb6e",
+      "title": "Flag_of_India.svg",
+      "url": "/uploads/1781077244415-Flag_of_India.svg",
+      "mimeType": "image/svg+xml",
+      "fileSize": 848,
+      "folderId": "folder-fcbe8baf-fe1f-48c0-a59a-52025ee50691",
+      "createdAt": "2026-06-10T07:40:44.415Z",
+      "updatedAt": "2026-06-10T07:40:44.415Z"
+    },
+    {
+      "id": "media-2cc8c331-22dc-470c-8f07-a49f29d5f004",
+      "title": "Flag_of_Australia_(converted).svg",
+      "url": "/uploads/1781077244439-Flag_of_Australia__converted_.svg",
+      "mimeType": "image/svg+xml",
+      "fileSize": 1592,
+      "folderId": "folder-fcbe8baf-fe1f-48c0-a59a-52025ee50691",
+      "createdAt": "2026-06-10T07:40:44.439Z",
+      "updatedAt": "2026-06-10T07:40:44.439Z"
+    },
+    {
+      "id": "media-8789281d-f61c-4916-8673-ae42c92bc83b",
+      "title": "Flag_of_the_United_Arab_Emirates.svg.png",
+      "url": "/uploads/1781077244463-Flag_of_the_United_Arab_Emirates.svg.png",
+      "mimeType": "image/png",
+      "fileSize": 1832,
+      "folderId": "folder-fcbe8baf-fe1f-48c0-a59a-52025ee50691",
+      "createdAt": "2026-06-10T07:40:44.468Z",
+      "updatedAt": "2026-06-10T07:40:44.468Z"
+    },
+    {
+      "id": "media-c20d2f59-6017-448e-b366-4603dc7bfc32",
+      "title": "Flag_of_the_People&#x27;s_Republic_of_China.svg.png",
+      "url": "/uploads/1781077244493-Flag_of_the_People_s_Republic_of_China.svg.png",
+      "mimeType": "image/png",
+      "fileSize": 5977,
+      "folderId": "folder-fcbe8baf-fe1f-48c0-a59a-52025ee50691",
+      "createdAt": "2026-06-10T07:40:44.494Z",
+      "updatedAt": "2026-06-10T07:40:44.494Z"
+    },
+    {
+      "id": "media-d983cc79-480b-4e24-ba69-077ee0a7b02b",
+      "title": "Flag_of_Singapore.svg.webp",
+      "url": "/uploads/1781077244519-Flag_of_Singapore.svg.webp",
+      "mimeType": "image/webp",
+      "fileSize": 1152,
+      "folderId": "folder-fcbe8baf-fe1f-48c0-a59a-52025ee50691",
+      "createdAt": "2026-06-10T07:40:44.520Z",
+      "updatedAt": "2026-06-10T07:40:44.520Z"
+    },
+    {
+      "id": "media-13ce55b2-af27-4529-bb10-a3821da16da3",
       "title": "Flag_of_Switzerland.svg.png",
-      "url": "/uploads/1780972193908-Flag_of_Switzerland.svg.png",
+      "url": "/uploads/1781078751115-Flag_of_Switzerland.svg.png",
       "mimeType": "image/png",
       "fileSize": 726,
       "folderId": "folder-fcbe8baf-fe1f-48c0-a59a-52025ee50691",
-      "createdAt": "2026-06-09T02:29:53.909Z",
-      "updatedAt": "2026-06-09T02:29:53.909Z"
-    },
-    {
-      "id": "media-c18d75c3-5a0f-4063-848d-a76ffc0c2001",
-      "title": "Pentair C500_01.webp",
-      "url": "/uploads/1781013827521-Pentair_C500_01.webp",
-      "mimeType": "image/webp",
-      "fileSize": 72730,
-      "folderId": "folder-fcbe8baf-fe1f-48c0-a59a-52025ee50691",
-      "createdAt": "2026-06-09T14:03:47.549Z",
-      "updatedAt": "2026-06-09T14:03:47.549Z"
-    },
-    {
-      "id": "media-4c7b3fe2-0ceb-4b7d-a3ed-68a3fa7e95c7",
-      "title": "Fujiiryoki Cyber Relax JP4000 trang bi 2 con lăn thong minh.webp",
-      "url": "/uploads/1781014363627-Fujiiryoki_Cyber_Relax_JP4000_trang_bi_2_con_l_n_thong_minh.webp",
-      "mimeType": "image/webp",
-      "fileSize": 209476,
-      "folderId": "folder-fcbe8baf-fe1f-48c0-a59a-52025ee50691",
-      "createdAt": "2026-06-09T14:12:43.631Z",
-      "updatedAt": "2026-06-09T14:12:43.631Z"
+      "createdAt": "2026-06-10T08:05:51.115Z",
+      "updatedAt": "2026-06-10T08:05:51.116Z"
     }
   ]
 }

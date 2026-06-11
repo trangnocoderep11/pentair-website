@@ -44,11 +44,13 @@ export default function HeroSection({ bannerTitle, bannerSubTitle, onNavigate, h
               </span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-sans font-light tracking-tight text-white leading-none uppercase">
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-sans font-light tracking-wide text-white leading-[1.2] uppercase">
               {homepageSettings.heroTitle ? homepageSettings.heroTitle.split(' - ')[0] : bannerTitle.split(' - ')[0]}
-              <span className="block font-bold text-[#E6C073] mt-2 tracking-normal font-sans text-3xl sm:text-4xl lg:text-5xl">
-                {homepageSettings.heroTitle ? (homepageSettings.heroTitle.split(' - ')[1] || '') : (bannerTitle.split(' - ')[1] || bannerTitle)}
-              </span>
+              { (homepageSettings.heroTitle ? homepageSettings.heroTitle.split(' - ')[1] : bannerTitle.split(' - ')[1]) && (
+                <span className="block font-bold text-[#E6C073] mt-3 tracking-wide font-sans text-3xl sm:text-4xl lg:text-5xl leading-tight">
+                  {homepageSettings.heroTitle ? homepageSettings.heroTitle.split(' - ')[1] : bannerTitle.split(' - ')[1]}
+                </span>
+              )}
             </h1>
 
             <p className="text-sm sm:text-base md:text-lg text-slate-300 font-sans font-light leading-relaxed max-w-2xl border-l-2 border-[#E6C073]/40 pl-4">

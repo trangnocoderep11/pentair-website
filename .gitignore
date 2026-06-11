@@ -12,3 +12,4 @@ PLAN.md
 .env.example
 _db.json
 _.env
+.vercel
