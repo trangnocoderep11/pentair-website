@@ -46,13 +46,13 @@ const PORT = 3000;
 // Clean inputs manually to mitigate XSS (WordPress akin sanitisers)
 function sanitizeString(str: string): string {
   if (!str) return '';
+  // Only strip executable HTML from user-submitted contact form fields.
+  // Do NOT use on CMS admin content (title, excerpt, name) — React escapes
+  // those automatically; encoding here causes double-encode corruption.
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;');
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/\bon[a-z]+\s*=\s*(['"])[^'"]*\1/gi, '')
+    .replace(/javascript\s*:/gi, '');
 }
 
 // Solid HTML sanitization for rich text fields to prevent executable XSS injections
@@ -2795,9 +2795,8 @@ app.post("/api/posts", authMiddleware, (req, res) => {
     return res.status(400).json({ error: "Đường dẫn Slug đã tồn tại. Vui lòng chọn slug khác." });
   }
 
-  // Security clean input content with manual safe HTML and string sanitization
-  const cleanTitle = sanitizeString(title);
-  const cleanExcerpt = sanitizeString(excerpt || '');
+  const cleanTitle = title;
+  const cleanExcerpt = excerpt || '';
   const cleanContent = content !== undefined ? sanitizeHtml(content) : '';
 
   const newPost = {
@@ -2844,8 +2843,8 @@ app.put("/api/posts/:id", authMiddleware, (req, res) => {
     return res.status(400).json({ error: "Sự cố: Đường dẫn Slug này đã bị trùng lặp." });
   }
 
-  const cleanTitle = title ? sanitizeString(title) : existingPost.title;
-  const cleanExcerpt = excerpt !== undefined ? sanitizeString(excerpt) : existingPost.excerpt;
+  const cleanTitle = title !== undefined ? title : existingPost.title;
+  const cleanExcerpt = excerpt !== undefined ? excerpt : existingPost.excerpt;
   const cleanContent = content !== undefined ? sanitizeHtml(content) : existingPost.content;
 
   db.posts[postIdx] = {
@@ -3210,10 +3209,10 @@ app.put("/api/admin/products/:id", authMiddleware, (req, res) => {
   const existingPost = db.posts[prodIdx];
   db.posts[prodIdx] = {
     ...existingPost,
-    title: title ? sanitizeString(title) : existingPost.title,
+    title: title !== undefined ? title : existingPost.title,
     slug: slug ? slug.toLowerCase().replace(/[^a-z0-9-_]/g, '-') : existingPost.slug,
     content: content !== undefined ? content : existingPost.content,
-    excerpt: excerpt !== undefined ? sanitizeString(excerpt) : existingPost.excerpt,
+    excerpt: excerpt !== undefined ? excerpt : existingPost.excerpt,
     status: status || existingPost.status,
     featuredImage: featuredImage !== undefined ? featuredImage : existingPost.featuredImage,
     menuOrder: menuOrder !== undefined ? Number(menuOrder) : existingPost.menuOrder,
@@ -3254,9 +3253,9 @@ app.post("/api/admin/videos", authMiddleware, (req, res) => {
 
   const newVid = {
     id: "vid-" + Date.now(),
-    title: sanitizeString(title),
+    title: title,
     slug: (title || "").toLowerCase().normalize().replace(/[^a-z0-9]/g, "-"),
-    description: sanitizeString(description || ''),
+    description: description || '',
     videoUrl,
     thumbnail: thumbnail || "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80",
     category: category || "introduction",
@@ -3282,8 +3281,8 @@ app.put("/api/admin/videos/:id", authMiddleware, (req, res) => {
 
   db.videos[vidIdx] = {
     ...existingVid,
-    title: title ? sanitizeString(title) : existingVid.title,
-    description: description !== undefined ? sanitizeString(description) : existingVid.description,
+    title: title !== undefined ? title : existingVid.title,
+    description: description !== undefined ? description : existingVid.description,
     videoUrl: videoUrl !== undefined ? videoUrl : existingVid.videoUrl,
     thumbnail: thumbnail !== undefined ? thumbnail : existingVid.thumbnail,
     category: category !== undefined ? category : existingVid.category,
@@ -3323,7 +3322,7 @@ app.post("/api/admin/media/folders", authMiddleware, (req, res) => {
 
   const newFolder = {
     id: "folder-" + crypto.randomUUID(),
-    name: sanitizeString(name.trim()),
+    name: name.trim(),
     parentId: parentId || undefined,
     createdAt: new Date().toISOString()
   };
@@ -3340,7 +3339,7 @@ app.put("/api/admin/media/folders/:id", authMiddleware, (req, res) => {
   const folder = db.mediaFolders.find((f: any) => f.id === id);
   if (!folder) return res.status(404).json({ error: "Không tìm thấy thư mục." });
 
-  if (name) folder.name = sanitizeString(name.trim());
+  if (name) folder.name = name.trim();
   if (parentId !== undefined) folder.parentId = parentId || undefined;
 
   dbSaveMediaFolder(folder).catch(e => console.error('[DB]', e));
@@ -3387,7 +3386,7 @@ app.post("/api/admin/media/upload", authMiddleware, async (req, res) => {
     const existingItem = db.mediaItems.find((i: any) => i.url === url);
     if (existingItem) {
       existingItem.folderId = folderId || undefined;
-      if (filename) existingItem.title = sanitizeString(filename.trim());
+      if (filename) existingItem.title = filename.trim();
       dbSaveMediaItem(existingItem).catch(e => console.error('[DB]', e));
       return res.json(existingItem);
     }
@@ -3403,7 +3402,7 @@ app.post("/api/admin/media/upload", authMiddleware, async (req, res) => {
 
     const newItem = {
       id: "media-" + crypto.randomUUID(),
-      title: filename ? sanitizeString(filename.trim()) : sanitizeString(extractedName),
+      title: filename ? filename.trim() : extractedName,
       url: url,
       mimeType: mimeType || "image/jpeg",
       folderId: folderId || undefined,
@@ -3419,7 +3418,7 @@ app.post("/api/admin/media/upload", authMiddleware, async (req, res) => {
     return res.status(400).json({ error: "Thiếu dữ liệu tệp tin upload." });
   }
 
-  const displayTitle = sanitizeString(filename);
+  const displayTitle = filename;
   const safeFilename = path.basename(filename).replace(/[^a-zA-Z0-9.\-_]/g, '_');
   const uniqueFilename = `${Date.now()}-${safeFilename}`;
   const buffer = Buffer.from(base64Data, "base64");
@@ -3548,9 +3547,9 @@ app.put("/api/admin/media/items/:id", authMiddleware, (req, res) => {
   const item = db.mediaItems.find((i: any) => i.id === id);
   if (!item) return res.status(404).json({ error: "Không tìm thấy hình ảnh." });
 
-  if (title) item.title = sanitizeString(title);
-  if (altText !== undefined) item.altText = sanitizeString(altText);
-  if (description !== undefined) item.description = sanitizeString(description);
+  if (title) item.title = title;
+  if (altText !== undefined) item.altText = altText;
+  if (description !== undefined) item.description = description;
   if (folderId !== undefined) item.folderId = folderId || undefined;
   if (url !== undefined) item.url = url;
   item.updatedAt = new Date().toISOString();
@@ -3608,9 +3607,9 @@ app.post("/api/admin/perspectives", authMiddleware, (req, res) => {
 
   const newPer = {
     id: "per-" + Date.now(),
-    title: sanitizeString(title),
+    title: title,
     slug: finalSlug.toLowerCase().replace(/[^a-z0-9-_]/g, '-'),
-    excerpt: sanitizeString(excerpt || ''),
+    excerpt: excerpt || '',
     content: content || '',
     featuredImage: featuredImage || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80",
     spaceType: spaceType || "villa",
@@ -3638,9 +3637,9 @@ app.put("/api/admin/perspectives/:id", authMiddleware, (req, res) => {
 
   db.perspectives[perIdx] = {
     ...existingPer,
-    title: title ? sanitizeString(title) : existingPer.title,
+    title: title !== undefined ? title : existingPer.title,
     slug: slug ? slug.toLowerCase().replace(/[^a-z0-9-_]/g, '-') : existingPer.slug,
-    excerpt: excerpt !== undefined ? sanitizeString(excerpt) : existingPer.excerpt,
+    excerpt: excerpt !== undefined ? excerpt : existingPer.excerpt,
     content: content !== undefined ? content : existingPer.content,
     featuredImage: featuredImage !== undefined ? featuredImage : existingPer.featuredImage,
     spaceType: spaceType !== undefined ? spaceType : existingPer.spaceType,
@@ -3679,7 +3678,7 @@ app.post("/api/terms", authMiddleware, (req, res) => {
   
   const newTerm = {
     id: "term-" + Date.now(),
-    name: sanitizeString(name),
+    name: name,
     slug: calculatedSlug,
     taxonomy,
     status: status || 'publish'
@@ -3696,7 +3695,7 @@ app.put("/api/terms/:id", authMiddleware, (req, res) => {
   const term = db.terms.find(t => t.id === id) as any;
   if (!term) return res.status(404).json({ error: "Không tìm thấy chuyên mục." });
   
-  if (name) term.name = sanitizeString(name);
+  if (name) term.name = name;
   if (slug) term.slug = slug;
   if (taxonomy) term.taxonomy = taxonomy;
   if (status) term.status = status;
@@ -3751,8 +3750,8 @@ app.post("/api/submissions", (req, res) => {
     productInterest: productInterest ? sanitizeString(productInterest) : undefined,
     productQuantity: productQuantity ? sanitizeString(productQuantity) : undefined,
     address: address ? sanitizeString(address.trim()) : undefined,
-    sourceUrl: sourceUrl ? sanitizeString(sourceUrl) : undefined,
-    formName: formName ? sanitizeString(formName) : undefined,
+    sourceUrl: sourceUrl || undefined,
+    formName: formName || undefined,
     status: 'unread' as const,
     createdAt: new Date().toISOString()
   };
