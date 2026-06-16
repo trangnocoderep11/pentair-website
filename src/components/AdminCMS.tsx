@@ -2008,7 +2008,7 @@ export default function AdminCMS({
 
       {/* LEFT NAVIGATION DRAWER (WP Style Menu sidebar) */}
       <aside className="w-64 bg-slate-900 text-slate-300 shrink-0 flex flex-col justify-between border-r border-slate-800" id="cms-sidebar">
-        <div>
+        <div className="overflow-y-auto flex-1 min-h-0">
           {/* Header */}
           <div className="p-4 bg-slate-950 flex items-center gap-2.5">
             <div className="w-8 h-8 rounded bg-blue-600 text-white font-black text-lg flex items-center justify-center shadow-md">
