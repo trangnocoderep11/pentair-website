@@ -895,7 +895,7 @@ async function withPg<T>(fn: (client: any) => Promise<T>): Promise<T | null> {
 // --- Posts / Products / Pages ---
 async function dbSavePost(p: any) {
   writeDb();
-  return withPg(c => c.query(
+  return trackWrite(withPg(c => c.query(
     `INSERT INTO public.posts
       (id,title,slug,content,excerpt,type,status,author_id,featured_image,menu_order,meta,terms,created_at,updated_at,published_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
@@ -911,17 +911,17 @@ async function dbSavePost(p: any) {
      p.createdAt || new Date().toISOString(),
      p.updatedAt || new Date().toISOString(),
      p.published_at || null]
-  ));
+  )));
 }
 async function dbDeletePost(id: string) {
   writeDb();
-  return withPg(c => c.query('DELETE FROM public.posts WHERE id=$1', [id]));
+  return trackWrite(withPg(c => c.query('DELETE FROM public.posts WHERE id=$1', [id])));
 }
 
 // --- Terms (categories / product_cat) ---
 async function dbSaveTerm(t: any) {
   writeDb();
-  return withPg(c => c.query(
+  return trackWrite(withPg(c => c.query(
     `INSERT INTO public.terms (id,name,slug,taxonomy,description,parent_id,meta)
      VALUES ($1,$2,$3,$4,$5,$6,$7)
      ON CONFLICT (id) DO UPDATE SET
@@ -929,17 +929,17 @@ async function dbSaveTerm(t: any) {
       description=EXCLUDED.description, parent_id=EXCLUDED.parent_id, meta=EXCLUDED.meta`,
     [t.id, t.name, t.slug, t.taxonomy, t.description || null,
      t.parentId || null, JSON.stringify(t.meta || {})]
-  ));
+  )));
 }
 async function dbDeleteTerm(id: string) {
   writeDb();
-  return withPg(c => c.query('DELETE FROM public.terms WHERE id=$1', [id]));
+  return trackWrite(withPg(c => c.query('DELETE FROM public.terms WHERE id=$1', [id])));
 }
 
 // --- Users ---
 async function dbSaveUser(u: any) {
   writeDb();
-  return withPg(c => c.query(
+  return trackWrite(withPg(c => c.query(
     `INSERT INTO public.users (id,username,password_hash,email,role,two_factor_enabled,two_factor_secret)
      VALUES ($1,$2,$3,$4,$5,$6,$7)
      ON CONFLICT (id) DO UPDATE SET
@@ -949,28 +949,28 @@ async function dbSaveUser(u: any) {
       two_factor_secret=EXCLUDED.two_factor_secret`,
     [u.id, u.username, u.passwordHash || null, u.email, u.role || 'editor',
      u.twoFactorEnabled || false, u.twoFactorSecret || null]
-  ));
+  )));
 }
 async function dbDeleteUser(id: string) {
   writeDb();
-  return withPg(c => c.query('DELETE FROM public.users WHERE id=$1', [id]));
+  return trackWrite(withPg(c => c.query('DELETE FROM public.users WHERE id=$1', [id])));
 }
 
 // --- Options (site settings) ---
 async function dbSaveOption(opt: any) {
   writeDb();
-  return withPg(c => c.query(
+  return trackWrite(withPg(c => c.query(
     `INSERT INTO public.options (id,option_name,option_value)
      VALUES ($1,$2,$3)
      ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value, id=EXCLUDED.id`,
     [opt.id || `opt-${opt.optionName}`, opt.optionName, JSON.stringify(opt)]
-  ));
+  )));
 }
 
 // --- Submissions ---
 async function dbSaveSubmission(s: any) {
   writeDb();
-  return withPg(c => c.query(
+  return trackWrite(withPg(c => c.query(
     `INSERT INTO public.submissions (id,name,email,phone,message,status,source,product_id,created_at,meta)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
      ON CONFLICT (id) DO UPDATE SET
@@ -980,17 +980,17 @@ async function dbSaveSubmission(s: any) {
     [s.id, s.name, s.email, s.phone, s.message,
      s.status || 'new', s.source || null, s.productId || null,
      s.createdAt || new Date().toISOString(), JSON.stringify(s.meta || {})]
-  ));
+  )));
 }
 async function dbDeleteSubmission(id: string) {
   writeDb();
-  return withPg(c => c.query('DELETE FROM public.submissions WHERE id=$1', [id]));
+  return trackWrite(withPg(c => c.query('DELETE FROM public.submissions WHERE id=$1', [id])));
 }
 
 // --- Videos ---
 async function dbSaveVideo(v: any) {
   writeDb();
-  return withPg(c => c.query(
+  return trackWrite(withPg(c => c.query(
     `INSERT INTO public.videos (id,title,url,thumbnail,description,sort_order,created_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7)
      ON CONFLICT (id) DO UPDATE SET
@@ -999,17 +999,17 @@ async function dbSaveVideo(v: any) {
     [v.id, v.title, v.videoUrl || v.url || null, v.thumbnail || null,
      v.description || null, v.sortOrder || 0,
      v.createdAt || new Date().toISOString()]
-  ));
+  )));
 }
 async function dbDeleteVideo(id: string) {
   writeDb();
-  return withPg(c => c.query('DELETE FROM public.videos WHERE id=$1', [id]));
+  return trackWrite(withPg(c => c.query('DELETE FROM public.videos WHERE id=$1', [id])));
 }
 
 // --- Perspectives ---
 async function dbSavePerspective(p: any) {
   writeDb();
-  return withPg(c => c.query(
+  return trackWrite(withPg(c => c.query(
     `INSERT INTO public.perspectives
       (id,title,slug,excerpt,content,featured_image,status,image_url,link,space_type,gallery,product_gallery,related_product_ids,is_featured,sort_order,created_at,updated_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
@@ -1027,32 +1027,32 @@ async function dbSavePerspective(p: any) {
      JSON.stringify(p.relatedProductIds || []), p.isFeatured || false,
      p.sortOrder || 0,
      p.createdAt || new Date().toISOString(), p.updatedAt || new Date().toISOString()]
-  ));
+  )));
 }
 async function dbDeletePerspective(id: string) {
   writeDb();
-  return withPg(c => c.query('DELETE FROM public.perspectives WHERE id=$1', [id]));
+  return trackWrite(withPg(c => c.query('DELETE FROM public.perspectives WHERE id=$1', [id])));
 }
 
 // --- Media Folders ---
 async function dbSaveMediaFolder(f: any) {
   writeDb();
-  return withPg(c => c.query(
+  return trackWrite(withPg(c => c.query(
     `INSERT INTO public.media_folders (id,name,parent_id,created_at)
      VALUES ($1,$2,$3,$4)
      ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, parent_id=EXCLUDED.parent_id`,
     [f.id, f.name, f.parentId || null, f.createdAt || new Date().toISOString()]
-  ));
+  )));
 }
 async function dbDeleteMediaFolder(id: string) {
   writeDb();
-  return withPg(c => c.query('DELETE FROM public.media_folders WHERE id=$1', [id]));
+  return trackWrite(withPg(c => c.query('DELETE FROM public.media_folders WHERE id=$1', [id])));
 }
 
 // --- Media Items ---
 async function dbSaveMediaItem(item: any) {
   writeDb();
-  return withPg(c => c.query(
+  return trackWrite(withPg(c => c.query(
     `INSERT INTO public.media_items (id,folder_id,filename,url,mime_type,size,width,height,alt,title,description,created_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
      ON CONFLICT (id) DO UPDATE SET
@@ -1064,11 +1064,11 @@ async function dbSaveMediaItem(item: any) {
      item.width || null, item.height || null, item.altText || item.alt || null,
      item.title || null, item.description || null,
      item.createdAt || new Date().toISOString()]
-  ));
+  )));
 }
 async function dbDeleteMediaItem(id: string) {
   writeDb();
-  return withPg(c => c.query('DELETE FROM public.media_items WHERE id=$1', [id]));
+  return trackWrite(withPg(c => c.query('DELETE FROM public.media_items WHERE id=$1', [id])));
 }
 
 // ===================================================================
