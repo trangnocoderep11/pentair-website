@@ -2689,22 +2689,24 @@ app.get("/api/options", (req, res) => {
   res.json(db.options);
 });
 
-app.put("/api/options", authMiddleware, requireRole('administrator'), (req, res) => {
+app.put("/api/options", authMiddleware, requireRole('administrator'), async (req, res) => {
   const updatedOptions = req.body;
   if (!Array.isArray(updatedOptions)) {
     return res.status(400).json({ error: "Định dạng dữ liệu cấu hình không hợp lệ." });
   }
 
+  const writes: Promise<any>[] = [];
   for (const opt of updatedOptions) {
     const existingIdx = db.options.findIndex(o => o.optionName === opt.optionName);
     if (existingIdx !== -1) {
       db.options[existingIdx] = { ...db.options[existingIdx], ...opt };
-      dbSaveOption(db.options[existingIdx]).catch(e => console.error('[DB]', e));
+      writes.push(dbSaveOption(db.options[existingIdx]).catch(e => console.error('[DB]', e)));
     } else {
       db.options.push(opt);
-      dbSaveOption(opt).catch(e => console.error('[DB]', e));
+      writes.push(dbSaveOption(opt).catch(e => console.error('[DB]', e)));
     }
   }
+  await Promise.all(writes);
   res.json({ success: true, options: db.options });
 });
 
