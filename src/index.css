@@ -31,28 +31,28 @@ html {
 }
 
 .rich-text-content h1 {
-  font-size: 34px;
+  font-size: 26px;
 }
 
 .rich-text-content h2 {
-  font-size: 26px;
-  border-b: 1px solid #f1f5f9;
+  font-size: 24px;
+  border-bottom: 1px solid #f1f5f9;
   padding-bottom: 0.35rem;
   text-transform: uppercase;
   letter-spacing: -0.01em;
 }
 
 .rich-text-content h3 {
-  font-size: 24px;
+  font-size: 20px;
 }
 
 .rich-text-content h4 {
-  font-size: 20px;
+  font-size: 18px;
   color: #334155;
 }
 
 .rich-text-content h5 {
-  font-size: 18px;
+  font-size: 16px;
   color: #334155;
 }
 
