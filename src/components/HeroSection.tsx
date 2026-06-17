@@ -44,7 +44,7 @@ export default function HeroSection({ bannerTitle, bannerSubTitle, onNavigate, h
               </span>
             </div>
 
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-display font-extrabold tracking-tight text-white leading-tight uppercase">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-sans font-bold text-white leading-tight uppercase">
               {(() => {
                 const titleText = homepageSettings.heroTitle || bannerTitle || "";
                 if (titleText.includes(' - ')) {
@@ -52,7 +52,7 @@ export default function HeroSection({ bannerTitle, bannerSubTitle, onNavigate, h
                   return (
                     <>
                       <span className="block font-light text-slate-100 tracking-wide text-2xl sm:text-3xl lg:text-4xl leading-tight">{part1}</span>
-                      <span className="block font-black text-[#E6C073] mt-2 tracking-tight text-4xl sm:text-5xl lg:text-6xl">
+                      <span className="block font-bold text-[#E6C073] mt-2 text-4xl sm:text-5xl lg:text-6xl">
                         {part2}
                       </span>
                     </>
@@ -64,14 +64,14 @@ export default function HeroSection({ bannerTitle, bannerSubTitle, onNavigate, h
                   const secondPart = words.slice(4).join(' ');
                   return (
                     <>
-                      <span className="block font-extrabold text-white tracking-tight">{firstPart}</span>
-                      <span className="block font-black text-[#E6C073] mt-2 tracking-tight">
+                      <span className="block font-bold text-white">{firstPart}</span>
+                      <span className="block font-bold text-[#E6C073] mt-2">
                         {secondPart}
                       </span>
                     </>
                   );
                 }
-                return <span className="block font-black text-white">{titleText}</span>;
+                return <span className="block font-bold text-white">{titleText}</span>;
               })()}
             </h1>
 

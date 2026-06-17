@@ -27,7 +27,7 @@ export default function BrandIntroSection({ introTitle, introBody, onNavigate, h
             className="space-y-6 md:space-y-8"
           >
             <div className="space-y-2">
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-display font-black text-[#0B2144] tracking-tight leading-tight uppercase">
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-sans font-bold text-[#0B2144] leading-tight uppercase">
                 {homepageSettings.introTitle || introTitle}
               </h2>
               <div className="w-16 h-1 bg-[#E6C073] mt-2" />
