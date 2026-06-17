@@ -18,11 +18,19 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 
 dotenv.config();
 
-import dbFileDataStatic from "./db.json";
-
 // db.json is the primary data source — loaded dynamically to prevent tsx watcher restarts in dev mode, but statically bundled for Vercel
 const dbPath = path.join(process.cwd(), "db.json");
 let dbFileData: any = {};
+let dbFileDataStatic: any = {};
+
+try {
+  if (fs.existsSync(dbPath)) {
+    dbFileDataStatic = JSON.parse(fs.readFileSync(dbPath, "utf-8"));
+  }
+} catch (e: any) {
+  console.error("[DB STATIC INIT] Cannot read db.json for static bundle fallback:", e.message);
+}
+
 if (fs.existsSync(dbPath)) {
   try {
     dbFileData = JSON.parse(fs.readFileSync(dbPath, "utf-8"));
