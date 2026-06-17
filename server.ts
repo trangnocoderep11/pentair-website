@@ -1836,7 +1836,7 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
     const isAdmin = !!req.headers.authorization;
     const forceReload = isWrite || isAdmin;
 
-    if (!isSetupMode && (!dbLoaded || forceReload)) {
+    if (!isSetupMode) {
       try {
         await ensureDbLoaded(forceReload);
       } catch (e: any) {
