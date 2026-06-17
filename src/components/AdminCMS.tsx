@@ -3234,46 +3234,13 @@ export default function AdminCMS({
                         </div>
                       </div>
 
-                      {/* Editorial Title and descriptions */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-slate-700 uppercase block">Tiêu đề Hero Banner (bannerTitle)</label>
-                          <input 
-                            type="text" 
-                            value={postForm.meta?.bannerTitle || ''}
-                            onChange={e => setPostForm({ ...postForm, meta: { ...postForm.meta, bannerTitle: e.target.value } })}
-                            className="w-full p-2.5 text-xs rounded border border-gray-205 bg-white text-gray-800 focus:outline-[#0C3471]"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-slate-700 uppercase block">Tiêu đề intro (introTitle)</label>
-                          <input 
-                            type="text" 
-                            value={postForm.meta?.introTitle || ''}
-                            onChange={e => setPostForm({ ...postForm, meta: { ...postForm.meta, introTitle: e.target.value } })}
-                            className="w-full p-2.5 text-xs rounded border border-gray-205 bg-white text-gray-800 focus:outline-[#0C3471]"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1 text-left">
-                        <label className="text-[10px] font-bold text-slate-700 uppercase block">Mô tả ngắn Hero (bannerSubTitle)</label>
-                        <textarea 
-                          rows={2}
-                          value={postForm.meta?.bannerSubTitle || ''}
-                          onChange={e => setPostForm({ ...postForm, meta: { ...postForm.meta, bannerSubTitle: e.target.value } })}
-                          className="w-full p-2.5 text-xs rounded border border-gray-255 bg-white text-gray-800 resize-none focus:outline-[#0C3471]"
-                        />
-                      </div>
-
-                      <div className="space-y-1 text-left">
-                        <label className="text-[10px] font-bold text-slate-700 uppercase block">Chi tiết giới thiệu (introBody)</label>
-                        <textarea 
-                          rows={3}
-                          value={postForm.meta?.introBody || ''}
-                          onChange={e => setPostForm({ ...postForm, meta: { ...postForm.meta, introBody: e.target.value } })}
-                          className="w-full p-2.5 text-xs rounded border border-gray-255 bg-white text-gray-800 resize-none font-sans leading-relaxed focus:outline-[#0C3471]"
-                        />
+                      {/* Notice about Home Banner and Introduction Settings */}
+                      <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100 text-left space-y-1">
+                        <span className="text-[10px] font-bold uppercase text-blue-700 block">💡 Thông báo Cấu hình</span>
+                        <p className="text-[10px] text-blue-600 leading-relaxed font-sans">
+                          Các trường thông tin **Hero Banner** (Tiêu đề, mô tả, hình ảnh banner chính) và **Giới thiệu** (Tiêu đề, mô tả, hình ảnh phần thân) hiện đã được chuyển sang quản lý tập trung và chi tiết hơn tại tab <strong>"Cài Đặt Trang Chủ"</strong> ở menu bên trái. 
+                          Vui lòng cấu hình các trường này ở mục đó để thay đổi hiển thị trực quan và có đầy đủ tính năng nhất.
+                        </p>
                       </div>
 
                       {/* Section: Why Choose Us */}
