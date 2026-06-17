@@ -44,13 +44,35 @@ export default function HeroSection({ bannerTitle, bannerSubTitle, onNavigate, h
               </span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-sans font-light tracking-wide text-white leading-[1.2] uppercase">
-              {homepageSettings.heroTitle ? homepageSettings.heroTitle.split(' - ')[0] : bannerTitle.split(' - ')[0]}
-              { (homepageSettings.heroTitle ? homepageSettings.heroTitle.split(' - ')[1] : bannerTitle.split(' - ')[1]) && (
-                <span className="block font-bold text-[#E6C073] mt-3 tracking-wide font-sans text-3xl sm:text-4xl lg:text-5xl leading-tight">
-                  {homepageSettings.heroTitle ? homepageSettings.heroTitle.split(' - ')[1] : bannerTitle.split(' - ')[1]}
-                </span>
-              )}
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-display font-extrabold tracking-tight text-white leading-tight uppercase">
+              {(() => {
+                const titleText = homepageSettings.heroTitle || bannerTitle || "";
+                if (titleText.includes(' - ')) {
+                  const [part1, part2] = titleText.split(' - ');
+                  return (
+                    <>
+                      <span className="block font-light text-slate-100 tracking-wide text-2xl sm:text-3xl lg:text-4xl leading-tight">{part1}</span>
+                      <span className="block font-black text-[#E6C073] mt-2 tracking-tight text-4xl sm:text-5xl lg:text-6xl">
+                        {part2}
+                      </span>
+                    </>
+                  );
+                }
+                const words = titleText.split(' ');
+                if (words.length > 4) {
+                  const firstPart = words.slice(0, 4).join(' ');
+                  const secondPart = words.slice(4).join(' ');
+                  return (
+                    <>
+                      <span className="block font-extrabold text-white tracking-tight">{firstPart}</span>
+                      <span className="block font-black text-[#E6C073] mt-2 tracking-tight">
+                        {secondPart}
+                      </span>
+                    </>
+                  );
+                }
+                return <span className="block font-black text-white">{titleText}</span>;
+              })()}
             </h1>
 
             <p className="text-sm sm:text-base md:text-lg text-slate-300 font-sans font-light leading-relaxed max-w-2xl border-l-2 border-[#E6C073]/40 pl-4">
