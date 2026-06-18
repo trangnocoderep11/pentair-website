@@ -6,6 +6,7 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 10,
+      "includeFiles": "db.json",
       "excludeFiles": "{public/uploads/**/*,public/**/*,dist/assets/**/*,dist/index.html,src/**/*}"
     }
   },

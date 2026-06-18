@@ -568,23 +568,23 @@
       "id": "opt-homepage-settings",
       "optionName": "homepage_settings",
       "optionValue": {
-        "heroImage": "/uploads/1780561090630-banner-pentair-trang-chu-01.webp",
         "heroTitle": "GIẢI PHÁP XỬ LÝ NƯỚC HÀNG ĐẦU CHÂU ÂU & BẮC MỸ",
+        "heroSubtitle": "Khởi nguồn từ di sản công nghệ hơn nửa thế kỷ, Pentair mang tới đẳng cấp lọc nước tinh khiết vượt trội.",
+        "heroImage": "/uploads/1780561090630-banner-pentair-trang-chu-01.webp",
+        "heroImageTag": "USA CERTIFIED",
+        "heroImageTitle": "Pentair Smart Water System",
+        "heroImageDesc": "Kiệt tác nâng tầm giá trị sống dòng biệt thự đơn lập, lâu đài vĩnh cửu.",
+        "introTitle": "HƠN 60 NĂM KINH NGHIỆM TRONG NGÀNH XỬ LÝ NƯỚC",
         "introBody": "Pentair là thương hiệu hàng đầu từ Mỹ với hơn 60 năm kinh nghiệm trong lĩnh vực xử lý nước và giải pháp lọc tổng cao cấp. Các sản phẩm của Pentair đều đạt các chứng nhận uy tín về chất lượng và được tin dùng trên toàn thế giới nhờ công nghệ tiên tiến, độ bền vượt trội kết hợp khả năng xử lý nước thông minh mang lại nguồn nước sạch an toàn cho gia đình.",
         "introImage": "/uploads/1780561102819-banner-pentair-trang-chu-02.webp",
-        "introTitle": "HƠN 60 NĂM KINH NGHIỆM TRONG NGÀNH XỬ LÝ NƯỚC",
-        "heroImageTag": "USA CERTIFIED",
-        "heroSubtitle": "Khởi nguồn từ di sản công nghệ hơn nửa thế kỷ, Pentair mang tới đẳng cấp lọc nước tinh khiết vượt trội.",
-        "heroImageDesc": "Kiệt tác nâng tầm giá trị sống dòng biệt thự đơn lập, lâu đài vĩnh cửu.",
         "introImageTag": "Villa Penthouse Integration",
-        "heroImageTitle": "Pentair Smart Water System",
         "introImageDesc": "Tích hợp giải pháp nước tinh khiết chảy qua các không gian bếp hạng sang bậc nhất châu Âu.",
-        "introFeature1Desc": "Sáng lập từ năm 1966 tại Minnesota Hoa Kỳ.",
-        "introFeature2Desc": "Bộ lọc tối siêu, kiểm định chặt bởi NSF & WQA.",
-        "introFeature3Desc": "Tái tạo cấu trúc bảo bọc trọn làn da rạng ngời.",
         "introFeature1Title": "Mỹ Quốc",
+        "introFeature1Desc": "Sáng lập từ năm 1966 tại Minnesota Hoa Kỳ.",
         "introFeature2Title": "Tiêu chuẩn vàng",
-        "introFeature3Title": "Chăm sóc sâu"
+        "introFeature2Desc": "Bộ lọc tối siêu, kiểm định chặt bởi NSF & WQA.",
+        "introFeature3Title": "Chăm sóc sâu",
+        "introFeature3Desc": "Tái tạo cấu trúc bảo bọc trọn làn da rạng ngời."
       }
     },
     {

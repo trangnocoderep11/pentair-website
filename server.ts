@@ -18,10 +18,17 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 
 dotenv.config();
 
-import dbFileDataStatic from "./db.json";
-
-// db.json is the primary data source — loaded dynamically to prevent tsx watcher restarts in dev mode, but statically bundled for Vercel
+// db.json is the primary data source — loaded dynamically to prevent tsx watcher restarts in dev mode
 const dbPath = path.join(process.cwd(), "db.json");
+let dbFileDataStatic: any = {};
+try {
+  if (fs.existsSync(dbPath)) {
+    dbFileDataStatic = JSON.parse(fs.readFileSync(dbPath, "utf-8"));
+  }
+} catch (e: any) {
+  console.error("[DB STATIC INIT] Cannot read db.json for static bundle fallback:", e.message);
+}
+
 let dbFileData: any = {};
 if (fs.existsSync(dbPath)) {
   try {
@@ -898,12 +905,12 @@ async function dbSavePost(p: any) {
   return trackWrite(withPg(c => c.query(
     `INSERT INTO public.posts
       (id,title,slug,content,excerpt,type,status,author_id,featured_image,menu_order,meta,terms,created_at,updated_at,published_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13,$14,$15)
      ON CONFLICT (id) DO UPDATE SET
       title=EXCLUDED.title, slug=EXCLUDED.slug, content=EXCLUDED.content,
       excerpt=EXCLUDED.excerpt, type=EXCLUDED.type, status=EXCLUDED.status,
       author_id=EXCLUDED.author_id, featured_image=EXCLUDED.featured_image,
-      menu_order=EXCLUDED.menu_order, meta=EXCLUDED.meta, terms=EXCLUDED.terms,
+      menu_order=EXCLUDED.menu_order, meta=EXCLUDED.meta::jsonb, terms=EXCLUDED.terms::jsonb,
       updated_at=EXCLUDED.updated_at, published_at=EXCLUDED.published_at`,
     [p.id, p.title, p.slug, p.content, p.excerpt, p.type, p.status,
      p.authorId || null, p.featuredImage, p.menuOrder || 0,
@@ -923,10 +930,10 @@ async function dbSaveTerm(t: any) {
   writeDb();
   return trackWrite(withPg(c => c.query(
     `INSERT INTO public.terms (id,name,slug,taxonomy,description,parent_id,meta)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)
+     VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb)
      ON CONFLICT (id) DO UPDATE SET
       name=EXCLUDED.name, slug=EXCLUDED.slug, taxonomy=EXCLUDED.taxonomy,
-      description=EXCLUDED.description, parent_id=EXCLUDED.parent_id, meta=EXCLUDED.meta`,
+      description=EXCLUDED.description, parent_id=EXCLUDED.parent_id, meta=EXCLUDED.meta::jsonb`,
     [t.id, t.name, t.slug, t.taxonomy, t.description || null,
      t.parentId || null, JSON.stringify(t.meta || {})]
   )));
@@ -961,8 +968,8 @@ async function dbSaveOption(opt: any) {
   writeDb();
   return trackWrite(withPg(c => c.query(
     `INSERT INTO public.options (id,option_name,option_value)
-     VALUES ($1,$2,$3)
-     ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value, id=EXCLUDED.id`,
+     VALUES ($1,$2,$3::jsonb)
+     ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value::jsonb, id=EXCLUDED.id`,
     [opt.id || `opt-${opt.optionName}`, opt.optionName, JSON.stringify(opt)]
   )));
 }
@@ -972,11 +979,11 @@ async function dbSaveSubmission(s: any) {
   writeDb();
   return trackWrite(withPg(c => c.query(
     `INSERT INTO public.submissions (id,name,email,phone,message,status,source,product_id,created_at,meta)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb)
      ON CONFLICT (id) DO UPDATE SET
       name=EXCLUDED.name, email=EXCLUDED.email, phone=EXCLUDED.phone,
       message=EXCLUDED.message, status=EXCLUDED.status, source=EXCLUDED.source,
-      product_id=EXCLUDED.product_id, meta=EXCLUDED.meta`,
+      product_id=EXCLUDED.product_id, meta=EXCLUDED.meta::jsonb`,
     [s.id, s.name, s.email, s.phone, s.message,
      s.status || 'new', s.source || null, s.productId || null,
      s.createdAt || new Date().toISOString(), JSON.stringify(s.meta || {})]
@@ -1012,13 +1019,13 @@ async function dbSavePerspective(p: any) {
   return trackWrite(withPg(c => c.query(
     `INSERT INTO public.perspectives
       (id,title,slug,excerpt,content,featured_image,status,image_url,link,space_type,gallery,product_gallery,related_product_ids,is_featured,sort_order,created_at,updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13::jsonb,$14,$15,$16,$17)
      ON CONFLICT (id) DO UPDATE SET
       title=EXCLUDED.title, slug=EXCLUDED.slug, excerpt=EXCLUDED.excerpt,
       content=EXCLUDED.content, featured_image=EXCLUDED.featured_image,
       status=EXCLUDED.status, image_url=EXCLUDED.image_url, link=EXCLUDED.link,
-      space_type=EXCLUDED.space_type, gallery=EXCLUDED.gallery,
-      product_gallery=EXCLUDED.product_gallery, related_product_ids=EXCLUDED.related_product_ids,
+      space_type=EXCLUDED.space_type, gallery=EXCLUDED.gallery::jsonb,
+      product_gallery=EXCLUDED.product_gallery::jsonb, related_product_ids=EXCLUDED.related_product_ids::jsonb,
       is_featured=EXCLUDED.is_featured, sort_order=EXCLUDED.sort_order, updated_at=EXCLUDED.updated_at`,
     [p.id, p.title || null, p.slug || null, p.excerpt || null, p.content || null,
      p.featuredImage || null, p.status || 'published',
@@ -1330,10 +1337,10 @@ async function saveDbToSupabase() {
         try {
           await client.query(
             `INSERT INTO public.terms (id, name, slug, taxonomy, description, parent_id, meta)
-             VALUES ($1,$2,$3,$4,$5,$6,$7)
+             VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb)
              ON CONFLICT (id) DO UPDATE SET
                name=EXCLUDED.name, slug=EXCLUDED.slug, taxonomy=EXCLUDED.taxonomy,
-               description=EXCLUDED.description, parent_id=EXCLUDED.parent_id, meta=EXCLUDED.meta`,
+               description=EXCLUDED.description, parent_id=EXCLUDED.parent_id, meta=EXCLUDED.meta::jsonb`,
             [
               term.id, term.name, term.slug, term.taxonomy,
               term.description || null, term.parentId || null,
@@ -1350,12 +1357,12 @@ async function saveDbToSupabase() {
         try {
           await client.query(
             `INSERT INTO public.posts (id, title, slug, content, excerpt, type, status, author_id, featured_image, menu_order, meta, terms, created_at, updated_at, published_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13,$14,$15)
              ON CONFLICT (id) DO UPDATE SET
                title=EXCLUDED.title, slug=EXCLUDED.slug, content=EXCLUDED.content,
                excerpt=EXCLUDED.excerpt, type=EXCLUDED.type, status=EXCLUDED.status,
                author_id=EXCLUDED.author_id, featured_image=EXCLUDED.featured_image,
-               menu_order=EXCLUDED.menu_order, meta=EXCLUDED.meta, terms=EXCLUDED.terms,
+               menu_order=EXCLUDED.menu_order, meta=EXCLUDED.meta::jsonb, terms=EXCLUDED.terms::jsonb,
                updated_at=EXCLUDED.updated_at, published_at=EXCLUDED.published_at`,
             [
               post.id, post.title, post.slug, post.content, post.excerpt,
@@ -1377,11 +1384,11 @@ async function saveDbToSupabase() {
         try {
           await client.query(
             `INSERT INTO public.submissions (id, name, email, phone, message, status, source, product_id, created_at, meta)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb)
              ON CONFLICT (id) DO UPDATE SET
                name=EXCLUDED.name, email=EXCLUDED.email, phone=EXCLUDED.phone,
                message=EXCLUDED.message, status=EXCLUDED.status, source=EXCLUDED.source,
-               product_id=EXCLUDED.product_id, meta=EXCLUDED.meta`,
+               product_id=EXCLUDED.product_id, meta=EXCLUDED.meta::jsonb`,
             [
               sub.id, sub.name, sub.email, sub.phone, sub.message,
               sub.status || 'new', sub.source || null, sub.productId || null,
@@ -1417,13 +1424,13 @@ async function saveDbToSupabase() {
           await client.query(
             `INSERT INTO public.perspectives
               (id,title,slug,excerpt,content,featured_image,status,image_url,link,space_type,gallery,product_gallery,related_product_ids,is_featured,sort_order,created_at,updated_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13::jsonb,$14,$15,$16,$17)
              ON CONFLICT (id) DO UPDATE SET
                title=EXCLUDED.title, slug=EXCLUDED.slug, excerpt=EXCLUDED.excerpt,
                content=EXCLUDED.content, featured_image=EXCLUDED.featured_image,
                status=EXCLUDED.status, image_url=EXCLUDED.image_url, link=EXCLUDED.link,
-               space_type=EXCLUDED.space_type, gallery=EXCLUDED.gallery,
-               product_gallery=EXCLUDED.product_gallery, related_product_ids=EXCLUDED.related_product_ids,
+               space_type=EXCLUDED.space_type, gallery=EXCLUDED.gallery::jsonb,
+               product_gallery=EXCLUDED.product_gallery::jsonb, related_product_ids=EXCLUDED.related_product_ids::jsonb,
                is_featured=EXCLUDED.is_featured, sort_order=EXCLUDED.sort_order, updated_at=EXCLUDED.updated_at`,
             [
               p.id, p.title || null, p.slug || null, p.excerpt || null, p.content || null,
@@ -1475,8 +1482,8 @@ async function saveDbToSupabase() {
         try {
           await client.query(
             `INSERT INTO public.options (id, option_name, option_value)
-             VALUES ($1,$2,$3)
-             ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value, id=EXCLUDED.id`,
+             VALUES ($1,$2,$3::jsonb)
+             ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value::jsonb, id=EXCLUDED.id`,
             [opt.id || `opt-${opt.optionName}`, opt.optionName, JSON.stringify(opt)]
           );
         } catch (e: any) { console.warn(`[SYNC] Bỏ qua option ${opt.optionName}:`, e.message); }
@@ -1485,8 +1492,8 @@ async function saveDbToSupabase() {
       // Luôn lưu thêm bản blob dự phòng để load nhanh khi khởi động
       await client.query(
         `INSERT INTO public.options (id, option_name, option_value)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (option_name) DO UPDATE SET option_value = EXCLUDED.option_value, id = EXCLUDED.id`,
+         VALUES ($1, $2, $3::jsonb)
+         ON CONFLICT (option_name) DO UPDATE SET option_value = EXCLUDED.option_value::jsonb, id = EXCLUDED.id`,
         ["opt-database-backup", "cms_database_backup", JSON.stringify(db)]
       );
 
@@ -1748,8 +1755,8 @@ function writeDb() {
   }
   // Best-effort Postgres backup if pool is available
   trackWrite(withPg(c => c.query(
-    `INSERT INTO public.options (id,option_name,option_value) VALUES ($1,$2,$3)
-     ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value, id=EXCLUDED.id`,
+    `INSERT INTO public.options (id,option_name,option_value) VALUES ($1,$2,$3::jsonb)
+     ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value::jsonb, id=EXCLUDED.id`,
     ['opt-database-backup', 'cms_database_backup', JSON.stringify(db)]
   )).catch(() => {}));
   // Vercel Blob backup — primary persistence when no DATABASE_URL is configured
@@ -2255,7 +2262,7 @@ async function send2FAEmail(toEmail: string, username: string, otpCode: string) 
 }
 
 // API Endpoints: AUTHENTICATION (With Rate Limiting against Brute-Force to avoid credential-stuffing)
-app.post("/api/auth/login", createRateLimiter(5, 15 * 60 * 1000, "Phát hiện quá nhiều yêu cầu đăng nhập từ IP này. Vui lòng dừng lại và thử lại sau 15 phút."), (req, res) => {
+app.post("/api/auth/login", createRateLimiter(5, 15 * 60 * 1000, "Phát hiện quá nhiều yêu cầu đăng nhập từ IP này. Vui lòng dừng lại và thử lại sau 15 phút."), async (req, res) => {
   const { username, password, twoFactorCode } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: "Vui lòng nhập đầy đủ Tài khoản & Mật khẩu." });
@@ -2276,7 +2283,7 @@ app.post("/api/auth/login", createRateLimiter(5, 15 * 60 * 1000, "Phát hiện q
       isPasswordCorrect = true;
       // Upgrade hash securely to high-entropy bcrypt on-the-fly!
       user.passwordHash = bcrypt.hashSync(password, 10);
-      dbSaveUser(user).catch(e => console.error('[DB]', e));
+      await dbSaveUser(user).catch(e => console.error('[DB]', e));
       console.log(`[SECURITY] Đã tự động nâng cấp mật khẩu của tài khoản "${user.username}" từ SHA-256 lên Bcrypt thành công!`);
     }
   } else {
@@ -2295,7 +2302,7 @@ app.post("/api/auth/login", createRateLimiter(5, 15 * 60 * 1000, "Phát hiện q
       user.temp2FACode = dynamicOtp;
       // Valid for exactly 5 minutes
       user.temp2FAExpires = Date.now() + 5 * 60 * 1000;
-      dbSaveUser(user).catch(e => console.error('[DB]', e));
+      await dbSaveUser(user).catch(e => console.error('[DB]', e));
 
       console.log(`[SECURITY 2FA] Đã tạo mã đăng nhập OTP cho tài khoản "${user.username}": ${dynamicOtp}`);
       
@@ -2327,7 +2334,7 @@ app.post("/api/auth/login", createRateLimiter(5, 15 * 60 * 1000, "Phát hiện q
     // Clear session-level 2FA credentials on successful flow
     delete user.temp2FACode;
     delete user.temp2FAExpires;
-    dbSaveUser(user).catch(e => console.error('[DB]', e));
+    await dbSaveUser(user).catch(e => console.error('[DB]', e));
   }
 
   // Secure cryptographically signed token (expires in 24 hours)
@@ -2350,7 +2357,7 @@ app.post("/api/auth/login", createRateLimiter(5, 15 * 60 * 1000, "Phát hiện q
 });
 
 // Configure 2FA (Turn on/off with security verification)
-app.post("/api/auth/setup-2fa", authMiddleware, (req, res) => {
+app.post("/api/auth/setup-2fa", authMiddleware, async (req, res) => {
   const user = (req as any).user;
   const { enabled } = req.body;
   
@@ -2365,7 +2372,7 @@ app.post("/api/auth/setup-2fa", authMiddleware, (req, res) => {
       delete dbUser.temp2FACode;
       delete dbUser.temp2FAExpires;
     }
-    dbSaveUser(dbUser).catch(e => console.error('[DB]', e));
+    await dbSaveUser(dbUser).catch(e => console.error('[DB]', e));
     return res.json({ success: true, twoFactorEnabled: dbUser.twoFactorEnabled, secret: dbUser.twoFactorSecret });
   }
   res.status(404).json({ error: "Không tìm thấy user." });
@@ -2377,7 +2384,7 @@ app.get("/api/admin/users", authMiddleware, requireRole('administrator'), (req, 
   res.json(users);
 });
 
-app.post("/api/admin/users", authMiddleware, requireRole('administrator'), (req, res) => {
+app.post("/api/admin/users", authMiddleware, requireRole('administrator'), async (req, res) => {
   const { username, password, email, role } = req.body;
   if (!username || !password || !email || !role) {
     return res.status(400).json({ error: "Vui lòng nhập đầy đủ Tên tài khoản, Mật khẩu, Email và Phân quyền." });
@@ -2399,13 +2406,13 @@ app.post("/api/admin/users", authMiddleware, requireRole('administrator'), (req,
   };
 
   db.users.push(newUser);
-  dbSaveUser(newUser).catch(e => console.error('[DB]', e));
+  await dbSaveUser(newUser).catch(e => console.error('[DB]', e));
 
   const { passwordHash: _, ...userResponse } = newUser;
   res.status(201).json(userResponse);
 });
 
-app.put("/api/admin/users/:id", authMiddleware, requireRole('administrator'), (req, res) => {
+app.put("/api/admin/users/:id", authMiddleware, requireRole('administrator'), async (req, res) => {
   const { id } = req.params;
   const { password, email, role } = req.body;
 
@@ -2425,13 +2432,13 @@ app.put("/api/admin/users/:id", authMiddleware, requireRole('administrator'), (r
     dbUser.passwordHash = bcrypt.hashSync(password.trim(), 10);
   }
 
-  dbSaveUser(dbUser).catch(e => console.error('[DB]', e));
+  await dbSaveUser(dbUser).catch(e => console.error('[DB]', e));
 
   const { passwordHash: _, ...userResponse } = dbUser;
   res.json(userResponse);
 });
 
-app.delete("/api/admin/users/:id", authMiddleware, requireRole('administrator'), (req, res) => {
+app.delete("/api/admin/users/:id", authMiddleware, requireRole('administrator'), async (req, res) => {
   const { id } = req.params;
   const currentUser = (req as any).user;
 
@@ -2449,7 +2456,7 @@ app.delete("/api/admin/users/:id", authMiddleware, requireRole('administrator'),
   }
 
   db.users.splice(userIndex, 1);
-  dbDeleteUser(id).catch(e => console.error('[DB]', e));
+  await dbDeleteUser(id).catch(e => console.error('[DB]', e));
 
   res.json({ success: true, message: "Đã xóa tài khoản quản trị viên thành công." });
 });
@@ -2784,7 +2791,7 @@ app.get("/api/posts/:id", (req, res) => {
 });
 
 // CREATE Post (WordPress-style wp_insert_post)
-app.post("/api/posts", authMiddleware, (req, res) => {
+app.post("/api/posts", authMiddleware, async (req, res) => {
   const user = (req as any).user;
   const { title, slug, content, excerpt, type, status, featuredImage, menuOrder, meta, terms } = req.body;
   
@@ -2819,12 +2826,12 @@ app.post("/api/posts", authMiddleware, (req, res) => {
   };
 
   db.posts.push(newPost);
-  dbSavePost(newPost).catch(e => console.error('[DB]', e));
+  await dbSavePost(newPost).catch(e => console.error('[DB]', e));
   res.status(201).json(newPost);
 });
 
 // UPDATE Post (Secured with Ownership validations)
-app.put("/api/posts/:id", authMiddleware, (req, res) => {
+app.put("/api/posts/:id", authMiddleware, async (req, res) => {
   const user = (req as any).user;
   const { title, slug, content, excerpt, status, featuredImage, menuOrder, meta, terms } = req.body;
   const postIdx = db.posts.findIndex(p => p.id === req.params.id);
@@ -2863,12 +2870,12 @@ app.put("/api/posts/:id", authMiddleware, (req, res) => {
     updatedAt: new Date().toISOString()
   };
 
-  dbSavePost(db.posts[postIdx]).catch(e => console.error('[DB]', e));
+  await dbSavePost(db.posts[postIdx]).catch(e => console.error('[DB]', e));
   res.json(db.posts[postIdx]);
 });
 
 // DELETE Post (Secured with Ownership validations)
-app.delete("/api/posts/:id", authMiddleware, (req, res) => {
+app.delete("/api/posts/:id", authMiddleware, async (req, res) => {
   const user = (req as any).user;
   const postIdx = db.posts.findIndex(p => p.id === req.params.id);
   
@@ -2884,7 +2891,7 @@ app.delete("/api/posts/:id", authMiddleware, (req, res) => {
   }
 
   db.posts.splice(postIdx, 1);
-  dbDeletePost(req.params.id).catch(e => console.error('[DB]', e));
+  await dbDeletePost(req.params.id).catch(e => console.error('[DB]', e));
   res.json({ success: true, message: "Xoá bài viết thành phẩm thành công." });
 });
 
@@ -3042,8 +3049,9 @@ app.get("/api/admin/settings/email", authMiddleware, (req, res) => {
   });
 });
 
-app.put("/api/admin/settings/email", authMiddleware, (req, res) => {
+app.put("/api/admin/settings/email", authMiddleware, async (req, res) => {
   const { contact_email_recipients, email_notification_enabled, smtp_settings } = req.body;
+  const optionWrites: Promise<any>[] = [];
 
   // Save the recipients
   let recipientsIdx = db.options.findIndex(o => o.optionName === "contact_email_recipients");
@@ -3054,10 +3062,10 @@ app.put("/api/admin/settings/email", authMiddleware, (req, res) => {
       optionValue: (contact_email_recipients ?? "contact@pentairvn.com, support@pentairvn.com") as any
     };
     db.options.push(recipOpt);
-    dbSaveOption(recipOpt).catch(e => console.error('[DB]', e));
+    optionWrites.push(dbSaveOption(recipOpt).catch(e => console.error('[DB]', e)));
   } else {
     (db.options[recipientsIdx] as any).optionValue = contact_email_recipients;
-    dbSaveOption(db.options[recipientsIdx]).catch(e => console.error('[DB]', e));
+    optionWrites.push(dbSaveOption(db.options[recipientsIdx]).catch(e => console.error('[DB]', e)));
   }
 
   // Save enabled status
@@ -3069,10 +3077,10 @@ app.put("/api/admin/settings/email", authMiddleware, (req, res) => {
       optionValue: (email_notification_enabled !== false) as any
     };
     db.options.push(enabledOpt);
-    dbSaveOption(enabledOpt).catch(e => console.error('[DB]', e));
+    optionWrites.push(dbSaveOption(enabledOpt).catch(e => console.error('[DB]', e)));
   } else {
     (db.options[enabledIdx] as any).optionValue = email_notification_enabled === true;
-    dbSaveOption(db.options[enabledIdx]).catch(e => console.error('[DB]', e));
+    optionWrites.push(dbSaveOption(db.options[enabledIdx]).catch(e => console.error('[DB]', e)));
   }
 
   // Save SMTP settings
@@ -3092,12 +3100,13 @@ app.put("/api/admin/settings/email", authMiddleware, (req, res) => {
       }
     };
     db.options.push(smtpOpt);
-    dbSaveOption(smtpOpt).catch(e => console.error('[DB]', e));
+    optionWrites.push(dbSaveOption(smtpOpt).catch(e => console.error('[DB]', e)));
   } else {
     db.options[smtpIdx].optionValue = smtp_settings;
-    dbSaveOption(db.options[smtpIdx]).catch(e => console.error('[DB]', e));
+    optionWrites.push(dbSaveOption(db.options[smtpIdx]).catch(e => console.error('[DB]', e)));
   }
 
+  await Promise.all(optionWrites);
   res.json({ success: true, message: "Cấu hình email đã được cập nhật thành công!" });
 });
 
@@ -3249,7 +3258,7 @@ app.get("/api/admin/videos", authMiddleware, (req, res) => {
   );
 });
 
-app.post("/api/admin/videos", authMiddleware, (req, res) => {
+app.post("/api/admin/videos", authMiddleware, async (req, res) => {
   const { title, description, videoUrl, thumbnail, category, duration, isFeatured, status, sortOrder } = req.body;
   if (!title || !videoUrl) return res.status(400).json({ error: "Tiêu đề và đường dẫn Video URL là bắt buộc." });
 
@@ -3270,11 +3279,11 @@ app.post("/api/admin/videos", authMiddleware, (req, res) => {
   };
 
   db.videos.push(newVid);
-  dbSaveVideo(newVid).catch(e => console.error('[DB]', e));
+  await dbSaveVideo(newVid).catch(e => console.error('[DB]', e));
   res.status(201).json(newVid);
 });
 
-app.put("/api/admin/videos/:id", authMiddleware, (req, res) => {
+app.put("/api/admin/videos/:id", authMiddleware, async (req, res) => {
   const vidIdx = db.videos.findIndex(v => v.id === req.params.id);
   if (vidIdx === -1) return res.status(404).json({ error: "Không tìm thấy video." });
 
@@ -3295,16 +3304,16 @@ app.put("/api/admin/videos/:id", authMiddleware, (req, res) => {
     updatedAt: new Date().toISOString()
   };
 
-  dbSaveVideo(db.videos[vidIdx]).catch(e => console.error('[DB]', e));
+  await dbSaveVideo(db.videos[vidIdx]).catch(e => console.error('[DB]', e));
   res.json(db.videos[vidIdx]);
 });
 
-app.delete("/api/admin/videos/:id", authMiddleware, (req, res) => {
+app.delete("/api/admin/videos/:id", authMiddleware, async (req, res) => {
   const vidIdx = db.videos.findIndex(v => v.id === req.params.id);
   if (vidIdx === -1) return res.status(404).json({ error: "Không tìm thấy video." });
 
   db.videos.splice(vidIdx, 1);
-  dbDeleteVideo(req.params.id).catch(e => console.error('[DB]', e));
+  await dbDeleteVideo(req.params.id).catch(e => console.error('[DB]', e));
   res.json({ success: true, message: "Đã xóa video khỏi danh sách!" });
 });
 
@@ -3318,7 +3327,7 @@ app.get("/api/admin/media", authMiddleware, (req, res) => {
   });
 });
 
-app.post("/api/admin/media/folders", authMiddleware, (req, res) => {
+app.post("/api/admin/media/folders", authMiddleware, async (req, res) => {
   const { name, parentId } = req.body;
   if (!name) return res.status(400).json({ error: "Tên thư mục không được để trống." });
 
@@ -3331,11 +3340,11 @@ app.post("/api/admin/media/folders", authMiddleware, (req, res) => {
 
   if (!db.mediaFolders) db.mediaFolders = [];
   db.mediaFolders.push(newFolder);
-  dbSaveMediaFolder(newFolder).catch(e => console.error('[DB]', e));
+  await dbSaveMediaFolder(newFolder).catch(e => console.error('[DB]', e));
   res.json(newFolder);
 });
 
-app.put("/api/admin/media/folders/:id", authMiddleware, (req, res) => {
+app.put("/api/admin/media/folders/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const { name, parentId } = req.body;
   const folder = db.mediaFolders.find((f: any) => f.id === id);
@@ -3344,24 +3353,25 @@ app.put("/api/admin/media/folders/:id", authMiddleware, (req, res) => {
   if (name) folder.name = name.trim();
   if (parentId !== undefined) folder.parentId = parentId || undefined;
 
-  dbSaveMediaFolder(folder).catch(e => console.error('[DB]', e));
+  await dbSaveMediaFolder(folder).catch(e => console.error('[DB]', e));
   res.json(folder);
 });
 
-app.delete("/api/admin/media/folders/:id", authMiddleware, (req, res) => {
+app.delete("/api/admin/media/folders/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const idx = db.mediaFolders.findIndex((f: any) => f.id === id);
   if (idx === -1) return res.status(404).json({ error: "Không tìm thấy thư mục." });
 
   const folder = db.mediaFolders[idx];
   const targetParent = folder.parentId || undefined;
+  const folderWrites: Promise<any>[] = [];
 
   // Reparent nested items & folders
   if (db.mediaItems) {
     db.mediaItems.forEach((item: any) => {
       if (item.folderId === id) {
         item.folderId = targetParent;
-        dbSaveMediaItem(item).catch(e => console.error('[DB]', e));
+        folderWrites.push(dbSaveMediaItem(item).catch(e => console.error('[DB]', e)));
       }
     });
   }
@@ -3369,12 +3379,13 @@ app.delete("/api/admin/media/folders/:id", authMiddleware, (req, res) => {
   db.mediaFolders.forEach((f: any) => {
     if (f.parentId === id) {
       f.parentId = targetParent;
-      dbSaveMediaFolder(f).catch(e => console.error('[DB]', e));
+      folderWrites.push(dbSaveMediaFolder(f).catch(e => console.error('[DB]', e)));
     }
   });
 
   db.mediaFolders.splice(idx, 1);
-  dbDeleteMediaFolder(id).catch(e => console.error('[DB]', e));
+  folderWrites.push(dbDeleteMediaFolder(id).catch(e => console.error('[DB]', e)));
+  await Promise.all(folderWrites);
   res.json({ success: true });
 });
 
@@ -3389,7 +3400,7 @@ app.post("/api/admin/media/upload", authMiddleware, async (req, res) => {
     if (existingItem) {
       existingItem.folderId = folderId || undefined;
       if (filename) existingItem.title = filename.trim();
-      dbSaveMediaItem(existingItem).catch(e => console.error('[DB]', e));
+      await dbSaveMediaItem(existingItem).catch(e => console.error('[DB]', e));
       return res.json(existingItem);
     }
 
@@ -3412,7 +3423,7 @@ app.post("/api/admin/media/upload", authMiddleware, async (req, res) => {
       updatedAt: new Date().toISOString()
     };
     db.mediaItems.push(newItem);
-    dbSaveMediaItem(newItem).catch(e => console.error('[DB]', e));
+    await dbSaveMediaItem(newItem).catch(e => console.error('[DB]', e));
     return res.json(newItem);
   }
 
@@ -3476,7 +3487,7 @@ app.post("/api/admin/media/upload", authMiddleware, async (req, res) => {
     };
 
     db.mediaItems.push(newItem);
-    dbSaveMediaItem(newItem).catch(e => console.error('[DB]', e));
+    await dbSaveMediaItem(newItem).catch(e => console.error('[DB]', e));
     return res.json(newItem);
   } catch (err: any) {
     console.error("Lỗi upload file", err);
@@ -3533,7 +3544,7 @@ app.post("/api/admin/media/client-upload", async (req, res) => {
           updatedAt: new Date().toISOString()
         };
         db.mediaItems.push(newItem);
-        dbSaveMediaItem(newItem).catch((e: any) => console.error('[DB]', e));
+        await dbSaveMediaItem(newItem).catch((e: any) => console.error('[DB]', e));
       },
     });
     return res.json(jsonResponse);
@@ -3543,7 +3554,7 @@ app.post("/api/admin/media/client-upload", async (req, res) => {
   }
 });
 
-app.put("/api/admin/media/items/:id", authMiddleware, (req, res) => {
+app.put("/api/admin/media/items/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const { title, altText, description, folderId, url } = req.body;
   const item = db.mediaItems.find((i: any) => i.id === id);
@@ -3556,11 +3567,11 @@ app.put("/api/admin/media/items/:id", authMiddleware, (req, res) => {
   if (url !== undefined) item.url = url;
   item.updatedAt = new Date().toISOString();
 
-  dbSaveMediaItem(item).catch(e => console.error('[DB]', e));
+  await dbSaveMediaItem(item).catch(e => console.error('[DB]', e));
   res.json(item);
 });
 
-app.delete("/api/admin/media/items/:id", authMiddleware, (req, res) => {
+app.delete("/api/admin/media/items/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const idx = db.mediaItems.findIndex((i: any) => i.id === id);
   if (idx === -1) return res.status(404).json({ error: "Không tìm thấy hình ảnh." });
@@ -3579,7 +3590,7 @@ app.delete("/api/admin/media/items/:id", authMiddleware, (req, res) => {
   }
 
   db.mediaItems.splice(idx, 1);
-  dbDeleteMediaItem(id).catch(e => console.error('[DB]', e));
+  await dbDeleteMediaItem(id).catch(e => console.error('[DB]', e));
   res.json({ success: true });
 });
 
@@ -3601,7 +3612,7 @@ app.get("/api/admin/perspectives", authMiddleware, (req, res) => {
   res.json(db.perspectives.sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0)));
 });
 
-app.post("/api/admin/perspectives", authMiddleware, (req, res) => {
+app.post("/api/admin/perspectives", authMiddleware, async (req, res) => {
   const { title, slug, excerpt, content, featuredImage, spaceType, gallery, productGallery, relatedProductIds, isFeatured, status, sortOrder } = req.body;
   
   if (!title) return res.status(400).json({ error: "Tiêu đề là bắt buộc." });
@@ -3626,11 +3637,11 @@ app.post("/api/admin/perspectives", authMiddleware, (req, res) => {
   };
 
   db.perspectives.push(newPer);
-  dbSavePerspective(newPer).catch(e => console.error('[DB]', e));
+  await dbSavePerspective(newPer).catch(e => console.error('[DB]', e));
   res.status(201).json(newPer);
 });
 
-app.put("/api/admin/perspectives/:id", authMiddleware, (req, res) => {
+app.put("/api/admin/perspectives/:id", authMiddleware, async (req, res) => {
   const perIdx = db.perspectives.findIndex(p => p.id === req.params.id);
   if (perIdx === -1) return res.status(404).json({ error: "Không tìm thấy phối cảnh." });
 
@@ -3654,16 +3665,16 @@ app.put("/api/admin/perspectives/:id", authMiddleware, (req, res) => {
     updatedAt: new Date().toISOString()
   };
 
-  dbSavePerspective(db.perspectives[perIdx]).catch(e => console.error('[DB]', e));
+  await dbSavePerspective(db.perspectives[perIdx]).catch(e => console.error('[DB]', e));
   res.json(db.perspectives[perIdx]);
 });
 
-app.delete("/api/admin/perspectives/:id", authMiddleware, (req, res) => {
+app.delete("/api/admin/perspectives/:id", authMiddleware, async (req, res) => {
   const perIdx = db.perspectives.findIndex(p => p.id === req.params.id);
   if (perIdx === -1) return res.status(404).json({ error: "Không tìm thấy phối cảnh." });
 
   db.perspectives.splice(perIdx, 1);
-  dbDeletePerspective(req.params.id).catch(e => console.error('[DB]', e));
+  await dbDeletePerspective(req.params.id).catch(e => console.error('[DB]', e));
   res.json({ success: true, message: "Đã xóa phối cảnh thành công!" });
 });
 
@@ -3672,7 +3683,7 @@ app.get("/api/terms", (req, res) => {
   res.json(db.terms);
 });
 
-app.post("/api/terms", authMiddleware, (req, res) => {
+app.post("/api/terms", authMiddleware, async (req, res) => {
   const { name, slug, taxonomy, status } = req.body;
   if (!name || !taxonomy) return res.status(400).json({ error: "Tên và phân loại (taxonomy) là bắt buộc." });
   
@@ -3687,11 +3698,11 @@ app.post("/api/terms", authMiddleware, (req, res) => {
   };
 
   db.terms.push(newTerm);
-  dbSaveTerm(newTerm).catch(e => console.error('[DB]', e));
+  await dbSaveTerm(newTerm).catch(e => console.error('[DB]', e));
   res.status(201).json(newTerm);
 });
 
-app.put("/api/terms/:id", authMiddleware, (req, res) => {
+app.put("/api/terms/:id", authMiddleware, async (req, res) => {
   const { name, slug, taxonomy, status } = req.body;
   const { id } = req.params;
   const term = db.terms.find(t => t.id === id) as any;
@@ -3702,31 +3713,33 @@ app.put("/api/terms/:id", authMiddleware, (req, res) => {
   if (taxonomy) term.taxonomy = taxonomy;
   if (status) term.status = status;
 
-  dbSaveTerm(term).catch(e => console.error('[DB]', e));
+  await dbSaveTerm(term).catch(e => console.error('[DB]', e));
   res.json(term);
 });
 
-app.delete("/api/terms/:id", authMiddleware, (req, res) => {
+app.delete("/api/terms/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const termIdx = db.terms.findIndex(t => t.id === id);
   if (termIdx === -1) return res.status(404).json({ error: "Không tìm thấy chuyên mục." });
   
   db.terms.splice(termIdx, 1);
-  dbDeleteTerm(id).catch(e => console.error('[DB]', e));
+  const termWrites: Promise<any>[] = [];
+  termWrites.push(dbDeleteTerm(id).catch(e => console.error('[DB]', e)));
 
   // Clean up any posts referencing this term
   db.posts.forEach(post => {
     if (post.terms && Array.isArray(post.terms)) {
       post.terms = post.terms.filter(t => t.id !== id);
-      dbSavePost(post).catch(e => console.error('[DB]', e));
+      termWrites.push(dbSavePost(post).catch(e => console.error('[DB]', e)));
     }
   });
+  await Promise.all(termWrites);
 
   res.json({ success: true, message: "Đã xóa chuyên mục thành công!" });
 });
 
 // API Endpoints: FORM SUBMISSIONS
-app.post("/api/submissions", (req, res) => {
+app.post("/api/submissions", async (req, res) => {
   const { name, email, phone, message, productInterest, productQuantity, address, sourceUrl, formName } = req.body;
   if (!name || !email || !phone) {
     return res.status(400).json({ error: "Vui lòng nhập Họ tên, Email và Số điện thoại." });
@@ -3759,7 +3772,7 @@ app.post("/api/submissions", (req, res) => {
   };
 
   db.submissions.push(newSubmission);
-  dbSaveSubmission(newSubmission).catch(e => console.error('[DB]', e));
+  await dbSaveSubmission(newSubmission).catch(e => console.error('[DB]', e));
   // Call sendNotificationEmail asynchronously
   sendNotificationEmail(newSubmission).catch(err => console.error("Lỗi gửi mail tự động:", err));
   res.status(201).json({ success: true, submission: newSubmission });
@@ -3769,22 +3782,22 @@ app.get("/api/submissions", authMiddleware, (req, res) => {
   res.json(db.submissions);
 });
 
-app.put("/api/submissions/:id", authMiddleware, (req, res) => {
+app.put("/api/submissions/:id", authMiddleware, async (req, res) => {
   const { status } = req.body;
   const subIdx = db.submissions.findIndex(s => s.id === req.params.id);
   if (subIdx === -1) return res.status(404).json({ error: "Yêu cầu liên hệ không tồn tại." });
   
   db.submissions[subIdx].status = status;
-  dbSaveSubmission(db.submissions[subIdx]).catch(e => console.error('[DB]', e));
+  await dbSaveSubmission(db.submissions[subIdx]).catch(e => console.error('[DB]', e));
   res.json({ success: true, submission: db.submissions[subIdx] });
 });
 
-app.delete("/api/submissions/:id", authMiddleware, requireRole('administrator'), (req, res) => {
+app.delete("/api/submissions/:id", authMiddleware, requireRole('administrator'), async (req, res) => {
   const subIdx = db.submissions.findIndex(s => s.id === req.params.id);
   if (subIdx === -1) return res.status(404).json({ error: "Yêu cầu liên hệ không tồn tại." });
   
   db.submissions.splice(subIdx, 1);
-  dbDeleteSubmission(req.params.id).catch(e => console.error('[DB]', e));
+  await dbDeleteSubmission(req.params.id).catch(e => console.error('[DB]', e));
   res.json({ success: true });
 });
 
@@ -3801,26 +3814,28 @@ app.get("/api/backup/export", authMiddleware, requireRole('administrator'), (req
   res.json(backup);
 });
 
-app.post("/api/backup/import", authMiddleware, requireRole('administrator'), (req, res) => {
+app.post("/api/backup/import", authMiddleware, requireRole('administrator'), async (req, res) => {
   const { posts, terms, options, submissions } = req.body;
+  const importWrites: Promise<any>[] = [];
 
   if (posts && Array.isArray(posts)) {
     db.posts = posts;
-    for (const post of posts) dbSavePost(post).catch(e => console.error('[DB]', e));
+    for (const post of posts) importWrites.push(dbSavePost(post).catch(e => console.error('[DB]', e)));
   }
   if (terms && Array.isArray(terms)) {
     db.terms = terms;
-    for (const term of terms) dbSaveTerm(term).catch(e => console.error('[DB]', e));
+    for (const term of terms) importWrites.push(dbSaveTerm(term).catch(e => console.error('[DB]', e)));
   }
   if (options && Array.isArray(options)) {
     db.options = options;
-    for (const opt of options) dbSaveOption(opt).catch(e => console.error('[DB]', e));
+    for (const opt of options) importWrites.push(dbSaveOption(opt).catch(e => console.error('[DB]', e)));
   }
   if (submissions && Array.isArray(submissions)) {
     db.submissions = submissions;
-    for (const sub of submissions) dbSaveSubmission(sub).catch(e => console.error('[DB]', e));
+    for (const sub of submissions) importWrites.push(dbSaveSubmission(sub).catch(e => console.error('[DB]', e)));
   }
 
+  await Promise.all(importWrites);
   res.json({ success: true, message: "Nhập dữ liệu CMS thành công. Hệ thống đã khôi phục trạng thái mới." });
 });
 
