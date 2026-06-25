@@ -3991,6 +3991,38 @@ app.get("/api/admin/persist-status", authMiddleware, requireRole('administrator'
   res.json(lastPersistStatus);
 });
 
+// Temporary diagnostic: runs the full fetch -> merge -> put cycle synchronously inside
+// one request, with each step's outcome reported. Avoids per-instance memory ambiguity.
+app.get("/api/admin/merge-diagnostic", authMiddleware, requireRole('administrator'), async (req, res) => {
+  const trace: any = {};
+  try {
+    const fresh = await blobGet(DB_BACKUP_BLOB_PATH, { access: 'private', useCache: false, token: CMS_BLOB_TOKEN });
+    trace.fetchStatusCode = fresh?.statusCode ?? null;
+    trace.fetchEtag = fresh?.statusCode === 200 ? fresh.blob.etag : null;
+    trace.fetchUploadedAt = fresh?.statusCode === 200 ? fresh.blob.uploadedAt : null;
+    if (fresh?.statusCode === 200) {
+      const text = await new Response(fresh.stream).text();
+      trace.fetchedBytes = text.length;
+      const remoteDb = JSON.parse(text);
+      trace.remoteEmail = remoteDb?.options?.find((o: any) => o.optionName === 'brand_settings')?.optionValue?.email ?? null;
+      const t0 = Date.now();
+      const putResult = await blobPut(DB_BACKUP_BLOB_PATH, text, {
+        access: 'private', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json',
+        ifMatch: trace.fetchEtag, token: CMS_BLOB_TOKEN,
+      });
+      trace.putMs = Date.now() - t0;
+      trace.putOk = true;
+      trace.putNewEtag = putResult.etag;
+    }
+    res.json(trace);
+  } catch (err: any) {
+    trace.putOk = false;
+    trace.errorName = err?.constructor?.name;
+    trace.errorMessage = err?.message;
+    res.status(500).json(trace);
+  }
+});
+
 
 // Dynamic SEO sitemap.xml endpoint
 app.get("/sitemap.xml", (req, res) => {
