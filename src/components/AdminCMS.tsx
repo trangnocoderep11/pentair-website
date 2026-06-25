@@ -469,7 +469,11 @@ export default function AdminCMS({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Lỗi lưu cấu hình.');
-      setEmailStatusMsg('Đã lưu cấu hình email notification thành công!');
+      if (data.persisted === false) {
+        setEmailErrorMsg('Đã ghi nhận nhưng CHƯA xác nhận lưu trữ thành công — vui lòng thử lại hoặc vào tab "Xuất/Nhập Sao Lưu CMS" để kiểm tra.');
+      } else {
+        setEmailStatusMsg('Đã lưu cấu hình email notification thành công!');
+      }
     } catch (err: any) {
       setEmailErrorMsg(err.message || 'Lỗi không xác định.');
     } finally {
@@ -1313,6 +1317,18 @@ export default function AdminCMS({
     }, 4500);
   };
 
+  // Settings saves (PUT /api/options, /api/admin/settings/email) now wait for the
+  // server to actually confirm the write reached storage and return `persisted`.
+  // Surface that here instead of always showing a generic "saved" toast, so a
+  // failed save is visible immediately — not discovered later after a reload.
+  const triggerSaveToast = (persisted: boolean | undefined, successMsg: string) => {
+    if (persisted === false) {
+      triggerToast(`Đã ghi nhận nhưng CHƯA xác nhận lưu trữ thành công — vui lòng thử lại hoặc vào tab "Xuất/Nhập Sao Lưu CMS" để kiểm tra.`, true);
+    } else {
+      triggerToast(successMsg);
+    }
+  };
+
   // ----------------------------------------------------
   // ACTION HANDLERS
   // ----------------------------------------------------
@@ -1624,8 +1640,9 @@ export default function AdminCMS({
       });
 
       if (!res.ok) throw new Error("Sự cố lưu cài đặt hệ thống. Kiểm tra quyền Administrator.");
+      const data = await res.json();
       await onRefreshData();
-      triggerToast("Đã đồng bộ hoá cài đặt Brand & SEO lên sitemap.xml.");
+      triggerSaveToast(data.persisted, "Đã đồng bộ hoá cài đặt Brand & SEO lên sitemap.xml.");
     } catch (err: any) {
       triggerToast(err.message, true);
     } finally {
@@ -1653,8 +1670,9 @@ export default function AdminCMS({
       });
 
       if (!res.ok) throw new Error("Lỗi khi lưu cấu hình trang chủ.");
+      const data = await res.json();
       await onRefreshData();
-      triggerToast("Cập nhật Trang chủ thành công.");
+      triggerSaveToast(data.persisted, "Cập nhật Trang chủ thành công.");
     } catch (err: any) {
       triggerToast(err.message, true);
     } finally {
@@ -1678,8 +1696,9 @@ export default function AdminCMS({
         body: JSON.stringify(payload)
       });
       if (!res.ok) throw new Error('Lỗi khi lưu danh sách Softener Slides.');
+      const data = await res.json();
       await onRefreshData();
-      triggerToast('Đã cập nhật ảnh Water Softening carousel thành công!');
+      triggerSaveToast(data.persisted, 'Đã cập nhật ảnh Water Softening carousel thành công!');
     } catch (err: any) {
       triggerToast(err.message, true);
     } finally {
@@ -1825,9 +1844,14 @@ export default function AdminCMS({
       });
 
       if (!res.ok) throw new Error('Sự cố lưu Header & Footer. Kiểm tra quyền Administrator.');
+      const data = await res.json();
       await onRefreshData();
-      setHfStatusMsg('Đã lưu cấu hình Header & Footer thành công! Thay đổi sẽ hiển thị ngay trên website.');
-      setTimeout(() => setHfStatusMsg(''), 5000);
+      if (data.persisted === false) {
+        setHfErrorMsg('Đã ghi nhận nhưng CHƯA xác nhận lưu trữ thành công — vui lòng thử lại hoặc vào tab "Xuất/Nhập Sao Lưu CMS" để kiểm tra.');
+      } else {
+        setHfStatusMsg('Đã lưu cấu hình Header & Footer thành công! Thay đổi sẽ hiển thị ngay trên website.');
+        setTimeout(() => setHfStatusMsg(''), 5000);
+      }
     } catch (err: any) {
       setHfErrorMsg(err.message || 'Lỗi không xác định.');
     } finally {
@@ -4514,7 +4538,11 @@ export default function AdminCMS({
                           });
                           const data = await res.json();
                           if (!res.ok) throw new Error(data.error || 'Lỗi lưu cấu hình.');
-                          setEmailStatusMsg(newEnabled ? 'Đã bật tính năng tự động gửi email thông báo!' : 'Đã tạm tắt tính năng gửi email thông báo.');
+                          if (data.persisted === false) {
+                            setEmailErrorMsg('Đã ghi nhận nhưng CHƯA xác nhận lưu trữ thành công — vui lòng thử lại hoặc vào tab "Xuất/Nhập Sao Lưu CMS" để kiểm tra.');
+                          } else {
+                            setEmailStatusMsg(newEnabled ? 'Đã bật tính năng tự động gửi email thông báo!' : 'Đã tạm tắt tính năng gửi email thông báo.');
+                          }
                         } catch (err: any) {
                           setEmailErrorMsg(err.message || 'Lỗi cập nhật trạng thái.');
                         } finally {

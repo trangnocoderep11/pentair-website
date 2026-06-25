@@ -964,14 +964,29 @@ async function dbDeleteUser(id: string) {
 }
 
 // --- Options (site settings) ---
-async function dbSaveOption(opt: any) {
-  writeDb({ arrayKey: 'options', idField: 'optionName', op: 'upsert', item: opt });
+function pgMirrorOption(opt: any) {
   return trackWrite(withPg(c => c.query(
     `INSERT INTO public.options (id,option_name,option_value)
      VALUES ($1,$2,$3::jsonb)
      ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value::jsonb, id=EXCLUDED.id`,
     [opt.id || `opt-${opt.optionName}`, opt.optionName, JSON.stringify(opt)]
   )));
+}
+
+async function dbSaveOption(opt: any): Promise<boolean> {
+  const persisted = await writeDb({ arrayKey: 'options', idField: 'optionName', op: 'upsert', item: opt });
+  pgMirrorOption(opt).catch(() => {});
+  return persisted;
+}
+
+// Saves several options in one Blob round-trip (one fetch+merge+put+history cycle)
+// instead of one per option — used by routes that change multiple settings at once
+// (PUT /api/options, the email-settings panel) so a single "Lưu" click maps to a
+// single, honestly-awaitable persistence result.
+async function persistOptions(opts: any[]): Promise<boolean> {
+  const persisted = await writeDb({ arrayKey: 'options', idField: 'optionName', op: 'upsertMany', items: opts });
+  for (const opt of opts) pgMirrorOption(opt).catch(() => {});
+  return persisted;
 }
 
 // --- Submissions ---
@@ -1728,6 +1743,7 @@ async function putDbSnapshot(ifMatch?: string) {
 // document with this instance's (possibly stale) in-memory copy of everything else.
 type DbChangedEntity =
   | { arrayKey: string; idField: string; op: 'upsert'; item: any }
+  | { arrayKey: string; idField: string; op: 'upsertMany'; items: any[] }
   | { arrayKey: string; idField: string; op: 'remove'; id: string };
 
 // blobGet() returns weak ETags (`W/"..."`) while blobPut()'s ifMatch precondition
@@ -1752,11 +1768,17 @@ async function mergeAndPersist(changedEntity?: DbChangedEntity): Promise<string>
       const text = await new Response(fresh.stream).text();
       const remoteDb = JSON.parse(text);
       const arr = (remoteDb[changedEntity.arrayKey] || []).slice();
+      const upsertOne = (item: any) => {
+        const idx = arr.findIndex((x: any) => x[changedEntity.idField] === item[changedEntity.idField]);
+        if (idx !== -1) arr[idx] = item; else arr.push(item);
+      };
       if (changedEntity.op === 'remove') {
         remoteDb[changedEntity.arrayKey] = arr.filter((x: any) => x[changedEntity.idField] !== changedEntity.id);
+      } else if (changedEntity.op === 'upsertMany') {
+        changedEntity.items.forEach(upsertOne);
+        remoteDb[changedEntity.arrayKey] = arr;
       } else {
-        const idx = arr.findIndex((x: any) => x[changedEntity.idField] === changedEntity.item[changedEntity.idField]);
-        if (idx !== -1) arr[idx] = changedEntity.item; else arr.push(changedEntity.item);
+        upsertOne(changedEntity.item);
         remoteDb[changedEntity.arrayKey] = arr;
       }
       applyDbSnapshot(remoteDb);
@@ -1766,15 +1788,18 @@ async function mergeAndPersist(changedEntity?: DbChangedEntity): Promise<string>
   return result.etag;
 }
 
-async function saveDbToBlob(changedEntity?: DbChangedEntity) {
-  if (!hasBlobConfig) return;
+// Returns whether THIS specific call's write was actually confirmed durable —
+// callers that need an honest answer (not the shared, per-instance lastPersistStatus,
+// which a concurrent request on the same instance could overwrite first) use this.
+async function saveDbToBlob(changedEntity?: DbChangedEntity): Promise<boolean> {
+  if (!hasBlobConfig) return true;
   const maxAttempts = 3;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       await mergeAndPersist(changedEntity);
       blobDbLastLoadedAt = Date.now();
       lastPersistStatus = { ok: true, at: Date.now(), conflict: attempt > 1 };
-      return;
+      return true;
     } catch (err: any) {
       const isConflict = err?.constructor?.name === 'BlobPreconditionFailedError';
       if (isConflict && attempt < maxAttempts) {
@@ -1786,9 +1811,10 @@ async function saveDbToBlob(changedEntity?: DbChangedEntity) {
       }
       console.error('[BLOB SYNC] ❌ Lỗi lưu dữ liệu lên Vercel Blob:', err.message);
       lastPersistStatus = { ok: false, at: Date.now(), conflict: isConflict };
-      return;
+      return false;
     }
   }
+  return false;
 }
 
 // Rolling history of full-DB snapshots — independent of the live db-snapshot.json.
@@ -1874,7 +1900,12 @@ async function flushPendingWrites() {
 // path exactly what changed, so it can merge onto the freshest remote snapshot instead
 // of overwriting the whole document with this instance's possibly-stale copy of
 // everything else. Omit it for explicit whole-document intent (restore/import).
-function writeDb(changedEntity?: DbChangedEntity) {
+//
+// Returns whether the write is confirmed durable. Existing callers that don't await
+// this (the vast majority — fire-and-forget is intentional for snappy responses)
+// are unaffected; routes that want an honest "did it actually save?" answer for the
+// user (e.g. PUT /api/options) can await it.
+function writeDb(changedEntity?: DbChangedEntity): Promise<boolean> {
   dbLastLoadedAt = 0; // Force reload on next request/instance
   try {
     fs.writeFileSync(path.join(process.cwd(), 'db.json'), JSON.stringify(db, null, 2), 'utf-8');
@@ -1889,12 +1920,14 @@ function writeDb(changedEntity?: DbChangedEntity) {
   )).catch(() => {}));
   // Vercel Blob backup — primary persistence when no DATABASE_URL is configured.
   // History snapshot runs after the merge so it captures the post-merge state.
-  if (!postgresPool) {
-    trackWrite((async () => {
-      await saveDbToBlob(changedEntity);
-      await saveDbHistorySnapshot();
-    })());
-  }
+  if (postgresPool) return Promise.resolve(true);
+  const persisted = (async () => {
+    const ok = await saveDbToBlob(changedEntity);
+    await saveDbHistorySnapshot();
+    return ok;
+  })();
+  trackWrite(persisted);
+  return persisted;
 }
 
 app.use(express.json({ limit: '15mb' }));
@@ -2834,19 +2867,19 @@ app.put("/api/options", authMiddleware, requireRole('administrator'), async (req
     return res.status(400).json({ error: "Định dạng dữ liệu cấu hình không hợp lệ." });
   }
 
-  const writes: Promise<any>[] = [];
+  const mergedOpts: any[] = [];
   for (const opt of updatedOptions) {
     const existingIdx = db.options.findIndex(o => o.optionName === opt.optionName);
     if (existingIdx !== -1) {
       db.options[existingIdx] = { ...db.options[existingIdx], ...opt };
-      writes.push(dbSaveOption(db.options[existingIdx]).catch(e => console.error('[DB]', e)));
+      mergedOpts.push(db.options[existingIdx]);
     } else {
       db.options.push(opt);
-      writes.push(dbSaveOption(opt).catch(e => console.error('[DB]', e)));
+      mergedOpts.push(opt);
     }
   }
-  await Promise.all(writes);
-  res.json({ success: true, options: db.options });
+  const persisted = await persistOptions(mergedOpts).catch(() => false);
+  res.json({ success: true, options: db.options, persisted });
 });
 
 // API Endpoints: CMS POSTS / PAGES / PRODUCTS / SHOWROOMS - GET & SEARCH
@@ -3183,7 +3216,7 @@ app.get("/api/admin/settings/email", authMiddleware, (req, res) => {
 
 app.put("/api/admin/settings/email", authMiddleware, async (req, res) => {
   const { contact_email_recipients, email_notification_enabled, smtp_settings } = req.body;
-  const optionWrites: Promise<any>[] = [];
+  const changedOpts: any[] = [];
 
   // Save the recipients
   let recipientsIdx = db.options.findIndex(o => o.optionName === "contact_email_recipients");
@@ -3194,10 +3227,10 @@ app.put("/api/admin/settings/email", authMiddleware, async (req, res) => {
       optionValue: (contact_email_recipients ?? "contact@pentairvn.com, support@pentairvn.com") as any
     };
     db.options.push(recipOpt);
-    optionWrites.push(dbSaveOption(recipOpt).catch(e => console.error('[DB]', e)));
+    changedOpts.push(recipOpt);
   } else {
     (db.options[recipientsIdx] as any).optionValue = contact_email_recipients;
-    optionWrites.push(dbSaveOption(db.options[recipientsIdx]).catch(e => console.error('[DB]', e)));
+    changedOpts.push(db.options[recipientsIdx]);
   }
 
   // Save enabled status
@@ -3209,10 +3242,10 @@ app.put("/api/admin/settings/email", authMiddleware, async (req, res) => {
       optionValue: (email_notification_enabled !== false) as any
     };
     db.options.push(enabledOpt);
-    optionWrites.push(dbSaveOption(enabledOpt).catch(e => console.error('[DB]', e)));
+    changedOpts.push(enabledOpt);
   } else {
     (db.options[enabledIdx] as any).optionValue = email_notification_enabled === true;
-    optionWrites.push(dbSaveOption(db.options[enabledIdx]).catch(e => console.error('[DB]', e)));
+    changedOpts.push(db.options[enabledIdx]);
   }
 
   // Save SMTP settings
@@ -3232,14 +3265,14 @@ app.put("/api/admin/settings/email", authMiddleware, async (req, res) => {
       }
     };
     db.options.push(smtpOpt);
-    optionWrites.push(dbSaveOption(smtpOpt).catch(e => console.error('[DB]', e)));
+    changedOpts.push(smtpOpt);
   } else {
     db.options[smtpIdx].optionValue = smtp_settings;
-    optionWrites.push(dbSaveOption(db.options[smtpIdx]).catch(e => console.error('[DB]', e)));
+    changedOpts.push(db.options[smtpIdx]);
   }
 
-  await Promise.all(optionWrites);
-  res.json({ success: true, message: "Cấu hình email đã được cập nhật thành công!" });
+  const persisted = await persistOptions(changedOpts).catch(() => false);
+  res.json({ success: true, message: "Cấu hình email đã được cập nhật thành công!", persisted });
 });
 
 app.post("/api/admin/settings/email/test", authMiddleware, async (req, res) => {
