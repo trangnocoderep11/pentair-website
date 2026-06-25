@@ -1730,6 +1730,14 @@ type DbChangedEntity =
   | { arrayKey: string; idField: string; op: 'upsert'; item: any }
   | { arrayKey: string; idField: string; op: 'remove'; id: string };
 
+// blobGet() returns weak ETags (`W/"..."`) while blobPut()'s ifMatch precondition
+// check requires the strong form — passing the weak form back verbatim makes Vercel
+// Blob reject every single save with BlobPreconditionFailedError, even with no
+// concurrent writer at all. Strip the weak-validator prefix before reusing it.
+function normalizeEtag(etag: string | undefined): string | undefined {
+  return etag?.replace(/^W\//, '');
+}
+
 // Fetches the freshest remote snapshot, applies `changedEntity` on top of it (if
 // given), adopts the result as the new local `db`, and saves it back using the
 // fresh ETag as the CAS precondition. When `changedEntity` is omitted, the caller
@@ -1739,7 +1747,7 @@ async function mergeAndPersist(changedEntity?: DbChangedEntity): Promise<string>
   const fresh = await blobGet(DB_BACKUP_BLOB_PATH, { access: 'private', useCache: false, token: CMS_BLOB_TOKEN });
   let baseEtag: string | undefined;
   if (fresh?.statusCode === 200) {
-    baseEtag = fresh.blob.etag;
+    baseEtag = normalizeEtag(fresh.blob.etag);
     if (changedEntity) {
       const text = await new Response(fresh.stream).text();
       const remoteDb = JSON.parse(text);
@@ -4008,7 +4016,7 @@ app.get("/api/admin/merge-diagnostic", authMiddleware, requireRole('administrato
       const t0 = Date.now();
       const putResult = await blobPut(DB_BACKUP_BLOB_PATH, text, {
         access: 'private', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json',
-        ifMatch: trace.fetchEtag, token: CMS_BLOB_TOKEN,
+        ifMatch: normalizeEtag(trace.fetchEtag), token: CMS_BLOB_TOKEN,
       });
       trace.putMs = Date.now() - t0;
       trace.putOk = true;
