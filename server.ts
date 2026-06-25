@@ -1671,7 +1671,11 @@ async function loadDbFromSupabase() {
 const DB_BACKUP_BLOB_PATH = 'cms-data/db-snapshot.json';
 const DB_HISTORY_PREFIX = 'cms-data/history/';
 const DB_HISTORY_MAX = 10; // rolling window of recoverable snapshots
-const hasBlobConfig = !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
+// Separate, private Blob store for sensitive CMS data (password hashes, 2FA secrets,
+// customer leads) — the project's other BLOB_READ_WRITE_TOKEN store is public (used for
+// media uploads) and cannot hold private blobs, so this data needs its own store/token.
+const CMS_BLOB_TOKEN = process.env.BLOB_PRIVATE_READ_WRITE_TOKEN || "";
+const hasBlobConfig = !!CMS_BLOB_TOKEN;
 
 let blobDbLastLoadedAt = 0;
 const BLOB_CACHE_TTL = 10_000; // 10 seconds, mirrors Postgres CACHE_TTL
@@ -1702,7 +1706,7 @@ function applyDbSnapshot(parsed: any) {
 async function loadDbFromBlob() {
   if (!hasBlobConfig) return;
   try {
-    const result = await blobGet(DB_BACKUP_BLOB_PATH, { access: 'private', useCache: false });
+    const result = await blobGet(DB_BACKUP_BLOB_PATH, { access: 'private', useCache: false, token: CMS_BLOB_TOKEN });
     if (!result || result.statusCode !== 200) return;
     lastKnownSnapshotEtag = result.blob.etag;
     const text = await new Response(result.stream).text();
@@ -1720,6 +1724,7 @@ async function putDbSnapshot(ifMatch?: string) {
     allowOverwrite: true,
     contentType: 'application/json',
     ifMatch,
+    token: CMS_BLOB_TOKEN,
   });
 }
 
@@ -1739,7 +1744,7 @@ async function saveDbToBlob() {
       // from the rolling history written alongside it (see saveDbHistorySnapshot).
       console.warn('[BLOB SYNC] ⚠️ Phát hiện ghi đồng thời (ETag mismatch) — đang lưu đè lên bản mới nhất.');
       try {
-        const fresh = await blobGet(DB_BACKUP_BLOB_PATH, { access: 'private', useCache: false });
+        const fresh = await blobGet(DB_BACKUP_BLOB_PATH, { access: 'private', useCache: false, token: CMS_BLOB_TOKEN });
         const freshEtag = fresh?.statusCode === 200 ? fresh.blob.etag : undefined;
         const result = await putDbSnapshot(freshEtag);
         lastKnownSnapshotEtag = result.etag;
@@ -1767,6 +1772,7 @@ async function saveDbHistorySnapshot() {
       addRandomSuffix: false,
       allowOverwrite: false,
       contentType: 'application/json',
+      token: CMS_BLOB_TOKEN,
     });
   } catch (err: any) {
     console.error('[BLOB HISTORY] ❌ Lỗi lưu snapshot lịch sử:', err.message);
@@ -1776,23 +1782,23 @@ async function saveDbHistorySnapshot() {
 }
 
 async function pruneDbHistory() {
-  const { blobs } = await blobList({ prefix: DB_HISTORY_PREFIX });
+  const { blobs } = await blobList({ prefix: DB_HISTORY_PREFIX, token: CMS_BLOB_TOKEN });
   if (blobs.length <= DB_HISTORY_MAX) return;
   const sorted = [...blobs].sort((a, b) => new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime());
   const toDelete = sorted.slice(0, sorted.length - DB_HISTORY_MAX).map(b => b.url);
-  await blobDel(toDelete);
+  await blobDel(toDelete, { token: CMS_BLOB_TOKEN });
 }
 
 async function listDbHistory() {
   if (!hasBlobConfig) return [];
-  const { blobs } = await blobList({ prefix: DB_HISTORY_PREFIX });
+  const { blobs } = await blobList({ prefix: DB_HISTORY_PREFIX, token: CMS_BLOB_TOKEN });
   return blobs
     .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
     .map(b => ({ key: b.pathname, uploadedAt: b.uploadedAt, size: b.size }));
 }
 
 async function restoreDbFromHistory(pathname: string) {
-  const result = await blobGet(pathname, { access: 'private', useCache: false });
+  const result = await blobGet(pathname, { access: 'private', useCache: false, token: CMS_BLOB_TOKEN });
   if (!result || result.statusCode !== 200) throw new Error('Không tìm thấy bản snapshot này.');
   const text = await new Response(result.stream).text();
   applyDbSnapshot(JSON.parse(text));
@@ -3961,7 +3967,7 @@ app.get("/api/admin/persist-status", authMiddleware, requireRole('administrator'
 // Blob call inside the request itself, so the answer is never stale or instance-dependent.
 app.get("/api/admin/blob-diagnostic", authMiddleware, requireRole('administrator'), async (req, res) => {
   if (!hasBlobConfig) {
-    return res.json({ hasBlobConfig: false, message: "BLOB_READ_WRITE_TOKEN / BLOB_STORE_ID không tồn tại trong env." });
+    return res.json({ hasBlobConfig: false, message: "BLOB_PRIVATE_READ_WRITE_TOKEN không tồn tại trong env." });
   }
   const testPath = `cms-data/_diagnostic-${Date.now()}.json`;
   try {
@@ -3970,10 +3976,11 @@ app.get("/api/admin/blob-diagnostic", authMiddleware, requireRole('administrator
       addRandomSuffix: false,
       allowOverwrite: true,
       contentType: 'application/json',
+      token: CMS_BLOB_TOKEN,
     });
-    const getResult = await blobGet(testPath, { access: 'private', useCache: false });
-    const mainSnapshot = await blobGet(DB_BACKUP_BLOB_PATH, { access: 'private', useCache: false }).catch((e: any) => ({ error: e.message }));
-    blobDel(testPath).catch(() => {});
+    const getResult = await blobGet(testPath, { access: 'private', useCache: false, token: CMS_BLOB_TOKEN });
+    const mainSnapshot = await blobGet(DB_BACKUP_BLOB_PATH, { access: 'private', useCache: false, token: CMS_BLOB_TOKEN }).catch((e: any) => ({ error: e.message }));
+    blobDel(testPath, { token: CMS_BLOB_TOKEN }).catch(() => {});
     res.json({
       hasBlobConfig: true,
       putOk: true,
