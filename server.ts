@@ -1683,7 +1683,9 @@ let lastKnownSnapshotEtag: string | undefined;
 // Outcome of the most recent persistence write — surfaced to the Admin UI via
 // /api/admin/persist-status so a failed/conflicted save is visible instead of
 // only showing up later as "missing" data after a reload.
-let lastPersistStatus: { ok: boolean; at: number; conflict?: boolean } = { ok: true, at: Date.now() };
+// Stays null until an actual write happens — a fresh cold start hasn't confirmed
+// anything yet and shouldn't show as "Lưu trữ ổn định".
+let lastPersistStatus: { ok: boolean; at: number; conflict?: boolean } | null = null;
 
 function applyDbSnapshot(parsed: any) {
   db.users = parsed.users || db.users;
