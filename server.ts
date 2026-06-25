@@ -1919,14 +1919,14 @@ function writeDb(changedEntity?: DbChangedEntity): Promise<boolean> {
     ['opt-database-backup', 'cms_database_backup', JSON.stringify(db)]
   )).catch(() => {}));
   // Vercel Blob backup — primary persistence when no DATABASE_URL is configured.
-  // History snapshot runs after the merge so it captures the post-merge state.
+  // Callers awaiting the return value only wait on the main snapshot (the source of
+  // truth for "did this save actually work?"); the history snapshot is a best-effort
+  // recovery extra and runs after, tracked separately so it still completes before
+  // the function freezes without adding its own round-trip to the perceived save time.
   if (postgresPool) return Promise.resolve(true);
-  const persisted = (async () => {
-    const ok = await saveDbToBlob(changedEntity);
-    await saveDbHistorySnapshot();
-    return ok;
-  })();
+  const persisted = saveDbToBlob(changedEntity);
   trackWrite(persisted);
+  trackWrite(persisted.then(() => saveDbHistorySnapshot()));
   return persisted;
 }
 
