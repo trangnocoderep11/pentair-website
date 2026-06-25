@@ -399,6 +399,49 @@ export default function AdminCMS({
     }
   }, [activeTab]);
 
+  // Fetch rolling Blob snapshot history on Backup tab open
+  const loadDbHistory = React.useCallback(() => {
+    setLoadingDbHistory(true);
+    fetch('/api/admin/db-history', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('cms_token')}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        setDbHistory(data.history || []);
+        setPersistStatus(data.persistStatus || null);
+      })
+      .catch(err => console.error('Lỗi tải lịch sử snapshot:', err))
+      .finally(() => setLoadingDbHistory(false));
+  }, []);
+
+  React.useEffect(() => {
+    if (activeTab === 'backup') loadDbHistory();
+  }, [activeTab, loadDbHistory]);
+
+  const handleRestoreSnapshot = async (key: string) => {
+    if (!window.confirm("Khôi phục từ bản snapshot này sẽ ghi đè toàn bộ dữ liệu CMS hiện tại. Bạn có chắn chắn muốn tiếp tục?")) return;
+    setRestoringKey(key);
+    try {
+      const res = await fetch('/api/admin/db-history/restore', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('cms_token')}`
+        },
+        body: JSON.stringify({ key })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Khôi phục thất bại.");
+      await onRefreshData();
+      loadDbHistory();
+      triggerToast("Đã khôi phục dữ liệu từ snapshot đã chọn.");
+    } catch (err: any) {
+      triggerToast(err.message, true);
+    } finally {
+      setRestoringKey(null);
+    }
+  };
+
   // Handle Save Email Notifications Options
   const handleSaveEmailSettings = async (customRecipients?: string) => {
     setSavingEmail(true);
@@ -1169,6 +1212,12 @@ export default function AdminCMS({
 
   // BACKUP CODE-BOX IMPORT
   const [backupJsonText, setBackupJsonText] = React.useState('');
+
+  // BLOB SNAPSHOT HISTORY (rolling auto-backup, recovery + save-status visibility)
+  const [dbHistory, setDbHistory] = React.useState<{ key: string; uploadedAt: string; size: number }[]>([]);
+  const [persistStatus, setPersistStatus] = React.useState<{ ok: boolean; at: number; conflict?: boolean } | null>(null);
+  const [loadingDbHistory, setLoadingDbHistory] = React.useState(false);
+  const [restoringKey, setRestoringKey] = React.useState<string | null>(null);
 
   // INITIATION OPTIONS BIND
   React.useEffect(() => {
@@ -4083,6 +4132,60 @@ export default function AdminCMS({
                 />
               </div>
 
+            </div>
+
+            <hr className="border-gray-200" />
+
+            <div className="space-y-3" id="panel-db-history">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-black text-gray-900 uppercase">Snapshot tự động (Vercel Blob)</h4>
+                  <p className="text-xs text-gray-500 font-sans leading-relaxed mt-0.5">
+                    Mỗi lần lưu, hệ thống tự giữ lại {`tối đa 10`} bản snapshot gần nhất — dùng để khôi phục nếu một lần lưu bị xung đột (vd hai tab admin lưu gần nhau).
+                  </p>
+                </div>
+                {persistStatus && (
+                  persistStatus.ok ? (
+                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      {persistStatus.conflict ? 'Đã lưu (đã xử lý xung đột)' : 'Lưu trữ ổn định'} — {new Date(persistStatus.at).toLocaleTimeString('vi-VN')}
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-rose-50 text-rose-700 border border-rose-200">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      Lỗi lưu trữ lúc {new Date(persistStatus.at).toLocaleTimeString('vi-VN')}
+                    </span>
+                  )
+                )}
+              </div>
+
+              {loadingDbHistory ? (
+                <div className="p-3 text-center text-xs text-gray-400">Đang tải lịch sử snapshot...</div>
+              ) : dbHistory.length === 0 ? (
+                <div className="p-3 text-center text-xs text-gray-400 bg-slate-50 rounded-xl border border-gray-100">Chưa có snapshot nào được ghi nhận.</div>
+              ) : (
+                <div className="space-y-2">
+                  {dbHistory.map(snap => (
+                    <div key={snap.key} className="flex items-center justify-between p-3 bg-slate-50 border border-gray-150 rounded-xl text-xs">
+                      <div className="flex items-center gap-2.5">
+                        <Database className="w-4 h-4 text-slate-400" />
+                        <div>
+                          <span className="font-bold text-gray-800 block">{new Date(snap.uploadedAt).toLocaleString('vi-VN')}</span>
+                          <span className="text-[10px] text-gray-400 font-mono">{(snap.size / 1024).toFixed(1)} KB</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleRestoreSnapshot(snap.key)}
+                        disabled={restoringKey !== null}
+                        className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 text-[10px] font-bold uppercase rounded-lg transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                      >
+                        {restoringKey === snap.key ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                        Khôi phục
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
           </div>

@@ -13,7 +13,7 @@ import nodemailer from "nodemailer";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import { put as blobPut, get as blobGet } from "@vercel/blob";
+import { put as blobPut, get as blobGet, list as blobList, del as blobDel } from "@vercel/blob";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 
 dotenv.config();
@@ -1669,46 +1669,132 @@ async function loadDbFromSupabase() {
 // different serverless instances.
 // ===================================================================
 const DB_BACKUP_BLOB_PATH = 'cms-data/db-snapshot.json';
+const DB_HISTORY_PREFIX = 'cms-data/history/';
+const DB_HISTORY_MAX = 10; // rolling window of recoverable snapshots
 const hasBlobConfig = !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 
 let blobDbLastLoadedAt = 0;
 const BLOB_CACHE_TTL = 10_000; // 10 seconds, mirrors Postgres CACHE_TTL
+
+// ETag of the last snapshot this instance is known to be in sync with. Passed
+// as `ifMatch` on save so a concurrent write from another instance is detected
+// (BlobPreconditionFailedError) instead of being silently overwritten.
+let lastKnownSnapshotEtag: string | undefined;
+// Outcome of the most recent persistence write — surfaced to the Admin UI via
+// /api/admin/persist-status so a failed/conflicted save is visible instead of
+// only showing up later as "missing" data after a reload.
+let lastPersistStatus: { ok: boolean; at: number; conflict?: boolean } = { ok: true, at: Date.now() };
+
+function applyDbSnapshot(parsed: any) {
+  db.users = parsed.users || db.users;
+  db.posts = parsed.posts || db.posts;
+  db.terms = parsed.terms || db.terms;
+  db.options = parsed.options || db.options;
+  db.submissions = parsed.submissions || db.submissions;
+  (db as any).videos = parsed.videos || (db as any).videos;
+  (db as any).perspectives = parsed.perspectives || (db as any).perspectives;
+  (db as any).mediaFolders = parsed.mediaFolders || (db as any).mediaFolders;
+  (db as any).mediaItems = parsed.mediaItems || (db as any).mediaItems;
+}
 
 async function loadDbFromBlob() {
   if (!hasBlobConfig) return;
   try {
     const result = await blobGet(DB_BACKUP_BLOB_PATH, { access: 'private', useCache: false });
     if (!result || result.statusCode !== 200) return;
+    lastKnownSnapshotEtag = result.blob.etag;
     const text = await new Response(result.stream).text();
-    const parsed = JSON.parse(text);
-    db.users = parsed.users || db.users;
-    db.posts = parsed.posts || db.posts;
-    db.terms = parsed.terms || db.terms;
-    db.options = parsed.options || db.options;
-    db.submissions = parsed.submissions || db.submissions;
-    (db as any).videos = parsed.videos || (db as any).videos;
-    (db as any).perspectives = parsed.perspectives || (db as any).perspectives;
-    (db as any).mediaFolders = parsed.mediaFolders || (db as any).mediaFolders;
-    (db as any).mediaItems = parsed.mediaItems || (db as any).mediaItems;
+    applyDbSnapshot(JSON.parse(text));
     console.log(`[BLOB SYNC] Đã khôi phục dữ liệu từ Vercel Blob: ${db.posts.length} posts, ${(db as any).mediaItems.length} media items`);
   } catch (err: any) {
     console.error('[BLOB SYNC] ❌ Lỗi tải dữ liệu từ Vercel Blob:', err.message);
   }
 }
 
+async function putDbSnapshot(ifMatch?: string) {
+  return blobPut(DB_BACKUP_BLOB_PATH, JSON.stringify(db), {
+    access: 'private',
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: 'application/json',
+    ifMatch,
+  });
+}
+
 async function saveDbToBlob() {
   if (!hasBlobConfig) return;
   try {
-    await blobPut(DB_BACKUP_BLOB_PATH, JSON.stringify(db), {
+    const result = await putDbSnapshot(lastKnownSnapshotEtag);
+    lastKnownSnapshotEtag = result.etag;
+    blobDbLastLoadedAt = Date.now();
+    lastPersistStatus = { ok: true, at: Date.now() };
+  } catch (err: any) {
+    if (err?.constructor?.name === 'BlobPreconditionFailedError') {
+      // Another instance saved since we last loaded — our `ifMatch` no longer
+      // matches. Re-fetch the current ETag (not the data — `db` here already
+      // holds this request's own edit) and save again so the edit isn't
+      // silently dropped. The snapshot this overwrites is still recoverable
+      // from the rolling history written alongside it (see saveDbHistorySnapshot).
+      console.warn('[BLOB SYNC] ⚠️ Phát hiện ghi đồng thời (ETag mismatch) — đang lưu đè lên bản mới nhất.');
+      try {
+        const fresh = await blobGet(DB_BACKUP_BLOB_PATH, { access: 'private', useCache: false });
+        const freshEtag = fresh?.statusCode === 200 ? fresh.blob.etag : undefined;
+        const result = await putDbSnapshot(freshEtag);
+        lastKnownSnapshotEtag = result.etag;
+        blobDbLastLoadedAt = Date.now();
+        lastPersistStatus = { ok: true, at: Date.now(), conflict: true };
+      } catch (err2: any) {
+        console.error('[BLOB SYNC] ❌ Lưu lại sau xung đột thất bại:', err2.message);
+        lastPersistStatus = { ok: false, at: Date.now(), conflict: true };
+      }
+      return;
+    }
+    console.error('[BLOB SYNC] ❌ Lỗi lưu dữ liệu lên Vercel Blob:', err.message);
+    lastPersistStatus = { ok: false, at: Date.now() };
+  }
+}
+
+// Rolling history of full-DB snapshots — independent of the live db-snapshot.json.
+// Gives a recovery point if a concurrent write ever overwrites someone else's change.
+async function saveDbHistorySnapshot() {
+  if (!hasBlobConfig) return;
+  try {
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    await blobPut(`${DB_HISTORY_PREFIX}${ts}.json`, JSON.stringify(db), {
       access: 'private',
       addRandomSuffix: false,
-      allowOverwrite: true,
+      allowOverwrite: false,
       contentType: 'application/json',
     });
-    blobDbLastLoadedAt = Date.now();
   } catch (err: any) {
-    console.error('[BLOB SYNC] ❌ Lỗi lưu dữ liệu lên Vercel Blob:', err.message);
+    console.error('[BLOB HISTORY] ❌ Lỗi lưu snapshot lịch sử:', err.message);
+    return;
   }
+  pruneDbHistory().catch((err: any) => console.error('[BLOB HISTORY] ❌ Lỗi dọn lịch sử cũ:', err.message));
+}
+
+async function pruneDbHistory() {
+  const { blobs } = await blobList({ prefix: DB_HISTORY_PREFIX });
+  if (blobs.length <= DB_HISTORY_MAX) return;
+  const sorted = [...blobs].sort((a, b) => new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime());
+  const toDelete = sorted.slice(0, sorted.length - DB_HISTORY_MAX).map(b => b.url);
+  await blobDel(toDelete);
+}
+
+async function listDbHistory() {
+  if (!hasBlobConfig) return [];
+  const { blobs } = await blobList({ prefix: DB_HISTORY_PREFIX });
+  return blobs
+    .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
+    .map(b => ({ key: b.pathname, uploadedAt: b.uploadedAt, size: b.size }));
+}
+
+async function restoreDbFromHistory(pathname: string) {
+  const result = await blobGet(pathname, { access: 'private', useCache: false });
+  if (!result || result.statusCode !== 200) throw new Error('Không tìm thấy bản snapshot này.');
+  const text = await new Response(result.stream).text();
+  applyDbSnapshot(JSON.parse(text));
+  writeDb();
 }
 
 // Refresh `db` from the Blob snapshot at most once every BLOB_CACHE_TTL — picks up
@@ -1762,6 +1848,7 @@ function writeDb() {
   // Vercel Blob backup — primary persistence when no DATABASE_URL is configured
   if (!postgresPool) {
     trackWrite(saveDbToBlob());
+    trackWrite(saveDbHistorySnapshot());
   }
 }
 
@@ -3837,6 +3924,34 @@ app.post("/api/backup/import", authMiddleware, requireRole('administrator'), asy
 
   await Promise.all(importWrites);
   res.json({ success: true, message: "Nhập dữ liệu CMS thành công. Hệ thống đã khôi phục trạng thái mới." });
+});
+
+// API Endpoints: VERCEL BLOB SNAPSHOT HISTORY (rolling auto-backup, admin only)
+app.get("/api/admin/db-history", authMiddleware, requireRole('administrator'), async (req, res) => {
+  try {
+    const history = await listDbHistory();
+    res.json({ history, persistStatus: lastPersistStatus });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || "Không thể tải lịch sử snapshot." });
+  }
+});
+
+app.post("/api/admin/db-history/restore", authMiddleware, requireRole('administrator'), async (req, res) => {
+  const { key } = req.body;
+  if (!key || typeof key !== 'string' || !key.startsWith(DB_HISTORY_PREFIX)) {
+    return res.status(400).json({ error: "Snapshot không hợp lệ." });
+  }
+  try {
+    await restoreDbFromHistory(key);
+    await flushPendingWrites();
+    res.json({ success: true, message: "Đã khôi phục dữ liệu từ snapshot đã chọn." });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || "Khôi phục thất bại." });
+  }
+});
+
+app.get("/api/admin/persist-status", authMiddleware, requireRole('administrator'), (req, res) => {
+  res.json(lastPersistStatus);
 });
 
 
