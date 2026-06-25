@@ -3962,45 +3962,6 @@ app.get("/api/admin/persist-status", authMiddleware, requireRole('administrator'
   res.json(lastPersistStatus);
 });
 
-// Temporary diagnostic: synchronously put+get+delete a throwaway blob and report the
-// exact result/error. Unlike persist-status (per-instance memory), this runs the real
-// Blob call inside the request itself, so the answer is never stale or instance-dependent.
-app.get("/api/admin/blob-diagnostic", authMiddleware, requireRole('administrator'), async (req, res) => {
-  if (!hasBlobConfig) {
-    return res.json({ hasBlobConfig: false, message: "BLOB_PRIVATE_READ_WRITE_TOKEN không tồn tại trong env." });
-  }
-  const testPath = `cms-data/_diagnostic-${Date.now()}.json`;
-  try {
-    const putResult = await blobPut(testPath, JSON.stringify({ test: true, ts: Date.now() }), {
-      access: 'private',
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType: 'application/json',
-      token: CMS_BLOB_TOKEN,
-    });
-    const getResult = await blobGet(testPath, { access: 'private', useCache: false, token: CMS_BLOB_TOKEN });
-    const mainSnapshot = await blobGet(DB_BACKUP_BLOB_PATH, { access: 'private', useCache: false, token: CMS_BLOB_TOKEN }).catch((e: any) => ({ error: e.message }));
-    blobDel(testPath, { token: CMS_BLOB_TOKEN }).catch(() => {});
-    res.json({
-      hasBlobConfig: true,
-      putOk: true,
-      putEtag: putResult.etag,
-      getOk: getResult?.statusCode === 200,
-      mainSnapshotExists: (mainSnapshot as any)?.statusCode === 200,
-      mainSnapshotEtag: (mainSnapshot as any)?.blob?.etag || null,
-      mainSnapshotError: (mainSnapshot as any)?.error || null,
-      lastKnownSnapshotEtagInMemory: lastKnownSnapshotEtag || null,
-    });
-  } catch (err: any) {
-    res.status(500).json({
-      hasBlobConfig: true,
-      putOk: false,
-      error: err.message,
-      errorName: err?.constructor?.name,
-    });
-  }
-});
-
 
 // Dynamic SEO sitemap.xml endpoint
 app.get("/sitemap.xml", (req, res) => {
