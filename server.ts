@@ -901,7 +901,7 @@ async function withPg<T>(fn: (client: any) => Promise<T>): Promise<T | null> {
 
 // --- Posts / Products / Pages ---
 async function dbSavePost(p: any) {
-  writeDb();
+  writeDb({ arrayKey: 'posts', idField: 'id', op: 'upsert', item: p });
   return trackWrite(withPg(c => c.query(
     `INSERT INTO public.posts
       (id,title,slug,content,excerpt,type,status,author_id,featured_image,menu_order,meta,terms,created_at,updated_at,published_at)
@@ -921,13 +921,13 @@ async function dbSavePost(p: any) {
   )));
 }
 async function dbDeletePost(id: string) {
-  writeDb();
+  writeDb({ arrayKey: 'posts', idField: 'id', op: 'remove', id });
   return trackWrite(withPg(c => c.query('DELETE FROM public.posts WHERE id=$1', [id])));
 }
 
 // --- Terms (categories / product_cat) ---
 async function dbSaveTerm(t: any) {
-  writeDb();
+  writeDb({ arrayKey: 'terms', idField: 'id', op: 'upsert', item: t });
   return trackWrite(withPg(c => c.query(
     `INSERT INTO public.terms (id,name,slug,taxonomy,description,parent_id,meta)
      VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb)
@@ -939,13 +939,13 @@ async function dbSaveTerm(t: any) {
   )));
 }
 async function dbDeleteTerm(id: string) {
-  writeDb();
+  writeDb({ arrayKey: 'terms', idField: 'id', op: 'remove', id });
   return trackWrite(withPg(c => c.query('DELETE FROM public.terms WHERE id=$1', [id])));
 }
 
 // --- Users ---
 async function dbSaveUser(u: any) {
-  writeDb();
+  writeDb({ arrayKey: 'users', idField: 'id', op: 'upsert', item: u });
   return trackWrite(withPg(c => c.query(
     `INSERT INTO public.users (id,username,password_hash,email,role,two_factor_enabled,two_factor_secret)
      VALUES ($1,$2,$3,$4,$5,$6,$7)
@@ -959,13 +959,13 @@ async function dbSaveUser(u: any) {
   )));
 }
 async function dbDeleteUser(id: string) {
-  writeDb();
+  writeDb({ arrayKey: 'users', idField: 'id', op: 'remove', id });
   return trackWrite(withPg(c => c.query('DELETE FROM public.users WHERE id=$1', [id])));
 }
 
 // --- Options (site settings) ---
 async function dbSaveOption(opt: any) {
-  writeDb();
+  writeDb({ arrayKey: 'options', idField: 'optionName', op: 'upsert', item: opt });
   return trackWrite(withPg(c => c.query(
     `INSERT INTO public.options (id,option_name,option_value)
      VALUES ($1,$2,$3::jsonb)
@@ -976,7 +976,7 @@ async function dbSaveOption(opt: any) {
 
 // --- Submissions ---
 async function dbSaveSubmission(s: any) {
-  writeDb();
+  writeDb({ arrayKey: 'submissions', idField: 'id', op: 'upsert', item: s });
   return trackWrite(withPg(c => c.query(
     `INSERT INTO public.submissions (id,name,email,phone,message,status,source,product_id,created_at,meta)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb)
@@ -990,13 +990,13 @@ async function dbSaveSubmission(s: any) {
   )));
 }
 async function dbDeleteSubmission(id: string) {
-  writeDb();
+  writeDb({ arrayKey: 'submissions', idField: 'id', op: 'remove', id });
   return trackWrite(withPg(c => c.query('DELETE FROM public.submissions WHERE id=$1', [id])));
 }
 
 // --- Videos ---
 async function dbSaveVideo(v: any) {
-  writeDb();
+  writeDb({ arrayKey: 'videos', idField: 'id', op: 'upsert', item: v });
   return trackWrite(withPg(c => c.query(
     `INSERT INTO public.videos (id,title,url,thumbnail,description,sort_order,created_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7)
@@ -1009,13 +1009,13 @@ async function dbSaveVideo(v: any) {
   )));
 }
 async function dbDeleteVideo(id: string) {
-  writeDb();
+  writeDb({ arrayKey: 'videos', idField: 'id', op: 'remove', id });
   return trackWrite(withPg(c => c.query('DELETE FROM public.videos WHERE id=$1', [id])));
 }
 
 // --- Perspectives ---
 async function dbSavePerspective(p: any) {
-  writeDb();
+  writeDb({ arrayKey: 'perspectives', idField: 'id', op: 'upsert', item: p });
   return trackWrite(withPg(c => c.query(
     `INSERT INTO public.perspectives
       (id,title,slug,excerpt,content,featured_image,status,image_url,link,space_type,gallery,product_gallery,related_product_ids,is_featured,sort_order,created_at,updated_at)
@@ -1037,13 +1037,13 @@ async function dbSavePerspective(p: any) {
   )));
 }
 async function dbDeletePerspective(id: string) {
-  writeDb();
+  writeDb({ arrayKey: 'perspectives', idField: 'id', op: 'remove', id });
   return trackWrite(withPg(c => c.query('DELETE FROM public.perspectives WHERE id=$1', [id])));
 }
 
 // --- Media Folders ---
 async function dbSaveMediaFolder(f: any) {
-  writeDb();
+  writeDb({ arrayKey: 'mediaFolders', idField: 'id', op: 'upsert', item: f });
   return trackWrite(withPg(c => c.query(
     `INSERT INTO public.media_folders (id,name,parent_id,created_at)
      VALUES ($1,$2,$3,$4)
@@ -1052,13 +1052,13 @@ async function dbSaveMediaFolder(f: any) {
   )));
 }
 async function dbDeleteMediaFolder(id: string) {
-  writeDb();
+  writeDb({ arrayKey: 'mediaFolders', idField: 'id', op: 'remove', id });
   return trackWrite(withPg(c => c.query('DELETE FROM public.media_folders WHERE id=$1', [id])));
 }
 
 // --- Media Items ---
 async function dbSaveMediaItem(item: any) {
-  writeDb();
+  writeDb({ arrayKey: 'mediaItems', idField: 'id', op: 'upsert', item });
   return trackWrite(withPg(c => c.query(
     `INSERT INTO public.media_items (id,folder_id,filename,url,mime_type,size,width,height,alt,title,description,created_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
@@ -1074,7 +1074,7 @@ async function dbSaveMediaItem(item: any) {
   )));
 }
 async function dbDeleteMediaItem(id: string) {
-  writeDb();
+  writeDb({ arrayKey: 'mediaItems', idField: 'id', op: 'remove', id });
   return trackWrite(withPg(c => c.query('DELETE FROM public.media_items WHERE id=$1', [id])));
 }
 
@@ -1680,10 +1680,6 @@ const hasBlobConfig = !!CMS_BLOB_TOKEN;
 let blobDbLastLoadedAt = 0;
 const BLOB_CACHE_TTL = 10_000; // 10 seconds, mirrors Postgres CACHE_TTL
 
-// ETag of the last snapshot this instance is known to be in sync with. Passed
-// as `ifMatch` on save so a concurrent write from another instance is detected
-// (BlobPreconditionFailedError) instead of being silently overwritten.
-let lastKnownSnapshotEtag: string | undefined;
 // Outcome of the most recent persistence write — surfaced to the Admin UI via
 // /api/admin/persist-status so a failed/conflicted save is visible instead of
 // only showing up later as "missing" data after a reload.
@@ -1708,7 +1704,6 @@ async function loadDbFromBlob() {
   try {
     const result = await blobGet(DB_BACKUP_BLOB_PATH, { access: 'private', useCache: false, token: CMS_BLOB_TOKEN });
     if (!result || result.statusCode !== 200) return;
-    lastKnownSnapshotEtag = result.blob.etag;
     const text = await new Response(result.stream).text();
     applyDbSnapshot(JSON.parse(text));
     console.log(`[BLOB SYNC] Đã khôi phục dữ liệu từ Vercel Blob: ${db.posts.length} posts, ${(db as any).mediaItems.length} media items`);
@@ -1728,36 +1723,63 @@ async function putDbSnapshot(ifMatch?: string) {
   });
 }
 
-async function saveDbToBlob() {
-  if (!hasBlobConfig) return;
-  try {
-    const result = await putDbSnapshot(lastKnownSnapshotEtag);
-    lastKnownSnapshotEtag = result.etag;
-    blobDbLastLoadedAt = Date.now();
-    lastPersistStatus = { ok: true, at: Date.now() };
-  } catch (err: any) {
-    if (err?.constructor?.name === 'BlobPreconditionFailedError') {
-      // Another instance saved since we last loaded — our `ifMatch` no longer
-      // matches. Re-fetch the current ETag (not the data — `db` here already
-      // holds this request's own edit) and save again so the edit isn't
-      // silently dropped. The snapshot this overwrites is still recoverable
-      // from the rolling history written alongside it (see saveDbHistorySnapshot).
-      console.warn('[BLOB SYNC] ⚠️ Phát hiện ghi đồng thời (ETag mismatch) — đang lưu đè lên bản mới nhất.');
-      try {
-        const fresh = await blobGet(DB_BACKUP_BLOB_PATH, { access: 'private', useCache: false, token: CMS_BLOB_TOKEN });
-        const freshEtag = fresh?.statusCode === 200 ? fresh.blob.etag : undefined;
-        const result = await putDbSnapshot(freshEtag);
-        lastKnownSnapshotEtag = result.etag;
-        blobDbLastLoadedAt = Date.now();
-        lastPersistStatus = { ok: true, at: Date.now(), conflict: true };
-      } catch (err2: any) {
-        console.error('[BLOB SYNC] ❌ Lưu lại sau xung đột thất bại:', err2.message);
-        lastPersistStatus = { ok: false, at: Date.now(), conflict: true };
+// Describes exactly which entity a write touched, so a save can merge just that
+// change onto the freshest remote snapshot instead of overwriting the whole
+// document with this instance's (possibly stale) in-memory copy of everything else.
+type DbChangedEntity =
+  | { arrayKey: string; idField: string; op: 'upsert'; item: any }
+  | { arrayKey: string; idField: string; op: 'remove'; id: string };
+
+// Fetches the freshest remote snapshot, applies `changedEntity` on top of it (if
+// given), adopts the result as the new local `db`, and saves it back using the
+// fresh ETag as the CAS precondition. When `changedEntity` is omitted, the caller
+// explicitly wants a whole-document overwrite (restore-from-history, import) —
+// `db` is saved as-is, only the ETag is refreshed.
+async function mergeAndPersist(changedEntity?: DbChangedEntity): Promise<string> {
+  const fresh = await blobGet(DB_BACKUP_BLOB_PATH, { access: 'private', useCache: false, token: CMS_BLOB_TOKEN });
+  let baseEtag: string | undefined;
+  if (fresh?.statusCode === 200) {
+    baseEtag = fresh.blob.etag;
+    if (changedEntity) {
+      const text = await new Response(fresh.stream).text();
+      const remoteDb = JSON.parse(text);
+      const arr = (remoteDb[changedEntity.arrayKey] || []).slice();
+      if (changedEntity.op === 'remove') {
+        remoteDb[changedEntity.arrayKey] = arr.filter((x: any) => x[changedEntity.idField] !== changedEntity.id);
+      } else {
+        const idx = arr.findIndex((x: any) => x[changedEntity.idField] === changedEntity.item[changedEntity.idField]);
+        if (idx !== -1) arr[idx] = changedEntity.item; else arr.push(changedEntity.item);
+        remoteDb[changedEntity.arrayKey] = arr;
       }
+      applyDbSnapshot(remoteDb);
+    }
+  }
+  const result = await putDbSnapshot(baseEtag);
+  return result.etag;
+}
+
+async function saveDbToBlob(changedEntity?: DbChangedEntity) {
+  if (!hasBlobConfig) return;
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await mergeAndPersist(changedEntity);
+      blobDbLastLoadedAt = Date.now();
+      lastPersistStatus = { ok: true, at: Date.now(), conflict: attempt > 1 };
+      return;
+    } catch (err: any) {
+      const isConflict = err?.constructor?.name === 'BlobPreconditionFailedError';
+      if (isConflict && attempt < maxAttempts) {
+        // Another instance saved between our fetch and our put. Loop and merge
+        // again against whatever is now freshest — this still preserves our
+        // specific change (changedEntity) instead of discarding it.
+        console.warn(`[BLOB SYNC] ⚠️ Ghi đồng thời (lần ${attempt}) — hợp nhất lại với bản mới nhất.`);
+        continue;
+      }
+      console.error('[BLOB SYNC] ❌ Lỗi lưu dữ liệu lên Vercel Blob:', err.message);
+      lastPersistStatus = { ok: false, at: Date.now(), conflict: isConflict };
       return;
     }
-    console.error('[BLOB SYNC] ❌ Lỗi lưu dữ liệu lên Vercel Blob:', err.message);
-    lastPersistStatus = { ok: false, at: Date.now() };
   }
 }
 
@@ -1840,7 +1862,11 @@ async function flushPendingWrites() {
 }
 
 // writeDb: persist to db.json locally; no-op on Vercel (ephemeral filesystem)
-function writeDb() {
+// `changedEntity` lets per-row callers (dbSavePost, dbSaveOption, ...) tell the Blob
+// path exactly what changed, so it can merge onto the freshest remote snapshot instead
+// of overwriting the whole document with this instance's possibly-stale copy of
+// everything else. Omit it for explicit whole-document intent (restore/import).
+function writeDb(changedEntity?: DbChangedEntity) {
   dbLastLoadedAt = 0; // Force reload on next request/instance
   try {
     fs.writeFileSync(path.join(process.cwd(), 'db.json'), JSON.stringify(db, null, 2), 'utf-8');
@@ -1853,10 +1879,13 @@ function writeDb() {
      ON CONFLICT (option_name) DO UPDATE SET option_value=EXCLUDED.option_value::jsonb, id=EXCLUDED.id`,
     ['opt-database-backup', 'cms_database_backup', JSON.stringify(db)]
   )).catch(() => {}));
-  // Vercel Blob backup — primary persistence when no DATABASE_URL is configured
+  // Vercel Blob backup — primary persistence when no DATABASE_URL is configured.
+  // History snapshot runs after the merge so it captures the post-merge state.
   if (!postgresPool) {
-    trackWrite(saveDbToBlob());
-    trackWrite(saveDbHistorySnapshot());
+    trackWrite((async () => {
+      await saveDbToBlob(changedEntity);
+      await saveDbHistorySnapshot();
+    })());
   }
 }
 
