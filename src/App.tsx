@@ -306,6 +306,17 @@ export default function App() {
     }
     relCanonicalEl.setAttribute('href', (seoSettingsOption?.canonicalUrl || window.location.origin) + currentPath);
 
+    // Dynamic favicon updating
+    const brandValueOpt = options?.find(o => o.optionName === 'brand_settings')?.optionValue;
+    const faviconUrl = brandValueOpt?.favicon || '/favicon.ico';
+    let faviconEl = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+    if (!faviconEl) {
+      faviconEl = document.createElement('link');
+      faviconEl.setAttribute('rel', 'icon');
+      document.head.appendChild(faviconEl);
+    }
+    faviconEl.setAttribute('href', faviconUrl);
+
   }, [currentPath, options, posts]);
 
   // LOGIN SESSION HANDLERS

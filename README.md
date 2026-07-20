@@ -1,101 +1,101 @@
-# Pentair Vietnam - Premium CMS & Showcase Platform
+# Pentair Việt Nam - Nền tảng CMS & Showcase Cao cấp
 
-A full-stack, state-of-the-art Showcase and Content Management System (CMS) built for **Pentair Vietnam** (representing the elite US water filtration brand). This application operates as a high-performance React Single Page Application (SPA) compiled by Vite and styled with TailwindCSS v4, hosted on a robust Node.js Express backend.
-
----
-
-## 🌟 Key Features
-
-### 1. Luxury branding Showcase (Public Site)
-* **Home Page**: Modular layout including a Hero Banner, Brand Intro, Why Choose Us grid, Featured Products list, interactive Softener Advisor, and real-world Space Perspective Gallery.
-* **Product Catalog & Details**: Dynamic product showcase featuring detailed technical specifications, pricing models, zoomable gallery scenes, and direct purchasing buttons.
-* **Space Perspective Gallery**: Visualization showing how Pentair's luxury water softeners fit elegantly into high-end apartments, penthouses, townhouses, and villas.
-* **News & Blogs**: Informational portal addressing water quality concerns (e.g., hard water treatments) and strategic brand announcements.
-* **Interactive Softener Advisor**: Quick diagnostic tool allowing users to calculate their local water hardness and receive automated product advice.
-* **Shopping Cart & Checkout**: Interactive side drawer managing items with custom quantities and checkout forms.
-
-### 2. Administrator CMS Dashboard
-* **Post & Product Manager**: Complete CRUD operations for Pages, Posts, Products, and Showrooms. Includes automated draft/publish status toggles.
-* **Taxonomy System**: Dynamic Category and Tag editors.
-* **Lead Inbox**: Dashboard to review, search, and manage consultation requests and customer checkouts from the public forms.
-* **Media Library**: Hierarchical file-management system supporting multi-level folder nesting, custom file uploads, and media asset assignment.
-* **Supabase Cloud Sync**: Live bidirectional database replication between local `data/db.json` and Supabase remote storage.
-* **DB Backup & Restore**: Full JSON structure export and import matching WordPress-style schema formats.
+Một hệ thống quản trị nội dung (CMS) và giới thiệu sản phẩm (Showcase) full-stack, hiện đại được xây dựng cho **Pentair Việt Nam** (đại diện cho thương hiệu lọc nước cao cấp của Mỹ). Ứng dụng này hoạt động như một ứng dụng đơn trang (SPA) React hiệu năng cao được biên dịch bởi Vite, định dạng giao diện bằng TailwindCSS v4, chạy trên nền tảng backend Node.js Express mạnh mẽ.
 
 ---
 
-## 🛠️ Technology Stack
+## 🌟 Các Tính năng Chính
 
-| Layer | Technologies |
+### 1. Trang giới thiệu thương hiệu cao cấp (Public Site)
+* **Trang chủ**: Bố cục dạng mô-đun bao gồm Banner chính (Hero), Giới thiệu thương hiệu, Lưới lý do chọn chúng tôi, Danh sách sản phẩm nổi bật, Trình tư vấn làm mềm nước tương tác và Thư viện Phối cảnh Không gian thực tế.
+* **Danh mục & Chi tiết sản phẩm**: Giới thiệu sản phẩm động với thông số kỹ thuật chi tiết, mô hình giá cả, thư viện ảnh zoom cận cảnh và nút mua hàng trực tiếp.
+* **Thư viện Phối cảnh Không gian**: Trực quan hóa cách các hệ thống làm mềm nước cao cấp của Pentair được lắp đặt tinh tế trong các căn hộ cao cấp, penthouse, nhà phố và biệt thự.
+* **Tin tức & Blog**: Cổng thông tin giải quyết các mối lo ngại về chất lượng nước (ví dụ: xử lý nước cứng) và các thông báo chiến lược của thương hiệu.
+* **Trình tư vấn làm mềm nước**: Công cụ chẩn đoán nhanh cho phép người dùng tính toán độ cứng của nước tại địa phương và nhận tư vấn sản phẩm tự động.
+* **Giỏ hàng & Thanh toán**: Ngăn kéo giỏ hàng (drawer) tương tác quản lý sản phẩm với số lượng tùy chỉnh và các biểu mẫu thanh toán.
+
+### 2. Bảng điều khiển quản trị CMS (Admin CMS Dashboard)
+* **Quản lý Bài viết & Sản phẩm**: Đầy đủ các thao tác CRUD cho Trang, Bài viết, Sản phẩm và Showroom. Bao gồm tính năng tự động chuyển đổi trạng thái bản nháp/xuất bản.
+* **Hệ thống phân loại (Taxonomy System)**: Trình chỉnh sửa Danh mục (Category) và Thẻ (Tag) động.
+* **Hộp thư Yêu cầu (Lead Inbox)**: Bảng điều khiển để xem lại, tìm kiếm và quản lý các yêu cầu tư vấn cũng như thông tin thanh toán của khách hàng từ các biểu mẫu công cộng.
+* **Thư viện Phương tiện (Media Library)**: Hệ thống quản lý tệp tin phân cấp hỗ trợ lồng thư mục nhiều cấp, tải lên tệp tùy chỉnh và liên kết tài sản phương tiện cho sản phẩm/bài viết.
+* **Đồng bộ hóa đám mây Supabase**: Sao chép cơ sở dữ liệu hai chiều trực tiếp giữa tệp cục bộ `data/db.json` và bộ lưu trữ từ xa Supabase.
+* **Sao lưu & Khôi phục DB**: Xuất và nhập toàn bộ cấu trúc JSON theo định dạng schema giống WordPress.
+
+---
+
+## 🛠️ Công nghệ Sử dụng (Stack)
+
+| Thành phần | Công nghệ |
 | :--- | :--- |
 | **Frontend** | React 19, TypeScript, TailwindCSS v4, Lucide Icons, Framer Motion |
 | **Backend** | Node.js, Express, TypeScript, TSX (TypeScript Execute) |
-| **Bundlers/Dev** | Vite 6, ESBuild, TypeScript compiler (`tsc`) |
-| **Database** | File-based local store (`data/db.json`) + Supabase PostgreSQL Sync |
+| **Trình đóng gói/Phát triển** | Vite 6, ESBuild, TypeScript compiler (`tsc`) |
+| **Cơ sở dữ liệu** | Cơ sở dữ liệu dạng tệp cục bộ (`data/db.json`) + Đồng bộ hóa Supabase PostgreSQL |
 
 ---
 
-## 📂 Project Architecture
+## 📂 Kiến trúc Dự án
 
 ```text
 ├── api/
-│   └── index.ts                 # Vercel Serverless entry wrapper
-├── assets/                      # Static brand assets
+│   └── index.ts                 # Wrapper đầu vào cho Vercel Serverless
+├── assets/                      # Tài sản thương hiệu tĩnh
 ├── data/
-│   └── db.json                  # Flat-file JSON database (git-ignored, auto-generated)
+│   └── db.json                  # Cơ sở dữ liệu JSON cục bộ (git-ignored, tự động tạo)
 ├── src/
 │   ├── components/
-│   │   ├── AdminCMS.tsx         # Enterprise admin console (Dashboard, CRUD, Media Library)
-│   │   ├── PublicPages.tsx      # Core public website routing and layout
+│   │   ├── AdminCMS.tsx         # Giao diện quản trị doanh nghiệp (Dashboard, CRUD, Media Library)
+│   │   ├── PublicPages.tsx      # Định tuyến và bố cục trang công cộng chính
 │   │   ├── Header.tsx / Footer.tsx
 │   │   ├── HeroSection.tsx
-│   │   └── ...                  # Modular UI components
+│   │   └── ...                  # Các thành phần UI mô-đun
 │   ├── lib/
-│   │   └── supabase.ts          # Supabase client instantiation
-│   ├── App.tsx                  # Application shell, state controller, virtual router
-│   ├── main.tsx                 # Client bootstrap
-│   ├── types.ts                 # Shared TypeScript interfaces & types
-│   └── index.css                # Global styles & Tailwind v4 directives
-├── server.ts                    # Backend Express API & static client host
-├── tsconfig.json                # TypeScript configurations
-├── vite.config.ts               # Vite configuration (Tailwind v4 integration)
-└── package.json                 # Build scripts & dependency manifests
+│   │   └── supabase.ts          # Khởi tạo Supabase client
+│   ├── App.tsx                  # Khung ứng dụng, bộ điều khiển trạng thái, định tuyến ảo (virtual router)
+│   ├── main.tsx                 # Điểm khởi chạy phía client
+│   ├── types.ts                 # Các interface và kiểu dữ liệu TypeScript dùng chung
+│   └── index.css                # Style toàn cục & cấu hình Tailwind v4
+├── server.ts                    # Backend Express API & máy chủ chạy static client
+├── tsconfig.json                # Cấu hình TypeScript
+├── vite.config.ts               # Cấu hình Vite (tích hợp Tailwind v4)
+└── package.json                 # Kịch bản build & quản lý thư viện phụ thuộc (dependencies)
 ```
 
 ---
 
-## 🔐 Credentials & Security
+## 🔐 Tài khoản & Bảo mật
 
-For testing and local development, the database contains pre-seeded accounts:
+Để thử nghiệm và phát triển cục bộ, cơ sở dữ liệu đã chứa sẵn các tài khoản mẫu:
 
-* **Administrator Account**
-  * **Username**: `admin`
-  * **Password**: `admin123`
-* **Editor Account**
-  * **Username**: `editor`
-  * **Password**: `editor123`
+* **Tài khoản Quản trị viên (Administrator)**
+  * **Tên đăng nhập**: `admin`
+  * **Mật khẩu**: `admin123`
+* **Tài khoản Biên tập viên (Editor)**
+  * **Tên đăng nhập**: `editor`
+  * **Mật khẩu**: `editor123`
 
-### Accessing the Admin Console
-You can trigger the Administrator Login portal via three methods:
-1. Append `#admin` or `#cms` to the browser URL (e.g., `http://localhost:3000/#admin`).
-2. Add query parameters `?portal=admin` or `?cms_login=true` to the URL.
-3. Use the global shortcut key: **`Ctrl + Alt + A`** inside the browser.
+### Truy cập Trang Quản trị
+Bạn có thể mở cổng đăng nhập Quản trị viên thông qua ba cách:
+1. Thêm `#admin` hoặc `#cms` vào URL trình duyệt (ví dụ: `http://localhost:3000/#admin`).
+2. Thêm tham số truy vấn `?portal=admin` hoặc `?cms_login=true` vào URL.
+3. Sử dụng phím tắt toàn cục: **`Ctrl + Alt + A`** trong trình duyệt.
 
 ---
 
-## 🚀 Running Locally
+## 🚀 Chạy ứng dụng Cục bộ
 
-### Prerequisites
-* [Node.js](https://nodejs.org/) (v18 or higher recommended)
+### Yêu cầu tối thiểu
+* [Node.js](https://nodejs.org/) (Khuyến nghị v18 trở lên)
 * NPM
 
-### 1. Install Dependencies
+### 1. Cài đặt thư viện phụ thuộc
 ```bash
 npm install
 ```
 
-### 2. Configure Environment Variables
-Create a `.env` file in the root directory. You can copy the structure from `.env.example`:
+### 2. Cấu hình biến môi trường
+Tạo một tệp `.env` trong thư mục gốc. Bạn có thể sao chép cấu trúc từ `.env.example`:
 ```ini
 # Database & Sync (Supabase)
 SUPABASE_URL="https://your-project-id.supabase.co"
@@ -104,48 +104,50 @@ SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
 # Session Security
 JWT_SECRET="YOUR_RANDOM_JWT_SECRET_STRING_MINIMUM_32_BYTES"
 ```
-*Note: If no Supabase environment variables are provided, the backend falls back to using the local `data/db.json` database autonomously.*
+*Lưu ý: Nếu không cung cấp các biến môi trường Supabase, backend sẽ tự động chuyển sang sử dụng cơ sở dữ liệu cục bộ `data/db.json` một cách độc lập.*
 
-### 3. Start Development Server
+### 3. Khởi động Máy chủ Phát triển (Dev Server)
 ```bash
 npm run dev
 ```
-The server will boot the Express backend and Vite middleware, running on: **[http://localhost:3000](http://localhost:3000)**.
+Máy chủ sẽ khởi chạy backend Express và middleware Vite tại địa chỉ: **[http://localhost:3000](http://localhost:3000)**.
 
-### 4. Build and Production Run
-To bundle the frontend using Vite and compile the backend using ESBuild:
+### 4. Build và Chạy Bản Production
+Để đóng gói frontend bằng Vite và biên dịch backend bằng ESBuild:
 ```bash
-# Compile client and server bundles
+# Biên dịch các bản bundle cho client và server
 npm run build
 
-# Start the compiled production server
+# Khởi chạy máy chủ production đã biên dịch
 npm run start
 ```
 
-### 5. Code Quality & Type Safety
-To check for TypeScript compiler errors:
+### 5. Kiểm tra Chất lượng Code & Kiểu dữ liệu
+Để kiểm tra lỗi biên dịch TypeScript:
 ```bash
 npm run lint
 ```
 
 ---
 
-## 💡 Developer Guidelines for Agentic Workflows
+## 💡 Hướng dẫn cho Nhà phát triển (Developer Guidelines)
 
-When editing or extending this codebase, please keep these structural elements in mind:
+Khi chỉnh sửa hoặc mở rộng mã nguồn này, vui lòng lưu ý các yếu tố cấu trúc sau:
 
-### 1. State Management & Virtual Routing
-* Avoid introducing standard router packages (like `react-router-dom`). The project utilizes a **Virtual Routing System** managed by `currentPath` state in `src/App.tsx` mapped directly inside `src/components/PublicPages.tsx` and `src/components/AdminCMS.tsx`.
-* Page links use standard string paths. If you create new paths, register them in `src/App.tsx`'s virtual router logic (and SEO updater `useEffect` block) and `src/components/PublicPages.tsx`.
+### 1. Quản lý Trạng thái & Định tuyến Ảo (Virtual Routing)
+* Tránh sử dụng các thư viện định tuyến tiêu chuẩn (như `react-router-dom`). Dự án sử dụng một **Hệ thống định tuyến ảo (Virtual Routing System)** được quản lý bởi trạng thái `currentPath` trong [App.tsx](file:///d:/Project/pentair-website/src/App.tsx), được ánh xạ trực tiếp bên trong [PublicPages.tsx](file:///d:/Project/pentair-website/src/components/PublicPages.tsx) và [AdminCMS.tsx](file:///d:/Project/pentair-website/src/components/AdminCMS.tsx).
+* Các liên kết trang sử dụng chuỗi đường dẫn tiêu chuẩn. Nếu bạn tạo các đường dẫn mới, hãy đăng ký chúng trong logic bộ định tuyến ảo của [App.tsx](file:///d:/Project/pentair-website/src/App.tsx) (cùng khối `useEffect` cập nhật SEO) và [PublicPages.tsx](file:///d:/Project/pentair-website/src/components/PublicPages.tsx).
 
-### 2. Database IO Operations (`server.ts`)
-* Database reading/writing is processed by `readDb()` and `writeDb()`. 
-* All administrative changes write directly to `data/db.json` and are asynchronously pushed to Supabase via `saveDbToSupabase()`.
-* **Important:** If `data/db.json` is missing or empty, `readDb()` catches the exception and populates it with the pre-seeded default configurations.
+### 2. Thao tác Cơ sở dữ liệu IO (`server.ts`)
+* Việc đọc/ghi cơ sở dữ liệu được xử lý bởi `readDb()` và `writeDb()`.
+* Tất cả các thay đổi quản trị được ghi trực tiếp vào `data/db.json` và được đẩy không đồng bộ lên Supabase thông qua `saveDbToSupabase()`.
+* **Quan trọng:** Nếu `data/db.json` bị thiếu hoặc trống, `readDb()` sẽ bắt ngoại lệ và tự động điền các cấu hình mặc định ban đầu.
 
-### 3. Input Sanitization
-* All user-facing input fields (posts, page descriptions, form entries) must run through Express backend helpers `sanitizeString()` or `sanitizeHtml()` in `server.ts` before database commits to mitigate Cross-Site Scripting (XSS) risks.
+### 3. Làm sạch dữ liệu đầu vào (Input Sanitization)
+* Tất cả các trường nhập liệu phía người dùng (bài viết, mô tả trang, thông tin form) phải được chạy qua các hàm bổ trợ ở backend Express `sanitizeString()` hoặc `sanitizeHtml()` trong `server.ts` trước khi ghi vào cơ sở dữ liệu để giảm thiểu rủi ro Tấn công giả mạo yêu cầu chéo trang (XSS).
 
-### 4. TailwindCSS v4 Usage
-* Tailwind CSS v4 is used here via the `@tailwindcss/vite` plugin. Directives are located in `src/index.css`.
-* Do not attempt to use `tailwind.config.js` as config is done directly through CSS variables in `src/index.css`.
+### 4. Sử dụng TailwindCSS v4
+* Tailwind CSS v4 được sử dụng thông qua plugin `@tailwindcss/vite`. Các directive cấu hình nằm trong [index.css](file:///d:/Project/pentair-website/src/index.css).
+* Không cố gắng sử dụng tệp `tailwind.config.js` vì cấu hình được thực hiện trực tiếp thông qua các biến CSS trong [index.css](file:///d:/Project/pentair-website/src/index.css).
+
+---

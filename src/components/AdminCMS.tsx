@@ -1031,7 +1031,8 @@ export default function AdminCMS({
     email: 'pentairvn@gmail.com',
     address: '90 Đ. Đinh Thị Thi, Khu đô Thị Vạn Phúc, Thủ Đức, Hồ Chí Minh',
     facebook: 'https://www.facebook.com/PentairVietNamOfficial',
-    youtube: 'https://www.youtube.com/@PentairVietNamOfficial'
+    youtube: 'https://www.youtube.com/@PentairVietNamOfficial',
+    favicon: ''
   });
   const [seoForm, setSeoForm] = React.useState({
     metaTitle: 'Pentair Việt Nam | Máy lọc nước tổng cao cấp nhập khẩu Mỹ',
@@ -1241,7 +1242,8 @@ export default function AdminCMS({
         email: brand.email || 'pentairvn@gmail.com',
         address: brand.address || '90 Đ. Đinh Thị Thi, Khu đô Thị Vạn Phúc, Thủ Đức, Hồ Chí Minh',
         facebook: brand.facebook || '',
-        youtube: brand.youtube || ''
+        youtube: brand.youtube || '',
+        favicon: brand.favicon || ''
       });
 
       setSeoForm({
@@ -3777,6 +3779,16 @@ export default function AdminCMS({
                       value={brandForm.address}
                       onChange={e => setBrandForm({ ...brandForm, address: e.target.value })}
                       className="w-full p-2 text-xs rounded bg-gray-50 border focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase block">Favicon (.ico, .png, .svg)</label>
+                    <ImageThumbInput
+                      value={brandForm.favicon || ''}
+                      onChange={v => setBrandForm({ ...brandForm, favicon: v })}
+                      onPick={() => setActiveMediaSelector({ target: 'brand_favicon' })}
+                      placeholder="/favicon.ico"
                     />
                   </div>
 
@@ -7457,6 +7469,8 @@ export default function AdminCMS({
                       if (!trimmed) return url;
                       return trimmed.endsWith(',') ? `${trimmed} ${url}` : `${trimmed}, ${url}`;
                     });
+                  } else if (target === 'brand_favicon') {
+                    setBrandForm(prev => ({ ...prev, favicon: url }));
                   } else if (target === 'logo_image') {
                     setHeaderSettings(prev => ({ ...prev, logoImageUrl: url }));
                   } else if (target === 'footer_logo_image') {

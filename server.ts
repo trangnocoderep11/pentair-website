@@ -4075,6 +4075,19 @@ app.get("/robots.txt", (req, res) => {
   res.send(`User-agent: *\nDisallow: /admin/\nAllow: /\n\nSitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`);
 });
 
+// Dynamic SEO favicon redirect endpoint
+app.get("/favicon.ico", (req, res) => {
+  const brandOpt = db.options.find((o: any) => o.optionName === "brand_settings")?.optionValue;
+  if (brandOpt && brandOpt.favicon) {
+    return res.redirect(brandOpt.favicon);
+  }
+  const defaultPath = path.join(process.cwd(), "public", "favicon.ico");
+  if (fs.existsSync(defaultPath)) {
+    return res.sendFile(defaultPath);
+  }
+  res.status(404).end();
+});
+
 // Vite server boot connection / Static Server in Production
 async function startServer() {
   if (isSetupMode) {

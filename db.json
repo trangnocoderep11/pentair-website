@@ -519,7 +519,8 @@
         "youtube": "https://www.youtube.com/@PentairVietNamOfficial",
         "facebook": "https://www.facebook.com/PentairVietNamOfficial",
         "siteName": "Pentair Việt Nam",
-        "colorTheme": "#0C3471"
+        "colorTheme": "#0C3471",
+        "favicon": "/uploads/1784518613290-Logo-_pentair.webp"
       }
     },
     {
@@ -3629,6 +3630,15 @@
       "folderId": "folder-fcbe8baf-fe1f-48c0-a59a-52025ee50691",
       "createdAt": "2026-06-10T08:05:51.115Z",
       "updatedAt": "2026-06-10T08:05:51.116Z"
+    },
+    {
+      "id": "media-f289cebd-bcfb-4c60-8d42-04d754299c32",
+      "title": "Logo- pentair.webp",
+      "url": "/uploads/1784518613290-Logo-_pentair.webp",
+      "mimeType": "image/webp",
+      "fileSize": 50878,
+      "createdAt": "2026-07-20T03:36:53.291Z",
+      "updatedAt": "2026-07-20T03:36:53.291Z"
     }
   ]
 }
