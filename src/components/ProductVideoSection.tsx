@@ -279,7 +279,7 @@ export default function ProductVideoSection({
                         key={vid.id}
                         onClick={() => {
                           setSelectedVid(vid);
-                          setIsPlaying(false);
+                          setIsPlaying(true);
                         }}
                         className={`flex gap-3 p-2.5 rounded-xl cursor-pointer select-none border transition-all duration-300 ${
                           isActive 
