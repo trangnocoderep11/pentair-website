@@ -198,7 +198,7 @@ export default function ContactCTASection({ brandSettings }: ContactCTASectionPr
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label htmlFor="form-email" className="text-[10px] font-mono font-black text-gray-400 uppercase tracking-widest block">
-                        Email nhận giải pháp (Tùy chọn)
+                        Email (Không bắt buộc)
                       </label>
                       <input 
                         id="form-email"
