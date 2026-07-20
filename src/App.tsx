@@ -353,6 +353,27 @@ export default function App() {
   }
 
   // ----------------------------------------------------
+  // PREMIUM LOADING GATE
+  // ----------------------------------------------------
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen bg-[#0C3471] flex flex-col items-center justify-center font-sans text-white p-4">
+        <div className="flex flex-col items-center space-y-6">
+          {/* Logo brand with pulse */}
+          <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-xl shadow-blue-950/50 animate-pulse">
+            <span className="text-[#0C3471] font-black text-3xl font-mono">P</span>
+          </div>
+          <div className="text-center space-y-2">
+            <h1 className="text-xl font-black uppercase tracking-[0.2em] text-white">PENTAIR</h1>
+            <p className="text-xs text-blue-200 tracking-wider font-light uppercase">Tinh Hoa Lọc Nước Từ Mỹ</p>
+          </div>
+          <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin mt-2"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------
   // RENDER CANVAS GATE
   // ----------------------------------------------------
   return (

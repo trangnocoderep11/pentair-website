@@ -1529,8 +1529,8 @@ async function loadDbFromSupabase() {
   try {
     console.log("[POSTGRES SYNC] Đang kéo bản sao dữ liệu cao cấp từ PostgreSQL...");
 
-    // Phase 1: schema migration — only on first cold start; warm instances skip this
-    if (!tablesEnsured) {
+    // Phase 1: schema migration — only on first cold start; skip on Vercel (production DB is already migrated)
+    if (!tablesEnsured && !process.env.VERCEL) {
       const client = await postgresPool.connect();
       try {
         await ensureTablesExist(client);
@@ -1538,27 +1538,27 @@ async function loadDbFromSupabase() {
       } finally {
         client.release();
       }
+    } else {
+      tablesEnsured = true;
     }
 
-    // Phase 1b: count check via pool (no need to hold a dedicated client)
-    const postsCheck = await postgresPool.query("SELECT COUNT(*) as cnt FROM public.posts");
-    let hasRealData = parseInt(postsCheck.rows[0].cnt) > 0;
+    // Phase 2: load all tables in parallel — each pool.query() takes its own connection
+    // so there is no concurrent-query DeprecationWarning and no connection starvation.
+    const [postsRes, termsRes, usersRes, subsRes, videosRes, perspRes, foldersRes, itemsRes, optsRes] = await Promise.all([
+      postgresPool.query("SELECT * FROM public.posts ORDER BY menu_order ASC"),
+      postgresPool.query("SELECT * FROM public.terms"),
+      postgresPool.query("SELECT * FROM public.users"),
+      postgresPool.query("SELECT * FROM public.submissions ORDER BY created_at DESC"),
+      postgresPool.query("SELECT * FROM public.videos ORDER BY sort_order ASC"),
+      postgresPool.query("SELECT * FROM public.perspectives ORDER BY sort_order ASC"),
+      postgresPool.query("SELECT * FROM public.media_folders"),
+      postgresPool.query("SELECT * FROM public.media_items ORDER BY created_at DESC"),
+      postgresPool.query("SELECT * FROM public.options WHERE option_name != 'cms_database_backup'"),
+    ]);
 
-      if (hasRealData) {
-        // Phase 2: load all tables in parallel — each pool.query() takes its own connection
-        // so there is no concurrent-query DeprecationWarning and no connection starvation.
-        const [postsRes, termsRes, usersRes, subsRes, videosRes, perspRes, foldersRes, itemsRes, optsRes] = await Promise.all([
-          postgresPool.query("SELECT * FROM public.posts ORDER BY menu_order ASC"),
-          postgresPool.query("SELECT * FROM public.terms"),
-          postgresPool.query("SELECT * FROM public.users"),
-          postgresPool.query("SELECT * FROM public.submissions ORDER BY created_at DESC"),
-          postgresPool.query("SELECT * FROM public.videos ORDER BY sort_order ASC"),
-          postgresPool.query("SELECT * FROM public.perspectives ORDER BY sort_order ASC"),
-          postgresPool.query("SELECT * FROM public.media_folders"),
-          postgresPool.query("SELECT * FROM public.media_items ORDER BY created_at DESC"),
-          postgresPool.query("SELECT * FROM public.options WHERE option_name != 'cms_database_backup'"),
-        ]);
+    let hasRealData = postsRes.rows.length > 0;
 
+    if (hasRealData) {
         db.posts = postsRes.rows.map((r: any) => ({
           id: r.id, title: r.title, slug: r.slug, content: r.content,
           excerpt: r.excerpt, type: r.type, status: r.status,
