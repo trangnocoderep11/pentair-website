@@ -73,12 +73,27 @@ export default function App() {
   };
 
   // DATABASE GLOBAL STATES
-  const [posts, setPosts] = React.useState<Post[]>(initialData.posts as Post[]);
-  const [terms, setTerms] = React.useState<Term[]>(initialData.terms as Term[]);
-  const [options, setOptions] = React.useState<any[]>(initialData.options);
+  // Load cached database from localStorage if available to avoid cold start delay showing stale initialData
+  const getCachedData = () => {
+    try {
+      const cached = localStorage.getItem('pentair_cms_cache');
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (e) {
+      console.error('Failed to parse cached CMS data', e);
+    }
+    return null;
+  };
+
+  const cache = getCachedData();
+
+  const [posts, setPosts] = React.useState<Post[]>((cache?.posts || initialData.posts) as Post[]);
+  const [terms, setTerms] = React.useState<Term[]>((cache?.terms || initialData.terms) as Term[]);
+  const [options, setOptions] = React.useState<any[]>(cache?.options || initialData.options);
   const [submissions, setSubmissions] = React.useState<FormSubmission[]>([]);
-  const [videos, setVideos] = React.useState<any[]>(initialData.videos);
-  const [perspectives, setPerspectives] = React.useState<any[]>(initialData.perspectives);
+  const [videos, setVideos] = React.useState<any[]>(cache?.videos || initialData.videos);
+  const [perspectives, setPerspectives] = React.useState<any[]>(cache?.perspectives || initialData.perspectives);
   
   // LOGIN USER SESSION STATE
   const [currentUser, setCurrentUser] = React.useState<any>(null);
@@ -131,6 +146,19 @@ export default function App() {
       setVideos(data.videos || []);
       setPerspectives(data.perspectives || []);
       setSubmissions(data.submissions || []);
+
+      // Cache fresh public data to localStorage
+      try {
+        localStorage.setItem('pentair_cms_cache', JSON.stringify({
+          posts: data.posts || [],
+          terms: data.terms || [],
+          options: data.options || [],
+          videos: data.videos || [],
+          perspectives: data.perspectives || []
+        }));
+      } catch (e) {
+        console.error('Failed to cache CMS data', e);
+      }
 
     } catch (err: any) {
       console.error(err);
