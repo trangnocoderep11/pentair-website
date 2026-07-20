@@ -13,6 +13,55 @@ import { HelpCircle, RefreshCw } from 'lucide-react';
 import ShoppingCart from './components/ShoppingCart';
 import { initialData } from './initialData';
 
+function decodeHTMLEntities(str: string): string {
+  if (!str) return '';
+  try {
+    if (typeof document === 'undefined') return str;
+    const txt = document.createElement('textarea');
+    txt.innerHTML = str;
+    let val = txt.value;
+    for (let i = 0; i < 2; i++) {
+      if (!val.includes('&')) break;
+      const prev = val;
+      txt.innerHTML = val;
+      val = txt.value;
+      if (val === prev) break;
+    }
+    return val;
+  } catch (e) {
+    return str;
+  }
+}
+
+function cleanPostData(post: any) {
+  if (!post) return post;
+  return {
+    ...post,
+    title: decodeHTMLEntities(post.title),
+    excerpt: decodeHTMLEntities(post.excerpt),
+    content: decodeHTMLEntities(post.content)
+  };
+}
+
+function cleanPerspectiveData(per: any) {
+  if (!per) return per;
+  return {
+    ...per,
+    title: decodeHTMLEntities(per.title),
+    excerpt: decodeHTMLEntities(per.excerpt),
+    content: decodeHTMLEntities(per.content)
+  };
+}
+
+function cleanVideoData(vid: any) {
+  if (!vid) return vid;
+  return {
+    ...vid,
+    title: decodeHTMLEntities(vid.title),
+    description: decodeHTMLEntities(vid.description)
+  };
+}
+
 export default function App() {
   
   // REAL URL ROUTER — reads actual pathname so reloads land on the right page
@@ -88,12 +137,18 @@ export default function App() {
 
   const cache = getCachedData();
 
-  const [posts, setPosts] = React.useState<Post[]>((cache?.posts || initialData.posts) as Post[]);
-  const [terms, setTerms] = React.useState<Term[]>((cache?.terms || initialData.terms) as Term[]);
-  const [options, setOptions] = React.useState<any[]>(cache?.options || initialData.options);
+  const rawPosts = cache?.posts || initialData.posts;
+  const rawTerms = cache?.terms || initialData.terms;
+  const rawOptions = cache?.options || initialData.options;
+  const rawVideos = cache?.videos || initialData.videos;
+  const rawPerspectives = cache?.perspectives || initialData.perspectives;
+
+  const [posts, setPosts] = React.useState<Post[]>(rawPosts.map(cleanPostData) as Post[]);
+  const [terms, setTerms] = React.useState<Term[]>(rawTerms as Term[]);
+  const [options, setOptions] = React.useState<any[]>(rawOptions);
   const [submissions, setSubmissions] = React.useState<FormSubmission[]>([]);
-  const [videos, setVideos] = React.useState<any[]>(cache?.videos || initialData.videos);
-  const [perspectives, setPerspectives] = React.useState<any[]>(cache?.perspectives || initialData.perspectives);
+  const [videos, setVideos] = React.useState<any[]>(rawVideos.map(cleanVideoData));
+  const [perspectives, setPerspectives] = React.useState<any[]>(rawPerspectives.map(cleanPerspectiveData));
   
   // LOGIN USER SESSION STATE
   const [currentUser, setCurrentUser] = React.useState<any>(null);
@@ -140,21 +195,27 @@ export default function App() {
 
       const data = await res.json();
 
-      setPosts(data.posts || []);
-      setTerms(data.terms || []);
-      setOptions(data.options || []);
-      setVideos(data.videos || []);
-      setPerspectives(data.perspectives || []);
+      const freshPosts = (data.posts || []).map(cleanPostData);
+      const freshTerms = data.terms || [];
+      const freshOptions = data.options || [];
+      const freshVideos = (data.videos || []).map(cleanVideoData);
+      const freshPerspectives = (data.perspectives || []).map(cleanPerspectiveData);
+
+      setPosts(freshPosts);
+      setTerms(freshTerms);
+      setOptions(freshOptions);
+      setVideos(freshVideos);
+      setPerspectives(freshPerspectives);
       setSubmissions(data.submissions || []);
 
       // Cache fresh public data to localStorage
       try {
         localStorage.setItem('pentair_cms_cache', JSON.stringify({
-          posts: data.posts || [],
-          terms: data.terms || [],
-          options: data.options || [],
-          videos: data.videos || [],
-          perspectives: data.perspectives || []
+          posts: freshPosts,
+          terms: freshTerms,
+          options: freshOptions,
+          videos: freshVideos,
+          perspectives: freshPerspectives
         }));
       } catch (e) {
         console.error('Failed to cache CMS data', e);
