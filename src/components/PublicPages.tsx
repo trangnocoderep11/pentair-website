@@ -7,7 +7,7 @@ import React from 'react';
 import { 
   Award, Shield, Zap, Sparkles, AlertCircle, RefreshCw, CheckCircle2, 
   ChevronRight, Calendar, User, Search, MapPin, Phone, HelpCircle, ArrowRight,
-  ShoppingBag, CreditCard, Plus, Minus
+  ShoppingBag, CreditCard, Plus, Minus, Mail
 } from 'lucide-react';
 import { Post, Term } from '../types';
 import Breadcrumb from './Breadcrumb';
@@ -599,44 +599,22 @@ export default function PublicPages({
               </div>
 
 
-              {/* Premium Cart/Buy actions */}
-              <div className="mt-6 pt-5 border-t border-gray-100 flex flex-col sm:flex-row items-center gap-4">
-                <div className="flex items-center border border-gray-200 rounded-xl bg-slate-50 overflow-hidden h-11 shrink-0">
-                  <button 
-                    type="button"
-                    onClick={() => setDetailQty(Math.max(1, detailQty - 1))}
-                    className="px-3 h-full hover:bg-gray-150 transition-colors text-gray-500 font-bold hover:text-gray-800 cursor-pointer"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="w-10 text-center text-sm font-mono font-bold text-gray-800">{detailQty}</span>
-                  <button 
-                    type="button"
-                    onClick={() => setDetailQty(detailQty + 1)}
-                    className="px-3 h-full hover:bg-gray-150 transition-colors text-gray-500 font-bold hover:text-gray-800 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                <div className="flex-grow w-full grid grid-cols-2 gap-3.5">
-                  <button 
-                    type="button"
-                    onClick={() => onAddToCart(product, detailQty, false)}
-                    className="h-11 bg-blue-50 hover:bg-blue-100 text-pentair border border-blue-100 font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    <ShoppingBag className="w-4 h-4 text-pentair" />
-                    Thêm giỏ hàng
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => onAddToCart(product, detailQty, true)}
-                    className="h-11 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md hover:shadow-lg focus:ring-2 focus:ring-rose-250"
-                  >
-                    <CreditCard className="w-4 h-4" />
-                    Mua Ngay
-                  </button>
-                </div>
+              {/* Premium Cart/Buy actions replaced by Consultation CTA */}
+              <div className="mt-6 pt-5 border-t border-gray-100">
+                <button 
+                  type="button"
+                  onClick={() => {
+                    document.getElementById('product-consultation-form')?.scrollIntoView({ behavior: 'smooth' });
+                    setTimeout(() => {
+                      const nameInput = document.querySelector('#product-consultation-form input[type="text"]') as HTMLInputElement;
+                      if (nameInput) nameInput.focus();
+                    }, 500);
+                  }}
+                  className="w-full h-12 bg-rose-600 hover:bg-rose-700 text-white font-black text-sm uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  <Mail className="w-4.5 h-4.5" />
+                  Nhận tư vấn ngay
+                </button>
               </div>
             </div>
 
@@ -656,7 +634,7 @@ export default function PublicPages({
             )}
 
             {/* CTA Consulting Registration */}
-            <div className="bg-gradient-to-br from-pentair to-pentair-dark text-white p-6 rounded-2xl shadow-xl shadow-blue-900/10">
+            <div id="product-consultation-form" className="bg-gradient-to-br from-pentair to-pentair-dark text-white p-6 rounded-2xl shadow-xl shadow-blue-900/10">
               <h4 className="text-base font-bold uppercase">ĐĂNG KÝ TƯ VẤN SẢN PHẨM</h4>
               <p className="text-xs text-blue-200 mt-1 leading-relaxed">Để lại thông tin liên hệ để nhận tư vấn chi tiết về cấu hình hệ thống lọc nước và giải pháp tối ưu từ chuyên gia Pentair.</p>
               
@@ -1771,28 +1749,16 @@ export default function PublicPages({
                 </div>
 
                 {/* Purchase Actions */}
-                <div className="grid grid-cols-2 gap-2 pt-2">
+                <div className="pt-2">
                   <button 
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onAddToCart(prod, 1, false);
+                      onNavigate(`/san-pham/${prod.slug}`);
                     }}
-                    className="py-2.5 px-3 bg-blue-50/70 hover:bg-blue-100 text-pentair transition-all text-[11px] font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer border border-blue-100/40"
+                    className="w-full py-2.5 px-3 bg-blue-50 hover:bg-blue-100 text-pentair border border-blue-100/50 transition-all text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <ShoppingBag className="w-3.5 h-3.5" />
-                    Thêm giỏ hàng
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAddToCart(prod, 1, true);
-                    }}
-                    className="py-2.5 px-3 bg-rose-600 hover:bg-rose-700 text-white transition-all text-[11px] font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
-                  >
-                    <CreditCard className="w-3.5 h-3.5" />
-                    Mua Ngay
+                    Nhận tư vấn ngay
                   </button>
                 </div>
                 

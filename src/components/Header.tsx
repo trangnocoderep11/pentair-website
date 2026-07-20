@@ -119,20 +119,6 @@ export default function Header({
 
         {/* Action Controls */}
         <div className="hidden lg:flex items-center space-x-4">
-          <button
-            onClick={onOpenCart}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-rose-50/50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold tracking-wide transition-all border border-rose-100/40 uppercase relative cursor-pointer"
-            id="btn-desktop-cart"
-          >
-            <ShoppingBag className="w-4 h-4 text-rose-500 shrink-0" />
-            Giỏ hàng
-            {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white font-sans font-bold text-[9px] w-5 h-5 rounded-full flex items-center justify-center border border-white shadow animate-pulse">
-                {cartCount}
-              </span>
-            )}
-          </button>
-
           {currentUser ? (
             <div className="flex items-center gap-3">
               <button 
@@ -157,20 +143,6 @@ export default function Header({
 
         {/* Mobile menu toggle */}
         <div className="flex items-center gap-3 lg:hidden">
-          <button
-            onClick={onOpenCart}
-            className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 border border-rose-100 cursor-pointer relative"
-            id="btn-mobile-cart"
-            aria-label="Giỏ hàng"
-          >
-            <ShoppingBag className="w-5 h-5" />
-            {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white font-sans font-semibold text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center border border-white shadow">
-                {cartCount}
-              </span>
-            )}
-          </button>
-
           {currentUser ? (
             <button
               onClick={onOpenAdmin}
