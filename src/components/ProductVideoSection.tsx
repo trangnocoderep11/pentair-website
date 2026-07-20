@@ -165,25 +165,7 @@ export default function ProductVideoSection({
           </p>
         </div>
 
-        {/* VIDEOS FILTER CATEGORY TAB HEADERS */}
-        <div className="flex flex-wrap items-center justify-center gap-2 mb-8 border-b border-white/5 pb-4">
-          {VIDEO_CATEGORIES.map(cat => {
-            const isActive = activeTab === cat.value;
-            return (
-              <button
-                key={cat.value}
-                onClick={() => setActiveTab(cat.value)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-300 cursor-pointer ${
-                  isActive 
-                    ? 'bg-[#E6C073] border-[#E6C073] text-[#030612] shadow-md shadow-amber-500/10' 
-                    : 'bg-white/5 border-white/10 text-slate-300 hover:border-white/20'
-                }`}
-              >
-                {cat.label}
-              </button>
-            );
-          })}
-        </div>
+
 
         {/* INTEGRATED THEATRIC LAYOUT GRID */}
         {selectedVid ? (
