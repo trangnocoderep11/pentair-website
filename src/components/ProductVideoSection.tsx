@@ -89,9 +89,9 @@ export default function ProductVideoSection({
     setIsPlaying(false);
   }, [activeTab]);
 
-  // When real videos load from API (videos prop changes), reset selection
+  // When real videos load from API (videos prop changes), reset selection only if the user is not actively watching
   React.useEffect(() => {
-    if (filteredVideos.length > 0) {
+    if (filteredVideos.length > 0 && !isPlaying) {
       setSelectedVid(filteredVideos.find(v => v.isFeatured) || filteredVideos[0]);
       setIsPlaying(false);
     }
