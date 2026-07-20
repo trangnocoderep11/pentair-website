@@ -37,15 +37,15 @@ export default function ExploreMoreSection({ products, onNavigate }: ExploreMore
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
         {/* Section Heading */}
-        <div className="max-w-3xl mx-auto text-center mb-16 space-y-4">
+        <div className="max-w-5xl mx-auto text-center mb-16 space-y-4">
           <span className="text-[10px] font-mono font-black text-[#E6C073] tracking-widest uppercase bg-[#E6C073]/10 border border-[#E6C073]/20 px-3 py-1 rounded inline-block">
             Specialized Water Solutions
           </span>
-          <h2 className="text-3xl sm:text-4xl font-sans font-black uppercase tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-sans font-black uppercase tracking-tight leading-tight">
             Khám phá thêm giải pháp Pentair
           </h2>
           <div className="w-12 h-1 bg-[#E6C073] mx-auto mt-2" />
-          <p className="text-xs sm:text-sm text-slate-300 font-sans font-light max-w-xl mx-auto leading-relaxed">
+          <p className="text-sm md:text-base text-slate-200 font-sans font-normal max-w-2xl mx-auto leading-relaxed">
             Dải sản phẩm chuyên biệt đáp ứng đa dạng yêu cầu nghiêm ngặt từ lâu đài châu Âu cổ điển đến dự án nghỉ dưỡng siêu đô thị đẳng cấp.
           </p>
         </div>
