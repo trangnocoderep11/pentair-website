@@ -44,8 +44,8 @@ export default function FeaturedProductsSection({ products, onNavigate }: Featur
             <div className="w-12 h-[3px] bg-[#E6C073] mt-2" />
           </div>
           
-          <div className="max-w-md">
-            <p className="text-xs sm:text-sm text-gray-500 font-sans font-light leading-relaxed">
+          <div className="max-w-xl">
+            <p className="text-sm sm:text-base text-gray-600 font-sans font-normal leading-relaxed">
               Giải pháp lọc và làm mềm nước toàn diện nhập khẩu chính ngạch từ Pentair Hoa Kỳ. Trải nghiệm cảm giác làn nước dịu nhẹ bảo vệ hạ tầng sinh hoạt và sắc đẹp tuổi xuân.
             </p>
           </div>

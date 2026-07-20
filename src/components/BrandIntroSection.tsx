@@ -33,7 +33,7 @@ export default function BrandIntroSection({ introTitle, introBody, onNavigate, h
               <div className="w-16 h-1 bg-[#E6C073] mt-2" />
             </div>
 
-            <p className="text-sm md:text-base text-gray-500 leading-relaxed font-sans font-light whitespace-pre-line">
+            <p className="text-sm md:text-base text-gray-600 leading-relaxed font-sans font-normal whitespace-pre-line">
               {homepageSettings.introBody || introBody}
             </p>
 

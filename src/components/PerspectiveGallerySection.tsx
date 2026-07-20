@@ -77,12 +77,12 @@ export default function PerspectiveGallerySection({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Generous section header details */}
-        <div className="max-w-3xl mx-auto text-center mb-16 space-y-3">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black uppercase text-[#0B2144] tracking-tight">
+        <div className="max-w-5xl mx-auto text-center mb-16 space-y-3">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black uppercase text-[#0B2144] tracking-tight leading-tight">
             {galleryTitle}
           </h2>
           <div className="w-12 h-[3px] bg-amber-500 mx-auto mt-2" />
-          <p className="text-xs sm:text-sm text-gray-500 font-sans font-light max-w-xl mx-auto leading-relaxed">
+          <p className="text-sm md:text-base text-gray-600 font-sans font-normal max-w-2xl mx-auto leading-relaxed">
             {gallerySubtitle}
           </p>
         </div>

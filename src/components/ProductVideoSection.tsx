@@ -152,15 +152,15 @@ export default function ProductVideoSection({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
         {/* Visual Title Section */}
-        <div className="text-center max-w-3xl mx-auto mb-10 space-y-3">
+        <div className="text-center max-w-5xl mx-auto mb-10 space-y-3">
           <span className="text-[9px] font-mono tracking-widest text-amber-500 bg-white/5 border border-white/10 px-3 py-1 rounded inline-block uppercase font-bold">
             Interactive Video Playlist
           </span>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white uppercase tracking-tight">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white uppercase tracking-tight leading-tight">
             {videoTitle}
           </h2>
           <div className="w-12 h-1 bg-[#E6C073] mx-auto mt-2" />
-          <p className="text-xs sm:text-sm text-slate-400 font-sans font-light max-w-xl mx-auto leading-relaxed">
+          <p className="text-sm md:text-base text-slate-300 font-sans font-normal max-w-2xl mx-auto leading-relaxed">
             {videoSubtitle}
           </p>
         </div>
