@@ -2315,7 +2315,7 @@ export default function PublicPages({
         posts={posts} 
         onNavigate={onNavigate} 
       />
-      <ContactCTASection />
+      <ContactCTASection brandSettings={brandSettings} />
     </div>
   );
 }

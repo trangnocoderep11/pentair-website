@@ -2,7 +2,19 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, PhoneCall, Mail, MapPin, CheckCircle2, Clock } from 'lucide-react';
 
-export default function ContactCTASection() {
+interface ContactCTASectionProps {
+  brandSettings?: {
+    email: string;
+    phone: string;
+    address: string;
+  };
+}
+
+export default function ContactCTASection({ brandSettings }: ContactCTASectionProps) {
+  const email = brandSettings?.email || 'pentairvn@gmail.com';
+  const phone = brandSettings?.phone || '1800 8134';
+  const address = brandSettings?.address || '90 Đ. Đinh Thị Thi, Khu đô Thị Vạn Phúc, Thủ Đức, Hồ Chí Minh';
+
   const [formData, setFormData] = React.useState({
     name: '',
     email: '',
@@ -95,7 +107,7 @@ export default function ContactCTASection() {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] font-mono text-gray-400 font-bold uppercase tracking-wider block">Hotline Trực Tuyến 24/7</span>
-                  <a href="tel:18008134" className="text-lg font-bold text-[#0B2144] hover:text-[#0C3471] transition-colors font-mono">1800 8134</a>
+                  <a href={`tel:${phone.replace(/\s+/g, '')}`} className="text-lg font-bold text-[#0B2144] hover:text-[#0C3471] transition-colors font-mono">{phone}</a>
                 </div>
               </div>
 
@@ -105,7 +117,7 @@ export default function ContactCTASection() {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] font-mono text-gray-400 font-bold uppercase tracking-wider block">Gửi thư trao đổi</span>
-                  <a href="mailto:pentairvn@gmail.com" className="text-sm font-semibold text-gray-700 hover:text-[#0C3471] transition-colors">pentairvn@gmail.com</a>
+                  <a href={`mailto:${email}`} className="text-sm font-semibold text-gray-700 hover:text-[#0C3471] transition-colors">{email}</a>
                 </div>
               </div>
 
@@ -116,7 +128,7 @@ export default function ContactCTASection() {
                 <div className="space-y-1">
                   <span className="text-[10px] font-mono text-gray-400 font-bold uppercase tracking-wider block">Trụ sở phân phối</span>
                   <p className="text-xs text-gray-650 leading-relaxed font-sans font-light">
-                    90 Đ. Đinh Thị Thi, Khu đô Thị Vạn Phúc, Thủ Đức, Hồ Chí Minh
+                    {address}
                   </p>
                 </div>
               </div>
