@@ -2836,7 +2836,14 @@ export default function AdminCMS({
                         <tr key={post.id} className="hover:bg-slate-50/60 transition-colors">
                           <td className="p-4 pl-6 font-mono text-gray-400 text-[10px]">{post.id.replace('post-', '')}</td>
                           <td className="p-4 max-w-sm">
-                            <strong className="text-gray-900 block text-xs truncate font-bold">{post.title}</strong>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <strong className="text-gray-900 text-xs font-bold truncate max-w-[200px]" title={post.title}>{post.title}</strong>
+                              {post.type === 'post' && post.meta?.showOnHomepage && (
+                                <span className="bg-amber-100 text-amber-800 text-[8px] font-bold px-1.5 py-0.5 rounded border border-amber-200 shrink-0 select-none uppercase tracking-wider">
+                                  Trang chủ
+                                </span>
+                              )}
+                            </div>
                             <span className="text-[10px] text-blue-500 font-mono block mt-0.5">/{post.slug}</span>
                           </td>
                           <td className="p-4">
@@ -2993,6 +3000,27 @@ export default function AdminCMS({
                       />
                     </div>
                   </div>
+
+                  {postForm.type === 'post' && (
+                    <div className="flex items-center gap-2 p-3 bg-amber-500/5 rounded-lg border border-amber-500/10">
+                      <input 
+                        type="checkbox"
+                        id="form-show-on-homepage"
+                        checked={!!postForm.meta?.showOnHomepage}
+                        onChange={e => setPostForm({
+                          ...postForm,
+                          meta: {
+                            ...postForm.meta,
+                            showOnHomepage: e.target.checked
+                          }
+                        })}
+                        className="w-4 h-4 text-amber-500 border-gray-300 rounded focus:ring-amber-500 cursor-pointer"
+                      />
+                      <label htmlFor="form-show-on-homepage" className="text-xs font-bold text-gray-800 cursor-pointer select-none">
+                        Hiển thị bài viết này trên trang chủ (Kiến thức & Tin tức)
+                      </label>
+                    </div>
+                  )}
 
                   {/* Taxonomy categoriser choose for SEO mapping */}
                   <div className="space-y-1">

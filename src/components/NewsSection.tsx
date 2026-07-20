@@ -10,6 +10,11 @@ interface Post {
   featuredImage: string;
   createdAt: string;
   type: string;
+  status?: string;
+  meta?: {
+    showOnHomepage?: boolean;
+    [key: string]: any;
+  };
 }
 
 interface NewsSectionProps {
@@ -18,8 +23,16 @@ interface NewsSectionProps {
 }
 
 export default function NewsSection({ posts, onNavigate }: NewsSectionProps) {
-  // Filter for posts that are of type 'post' and published
-  const newsList = posts.filter(p => p.type === 'post').slice(0, 3);
+  // Filter for posts that are of type 'post', published, and allowed to show on homepage
+  const newsList = posts.filter(p => 
+    p.type === 'post' && 
+    (p.status === 'publish' || p.status === 'published' || p.status === 'active' || !p.status) &&
+    p.meta?.showOnHomepage === true
+  ).slice(0, 3);
+
+  if (newsList.length === 0) {
+    return null;
+  }
 
   // Format date elegantly
   const formatDate = (dateStr: string) => {

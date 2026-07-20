@@ -35,11 +35,17 @@ function decodeHTMLEntities(str: string): string {
 
 function cleanPostData(post: any) {
   if (!post) return post;
+  const meta = post.meta || {};
+  const showOnHomepage = meta.hasOwnProperty('showOnHomepage') ? !!meta.showOnHomepage : true;
   return {
     ...post,
     title: decodeHTMLEntities(post.title),
     excerpt: decodeHTMLEntities(post.excerpt),
-    content: decodeHTMLEntities(post.content)
+    content: decodeHTMLEntities(post.content),
+    meta: {
+      ...meta,
+      showOnHomepage
+    }
   };
 }
 
