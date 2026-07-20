@@ -4088,6 +4088,59 @@ app.get("/favicon.ico", (req, res) => {
   res.status(404).end();
 });
 
+// Combined API Bootstrap Endpoint - aggregates initial load data for performance
+app.get("/api/bootstrap", (req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  
+  const currentUser = getUserFromRequest(req);
+  
+  // Filter posts
+  let postsList = db.posts.map((p: any) => ({
+    ...p,
+    published_at: p.published_at || p.createdAt
+  }));
+  
+  if (currentUser) {
+    const role = currentUser.role;
+    if (role !== 'administrator' && role !== 'editor') {
+      postsList = postsList.filter((p: any) => 
+        (p.status === 'publish' || p.status === 'published' || p.status === 'active') || 
+        (p.authorId === currentUser.id)
+      );
+    }
+  } else {
+    postsList = postsList.filter((p: any) => p.status === 'publish' || p.status === 'published' || p.status === 'active');
+  }
+
+  // Filter videos
+  let videosList = db.videos;
+  if (!currentUser || (currentUser.role !== 'administrator' && currentUser.role !== 'editor')) {
+    videosList = videosList.filter((v: any) => !v.status || v.status === 'published' || v.status === 'publish');
+  }
+  videosList = [...videosList]
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+    .map((v: any) => ({ ...v, videoUrl: v.videoUrl || (v as any).url || null }));
+
+  // Filter perspectives
+  let perspectivesList = db.perspectives;
+  if (!currentUser || (currentUser.role !== 'administrator' && currentUser.role !== 'editor')) {
+    perspectivesList = perspectivesList.filter((p: any) => p.status === 'published' || p.status === 'publish');
+  }
+  perspectivesList = [...perspectivesList].sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+  // Submissions (only for authenticated admin/editor)
+  const submissionsList = (currentUser && (currentUser.role === 'administrator' || currentUser.role === 'editor')) ? db.submissions : [];
+
+  res.json({
+    posts: postsList,
+    terms: db.terms,
+    options: db.options,
+    videos: videosList,
+    perspectives: perspectivesList,
+    submissions: submissionsList
+  });
+});
+
 // Vite server boot connection / Static Server in Production
 async function startServer() {
   if (isSetupMode) {

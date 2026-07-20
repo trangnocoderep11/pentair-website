@@ -95,45 +95,23 @@ export default function App() {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      // Load all dynamic sitemap data from Express backend parallelly
-      let [postsRes, termsRes, optionsRes, submissionsRes, videosRes, perspectivesRes] = await Promise.all([
-        fetch('/api/posts' + (token ? '?status=all' : ''), { headers }),
-        fetch('/api/terms', { headers }),
-        fetch('/api/options', { headers }),
-        token ? fetch('/api/submissions', { headers }) : Promise.resolve(null),
-        fetch(token ? '/api/admin/videos' : '/api/videos', { headers }),
-        fetch(token ? '/api/admin/perspectives' : '/api/perspectives', { headers })
-      ]);
+      let res = await fetch('/api/bootstrap', { headers });
 
-      // If any core authorization was rejected, silently fallback to guest mode instead of throwing a blocking error
-      if (
-        postsRes.status === 401 || 
-        termsRes.status === 401 || 
-        optionsRes.status === 401 || 
-        (submissionsRes && submissionsRes.status === 401) ||
-        (videosRes && videosRes.status === 401) ||
-        (perspectivesRes && perspectivesRes.status === 401)
-      ) {
+      // If token is invalid/expired (returns 401), fallback silently to guest mode
+      if (res.status === 401) {
         console.warn("CMS session token was invalid or expired. Silently clearing storage and loading guest public content.");
         localStorage.removeItem('cms_token');
         localStorage.removeItem('cms_user');
         setCurrentUser(null);
         token = null;
 
-        // Fetch public content parallelly
-        [postsRes, termsRes, optionsRes, videosRes, perspectivesRes] = await Promise.all([
-          fetch('/api/posts'),
-          fetch('/api/terms'),
-          fetch('/api/options'),
-          fetch('/api/videos'),
-          fetch('/api/perspectives')
-        ]);
-        submissionsRes = null;
+        // Fetch public content as guest
+        res = await fetch('/api/bootstrap');
       }
 
-      if (!postsRes.ok) {
+      if (!res.ok) {
         try {
-          const errData = await postsRes.json();
+          const errData = await res.json();
           if (errData && errData.error) {
             throw new Error(errData.error);
           }
@@ -145,38 +123,15 @@ export default function App() {
         throw new Error("Lỗi tải thông tin cơ sở dữ liệu CMS từ máy chủ.");
       }
 
-      if (!termsRes.ok || !optionsRes.ok) {
-        throw new Error("Lỗi tải thông tin cơ sở dữ liệu CMS từ máy chủ.");
-      }
+      const data = await res.json();
 
-      const postsData = await postsRes.json();
-      const termsData = await termsRes.json();
-      const optionsData = await optionsRes.json();
+      setPosts(data.posts || []);
+      setTerms(data.terms || []);
+      setOptions(data.options || []);
+      setVideos(data.videos || []);
+      setPerspectives(data.perspectives || []);
+      setSubmissions(data.submissions || []);
 
-      setPosts(postsData);
-      setTerms(termsData);
-      setOptions(optionsData);
-
-      if (submissionsRes && submissionsRes.ok) {
-        const subsData = await submissionsRes.json();
-        setSubmissions(subsData);
-      } else {
-        setSubmissions([]);
-      }
-
-      if (videosRes && videosRes.ok) {
-        const vData = await videosRes.json();
-        setVideos(vData);
-      } else {
-        setVideos([]);
-      }
-
-      if (perspectivesRes && perspectivesRes.ok) {
-        const pData = await perspectivesRes.json();
-        setPerspectives(pData);
-      } else {
-        setPerspectives([]);
-      }
     } catch (err: any) {
       console.error(err);
       setDataError(err.message || "Không thể kết nối tới server Express CMS.");
