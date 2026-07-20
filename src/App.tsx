@@ -11,6 +11,7 @@ import AdminCMS from './components/AdminCMS';
 import { Post, Term, Option, FormSubmission, CartItem } from './types';
 import { HelpCircle, RefreshCw } from 'lucide-react';
 import ShoppingCart from './components/ShoppingCart';
+import { initialData } from './initialData';
 
 export default function App() {
   
@@ -72,21 +73,20 @@ export default function App() {
   };
 
   // DATABASE GLOBAL STATES
-  const [posts, setPosts] = React.useState<Post[]>([]);
-  const [terms, setTerms] = React.useState<Term[]>([]);
-  const [options, setOptions] = React.useState<any[]>([]);
+  const [posts, setPosts] = React.useState<Post[]>(initialData.posts as Post[]);
+  const [terms, setTerms] = React.useState<Term[]>(initialData.terms as Term[]);
+  const [options, setOptions] = React.useState<any[]>(initialData.options);
   const [submissions, setSubmissions] = React.useState<FormSubmission[]>([]);
-  const [videos, setVideos] = React.useState<any[]>([]);
-  const [perspectives, setPerspectives] = React.useState<any[]>([]);
+  const [videos, setVideos] = React.useState<any[]>(initialData.videos);
+  const [perspectives, setPerspectives] = React.useState<any[]>(initialData.perspectives);
   
   // LOGIN USER SESSION STATE
   const [currentUser, setCurrentUser] = React.useState<any>(null);
-  const [dataLoading, setDataLoading] = React.useState<boolean>(true);
+  const [dataLoading, setDataLoading] = React.useState<boolean>(false);
   const [dataError, setDataError] = React.useState<string>('');
 
   // 1. REFRESH AND BIND CONTENT FROM THE FULL-STACK NODE ENDPOINTS
   const loadCMSData = async () => {
-    setDataLoading(true);
     setDataError('');
     try {
       const headers: Record<string, string> = {};
@@ -134,9 +134,9 @@ export default function App() {
 
     } catch (err: any) {
       console.error(err);
-      setDataError(err.message || "Không thể kết nối tới server Express CMS.");
-    } finally {
-      setDataLoading(false);
+      if (initialData.posts.length === 0) {
+        setDataError(err.message || "Không thể kết nối tới server Express CMS.");
+      }
     }
   };
 
@@ -347,27 +347,6 @@ export default function App() {
           >
             <RefreshCw className="w-3.5 h-3.5" /> Thử tải lại trang
           </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ----------------------------------------------------
-  // PREMIUM LOADING GATE
-  // ----------------------------------------------------
-  if (dataLoading) {
-    return (
-      <div className="min-h-screen bg-[#0C3471] flex flex-col items-center justify-center font-sans text-white p-4">
-        <div className="flex flex-col items-center space-y-6">
-          {/* Logo brand with pulse */}
-          <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-xl shadow-blue-950/50 animate-pulse">
-            <span className="text-[#0C3471] font-black text-3xl font-mono">P</span>
-          </div>
-          <div className="text-center space-y-2">
-            <h1 className="text-xl font-black uppercase tracking-[0.2em] text-white">PENTAIR</h1>
-            <p className="text-xs text-blue-200 tracking-wider font-light uppercase">Tinh Hoa Lọc Nước Từ Mỹ</p>
-          </div>
-          <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin mt-2"></div>
         </div>
       </div>
     );
