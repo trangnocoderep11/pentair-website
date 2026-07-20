@@ -19,7 +19,7 @@ export default function ContactCTASection({ brandSettings }: ContactCTASectionPr
     name: '',
     email: '',
     phone: '',
-    productInterest: 'Pentair Softena CS Maxi',
+    productInterest: 'Yêu cầu tư vấn lọc nước',
     message: ''
   });
 
@@ -65,7 +65,7 @@ export default function ContactCTASection({ brandSettings }: ContactCTASectionPr
         name: '',
         email: '',
         phone: '',
-        productInterest: 'Pentair Softena CS Maxi',
+        productInterest: 'Yêu cầu tư vấn lọc nước',
         message: ''
       });
     } catch (err: any) {
@@ -195,47 +195,28 @@ export default function ContactCTASection({ brandSettings }: ContactCTASectionPr
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label htmlFor="form-email" className="text-[10px] font-mono font-black text-gray-400 uppercase tracking-widest block">
-                        Email (Không bắt buộc)
-                      </label>
-                      <input 
-                        id="form-email"
-                        type="email" 
-                        placeholder="vinhhoa@bietthu.com"
-                        value={formData.email}
-                        onChange={e => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-700 bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-[#0C3471] focus:border-[#0C3471] transition-all text-xs"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="form-product" className="text-[10px] font-mono font-black text-gray-400 uppercase tracking-widest block">
-                        Giải pháp quan tâm nhất
-                      </label>
-                      <select 
-                        id="form-product"
-                        value={formData.productInterest}
-                        onChange={e => setFormData({ ...formData, productInterest: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-700 bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-[#0C3471] focus:border-[#0C3471] transition-all text-xs appearance-none cursor-pointer"
-                      >
-                        <option value="Pentair Softena CS Maxi">Pentair Softena CS Maxi (Lâu đài/Biệt thự lớn)</option>
-                        <option value="Pentair Softena CS Midi">Pentair Softena CS Midi (Căn hộ chung cư)</option>
-                        <option value="Pentair Foleo Pro Max">Pentair Foleo Pro Max (Châu Âu thông minh)</option>
-                        <option value="Pentair WaterTrust Pro Series 2.0">WaterTrust Pro Series 2.0 (Lọc sường sỏ công suất lớn)</option>
-                      </select>
-                    </div>
+                  <div className="space-y-2">
+                    <label htmlFor="form-email" className="text-[10px] font-mono font-black text-gray-400 uppercase tracking-widest block">
+                      Email (Không bắt buộc)
+                    </label>
+                    <input 
+                      id="form-email"
+                      type="email" 
+                      placeholder="vinhhoa@bietthu.com"
+                      value={formData.email}
+                      onChange={e => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-700 bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-[#0C3471] focus:border-[#0C3471] transition-all text-xs"
+                    />
                   </div>
 
                   <div className="space-y-2">
                     <label htmlFor="form-message" className="text-[10px] font-mono font-black text-gray-400 uppercase tracking-widest block">
-                      Thông tin hiện trạng nguồn nước của biệt thự (Nếu có)
+                      Thông tin hiện trạng nguồn nước
                     </label>
                     <textarea 
                       id="form-message"
                       rows={4}
-                      placeholder="Mô tả sơ lược hiện trạng nước, quy mô nhà vệ sinh biệt thự..."
+                      placeholder="Mô tả sơ lược hiện trạng nguồn nước (nước máy, nước giếng, có mùi, có cặn...)"
                       value={formData.message}
                       onChange={e => setFormData({ ...formData, message: e.target.value })}
                       className="w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-700 bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-[#0C3471] focus:border-[#0C3471] transition-all text-xs resize-none"
