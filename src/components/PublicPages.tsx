@@ -431,7 +431,7 @@ export default function PublicPages({
   // Handle lead formulation POST
   const handleSubmitLead = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.phone) {
+    if (!formData.name || !formData.phone) {
       setFormError('Vui lòng nhập đầy đủ các trường thông tin đánh dấu (*).');
       return;
     }
@@ -658,8 +658,7 @@ export default function PublicPages({
                   />
                   <input 
                     type="email" 
-                    placeholder="Địa chỉ Email *" 
-                    required
+                    placeholder="Địa chỉ Email" 
                     value={formData.email}
                     onChange={e => setFormData({ ...formData, email: e.target.value })}
                     className="w-full px-3 py-2 text-xs rounded-lg text-gray-800 bg-white placeholder-gray-400 focus:outline-none"
@@ -1993,10 +1992,9 @@ export default function PublicPages({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-gray-700 block uppercase">Địa chỉ Email *</label>
+                    <label className="text-[11px] font-bold text-gray-700 block uppercase">Địa chỉ Email</label>
                     <input 
                       type="email" 
-                      required
                       placeholder="lienhe@domain.com"
                       value={formData.email}
                       onChange={e => setFormData({ ...formData, email: e.target.value })}
