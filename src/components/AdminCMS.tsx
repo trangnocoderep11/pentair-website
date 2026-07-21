@@ -1106,11 +1106,9 @@ export default function AdminCMS({
  
   const [hfMenuEditIdx, setHfMenuEditIdx] = React.useState<number | null>(null);
   const [hfMenuEditItem, setHfMenuEditItem] = React.useState({ label: '', url: '' });
-  const [hfPolicyEditIdx, setHfPolicyEditIdx] = React.useState<number | null>(null);
-  const [hfPolicyEditItem, setHfPolicyEditItem] = React.useState({ title: '', content: '' });
   const [hfShowroomEditIdx, setHfShowroomEditIdx] = React.useState<number | null>(null);
   const [hfShowroomEditItem, setHfShowroomEditItem] = React.useState({ name: '', address: '', phone: '', mapUrl: '', coordinates: '' });
-  const [hfSubTab, setHfSubTab] = React.useState<'logo' | 'menu' | 'footer' | 'showrooms' | 'global-hqs'>('logo');
+  const [hfSubTab, setHfSubTab] = React.useState<'logo' | 'menu' | 'showrooms' | 'global-hqs'>('logo');
 
   const defaultGlobalHQs = [
     {
@@ -5560,7 +5558,6 @@ export default function AdminCMS({
               {([
                 { key: 'logo', label: 'Logo & Top Bar', icon: <Image className="w-4 h-4" /> },
                 { key: 'menu', label: 'Menu Điều Hướng', icon: <Link className="w-4 h-4" /> },
-                { key: 'footer', label: 'Chính Sách Footer', icon: <Layout className="w-4 h-4" /> },
                 { key: 'showrooms', label: 'Hệ Thống Showroom', icon: <MapPin className="w-4 h-4" /> },
                 { key: 'global-hqs', label: 'Trụ sở toàn cầu', icon: <Globe className="w-4 h-4" /> },
               ] as const).map(tab => (
@@ -5911,149 +5908,7 @@ export default function AdminCMS({
               </div>
             )}
 
-            {/* ---- TAB 3: FOOTER POLICIES ---- */}
-            {hfSubTab === 'footer' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Policies list */}
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
-                  <div className="flex justify-between items-center border-b pb-3">
-                    <h3 className="text-sm font-black uppercase text-gray-800 flex items-center gap-2">
-                      <Layout className="w-4 h-4 text-indigo-500" />
-                      Chính Sách ({footerPolicies.length} mục)
-                    </h3>
-                    <button
-                      onClick={() => {
-                        setHfPolicyEditIdx(footerPolicies.length);
-                        setHfPolicyEditItem({ title: '', content: '' });
-                      }}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white text-[11px] font-bold rounded-lg hover:bg-indigo-700 transition-all cursor-pointer"
-                      id="btn-hf-add-policy"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Thêm chính sách
-                    </button>
-                  </div>
 
-                  <div className="space-y-2">
-                    {footerPolicies.map((policy, idx) => (
-                      <div key={idx} className="p-3 bg-gray-50 rounded-xl border border-gray-100 group">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-bold text-gray-800">{policy.title}</div>
-                            <div className="text-[10px] text-gray-400 mt-0.5 leading-relaxed line-clamp-2">{policy.content}</div>
-                          </div>
-                          <div className="flex gap-1 shrink-0">
-                            <button
-                              onClick={() => {
-                                setHfPolicyEditIdx(idx);
-                                setHfPolicyEditItem({ title: policy.title, content: policy.content });
-                              }}
-                              className="p-1 text-indigo-500 hover:bg-indigo-50 rounded cursor-pointer"
-                              title="Sửa"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (window.confirm(`Xóa chính sách "${policy.title}"?`)) {
-                                  setFooterPolicies(prev => prev.filter((_, i) => i !== idx));
-                                }
-                              }}
-                              className="p-1 text-rose-500 hover:bg-rose-50 rounded cursor-pointer"
-                              title="Xóa"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {footerPolicies.length === 0 && (
-                      <p className="text-xs text-center text-gray-400 py-6">Chưa có chính sách nào.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Edit form */}
-                <div className="space-y-4">
-                  {hfPolicyEditIdx !== null ? (
-                    <div className="bg-white rounded-2xl border border-indigo-200 shadow-sm p-6 space-y-4">
-                      <h3 className="text-sm font-black uppercase text-indigo-700 border-b pb-2">
-                        {hfPolicyEditIdx === footerPolicies.length ? '➕ Thêm chính sách mới' : `✏️ Sửa chính sách #${hfPolicyEditIdx + 1}`}
-                      </h3>
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Tiêu đề chính sách *</label>
-                        <input
-                          type="text"
-                          value={hfPolicyEditItem.title}
-                          onChange={e => setHfPolicyEditItem(prev => ({ ...prev, title: e.target.value }))}
-                          placeholder="Ví dụ: Chính sách giao hàng"
-                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                          id="input-policy-title"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">Nội dung chi tiết *</label>
-                        <textarea
-                          value={hfPolicyEditItem.content}
-                          onChange={e => setHfPolicyEditItem(prev => ({ ...prev, content: e.target.value }))}
-                          placeholder="Mô tả chi tiết nội dung chính sách..."
-                          rows={5}
-                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
-                          id="input-policy-content"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            if (!hfPolicyEditItem.title.trim() || !hfPolicyEditItem.content.trim()) return;
-                            const next = [...footerPolicies];
-                            if (hfPolicyEditIdx === footerPolicies.length) {
-                              next.push(hfPolicyEditItem);
-                            } else {
-                              next[hfPolicyEditIdx] = hfPolicyEditItem;
-                            }
-                            setFooterPolicies(next);
-                            setHfPolicyEditIdx(null);
-                            setHfPolicyEditItem({ title: '', content: '' });
-                          }}
-                          className="flex-1 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-all cursor-pointer flex items-center justify-center gap-1"
-                          id="btn-hf-save-policy-item"
-                        >
-                          <Save className="w-3.5 h-3.5" />
-                          {hfPolicyEditIdx === footerPolicies.length ? 'Thêm chính sách' : 'Cập nhật'}
-                        </button>
-                        <button
-                          onClick={() => { setHfPolicyEditIdx(null); setHfPolicyEditItem({ title: '', content: '' }); }}
-                          className="px-4 py-2 bg-gray-100 text-gray-600 text-xs font-bold rounded-lg hover:bg-gray-200 transition-all cursor-pointer"
-                        >
-                          Hủy
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-[#0C3471]/5 border border-[#0C3471]/10 rounded-2xl p-5 text-xs text-[#0C3471] font-sans space-y-2">
-                      <strong className="block text-[11px] uppercase">💡 Footer Policies:</strong>
-                      <p>Các chính sách này hiển thị trong cột "Chính Sách Khách Hàng" ở footer website. Khi khách nhấn vào, sẽ hiện popup với nội dung chi tiết.</p>
-                    </div>
-                  )}
-
-                  {/* Footer preview */}
-                  <div className="bg-[#0C3471] rounded-2xl p-4 space-y-2">
-                    <h4 className="text-[11px] font-black uppercase text-blue-300">Xem trước Footer Policies</h4>
-                    <div className="space-y-1">
-                      {footerPolicies.map((p, idx) => (
-                        <div key={idx} className="flex justify-between items-center py-1 border-b border-white/5 text-[11px]">
-                          <span className="text-blue-100 font-medium">{p.title}</span>
-                          <span className="text-[9px] bg-white/10 px-1.5 py-0.5 rounded text-blue-200">Chi tiết</span>
-                        </div>
-                      ))}
-                      {footerPolicies.length === 0 && <p className="text-blue-300/50 text-[11px]">Chưa có chính sách</p>}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* ---- TAB 4: SHOWROOMS ---- */}
             {hfSubTab === 'showrooms' && (

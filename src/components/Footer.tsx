@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Mail, Phone, MapPin, Youtube, Facebook, ArrowUpRight, ShieldCheck } from 'lucide-react';
+import { Mail, Phone, MapPin, Youtube, Facebook, ArrowUpRight } from 'lucide-react';
 
 interface FooterProps {
   brandSettings: {
@@ -476,7 +476,7 @@ export default function Footer({
         </div>
 
         {/* Showroom Columns */}
-        <div className="space-y-4 lg:col-span-2 flex flex-col">
+        <div className="space-y-4 lg:col-span-3 flex flex-col">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-white/10 pb-2">
             <h5 className="text-sm font-bold tracking-wider uppercase text-blue-300">
               Hệ Thống Showroom Ủy Quyền ({filteredShowrooms.length})
@@ -509,7 +509,7 @@ export default function Footer({
               scrollbarColor: 'rgba(255, 255, 255, 0.15) transparent' 
             }}
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {filteredShowrooms.map((show, idx) => (
                 <div key={idx} className="bg-white/5 p-3 rounded-lg border border-white/5 space-y-1 hover:bg-white/10 transition-colors">
                   <h6 className="text-xs font-bold text-white flex items-start gap-1">
@@ -530,51 +530,7 @@ export default function Footer({
           </div>
         </div>
 
-        {/* Policies Quick Access Column */}
-        <div className="space-y-4">
-          <h5 className="text-sm font-bold tracking-wider uppercase border-b border-white/10 pb-2 text-blue-300">
-            Chính Sách Khách Hàng
-          </h5>
-          <div className="flex flex-col gap-2">
-            {policies.map((p, idx) => (
-              <button
-                key={idx}
-                onClick={() => setActivePolicyIdx(activePolicyIdx === idx ? null : idx)}
-                className="text-left py-1 text-xs text-blue-100 hover:text-white transition-colors flex justify-between items-center w-full group cursor-pointer"
-                id={`btn-policy-foot-${idx}`}
-              >
-                <span className="font-medium group-hover:translate-x-0.5 transition-transform">{p.title}</span>
-                <span className="text-[10px] bg-white/10 px-1 py-0.5 rounded group-hover:bg-white/20">Chi tiết</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
       </div>
-
-      {/* Policy Modal Overlay */}
-      {activePolicyIdx !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn" id="policy-overlay-modal">
-          <div className="bg-white text-gray-800 rounded-xl max-w-lg w-full p-6 relative shadow-2xl border border-gray-100 animate-slideUp">
-            <h4 className="text-lg font-bold text-pentair uppercase mb-3 flex items-center gap-1.5 border-b pb-2">
-              <ShieldCheck className="w-5 h-5 text-emerald-600" />
-              {policies[activePolicyIdx].title}
-            </h4>
-            <p className="text-sm text-gray-600 leading-relaxed mb-6 whitespace-pre-line">
-              {policies[activePolicyIdx].content}
-            </p>
-            <div className="flex justify-end">
-              <button
-                onClick={() => setActivePolicyIdx(null)}
-                className="px-4 py-2 text-xs font-semibold uppercase text-white bg-pentair rounded-lg hover:bg-pentair-light transition-all cursor-pointer"
-                id="btn-close-policy-modal"
-              >
-                Đã hiểu & Đóng lại
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Bottom Bar Credit */}
       <div className="bg-pentair-dark py-4 text-center text-xs text-blue-300/60 border-t border-white/5">
