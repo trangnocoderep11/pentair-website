@@ -7,6 +7,7 @@ interface ContactCTASectionProps {
     email: string;
     phone: string;
     address: string;
+    formSuccessMsg?: string;
   };
 }
 
@@ -252,7 +253,7 @@ export default function ContactCTASection({ brandSettings }: ContactCTASectionPr
                       Đăng Ký Thành Công!
                     </h3>
                     <p className="text-xs text-gray-500 font-sans leading-relaxed">
-                      Chân thành cảm ơn Quý khách đã gửi trọn niềm tin cho thương hiệu lọc nước danh tiếng từ Mỹ - Pentair. Yêu cầu của quý khách đã được lưu nhận trên hệ thống và chuyển trực tiếp tới kĩ sư trưởng phân vùng. Chúng tôi sẽ nhanh chóng gọi điện liên lạc lại với quý khách.
+                      {brandSettings?.formSuccessMsg || 'Chân thành cảm ơn Quý khách đã gửi trọn niềm tin cho thương hiệu lọc nước danh tiếng từ Mỹ - Pentair. Yêu cầu của quý khách đã được lưu nhận trên hệ thống và chuyển trực tiếp tới kĩ sư trưởng phân vùng. Chúng tôi sẽ nhanh chóng gọi điện liên lạc lại với quý khách.'}
                     </p>
                   </div>
 

@@ -1032,7 +1032,8 @@ export default function AdminCMS({
     address: '90 Đ. Đinh Thị Thi, Khu đô Thị Vạn Phúc, Thủ Đức, Hồ Chí Minh',
     facebook: 'https://www.facebook.com/PentairVietNamOfficial',
     youtube: 'https://www.youtube.com/@PentairVietNamOfficial',
-    favicon: ''
+    favicon: '',
+    formSuccessMsg: 'Chân thành cảm ơn bạn đã quan tâm. Đăng ký đã được lưu vào CMS Submissions. Trưởng bộ phận tư vấn sẽ gọi điện ngay trong tích tắc !'
   });
   const [seoForm, setSeoForm] = React.useState({
     metaTitle: 'Pentair Việt Nam | Máy lọc nước tổng cao cấp nhập khẩu Mỹ',
@@ -1241,7 +1242,8 @@ export default function AdminCMS({
         address: brand.address || '90 Đ. Đinh Thị Thi, Khu đô Thị Vạn Phúc, Thủ Đức, Hồ Chí Minh',
         facebook: brand.facebook || '',
         youtube: brand.youtube || '',
-        favicon: brand.favicon || ''
+        favicon: brand.favicon || '',
+        formSuccessMsg: brand.formSuccessMsg || 'Chân thành cảm ơn bạn đã quan tâm. Đăng ký đã được lưu vào CMS Submissions. Trưởng bộ phận tư vấn sẽ gọi điện ngay trong tích tắc !'
       });
 
       setSeoForm({
@@ -3837,6 +3839,16 @@ export default function AdminCMS({
                         className="w-full p-2 text-xs rounded bg-gray-50 border focus:outline-none font-mono text-[10px]"
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase">Thông báo gửi form thành công</label>
+                    <textarea 
+                      value={brandForm.formSuccessMsg || ''}
+                      onChange={e => setBrandForm({ ...brandForm, formSuccessMsg: e.target.value })}
+                      rows={3}
+                      className="w-full p-2 text-xs rounded bg-gray-50 border focus:outline-none resize-none font-sans"
+                    />
                   </div>
                 </div>
               </div>

@@ -2031,7 +2031,7 @@ export default function PublicPages({
                     <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
                     <div>
                       <strong className="block font-bold">Gửi thông tin tư vấn thành công!</strong>
-                      <span className="font-sans">Chân thành cảm ơn bạn đã quan tâm. Đăng ký đã được lưu vào CMS Submissions. Trưởng bộ phận tư vấn sẽ gọi điện ngay trong tích tắc !</span>
+                      <span className="font-sans">{brandSettings.formSuccessMsg || 'Chân thành cảm ơn bạn đã quan tâm. Đăng ký đã được lưu vào CMS Submissions. Trưởng bộ phận tư vấn sẽ gọi điện ngay trong tích tắc !'}</span>
                     </div>
                   </div>
                 )}

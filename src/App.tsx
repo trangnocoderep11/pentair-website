@@ -395,7 +395,8 @@ export default function App() {
     phone: "1800 8134",
     address: "90 Đ. Đinh Thị Thi, Khu đô Thị Vạn Phúc, Thủ Đức, Hồ Chí Minh",
     facebook: "https://www.facebook.com/PentairVietNamOfficial",
-    youtube: "https://www.youtube.com/@PentairVietNamOfficial"
+    youtube: "https://www.youtube.com/@PentairVietNamOfficial",
+    formSuccessMsg: "Chân thành cảm ơn bạn đã quan tâm. Đăng ký đã được lưu vào CMS Submissions. Trưởng bộ phận tư vấn sẽ gọi điện ngay trong tích tắc !"
   };
 
   const headerMenuValue = options.find(o => o.optionName === 'header_menu')?.optionValue || [
