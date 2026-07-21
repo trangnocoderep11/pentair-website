@@ -213,4 +213,9 @@ html {
   font-size: 14px !important;
 }
 
+/* Ensure sidebar buttons align text to the left even when wrapped */
+#cms-sidebar button {
+  text-align: left !important;
+}
+
 

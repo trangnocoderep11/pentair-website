@@ -2086,12 +2086,16 @@ export default function AdminCMS({
         <div className="overflow-y-auto flex-1 min-h-0">
           {/* Header */}
           <div className="p-4 bg-slate-950 flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded bg-blue-600 text-white font-black text-lg flex items-center justify-center shadow-md">
-              P
-            </div>
-            <div>
-              <h4 className="text-sm font-black text-white uppercase tracking-wider">{brandForm.siteName}</h4>
-              <span className="text-[10px] text-blue-400 lowercase font-mono">WordPress Engine emulator</span>
+            {headerSettings.logoImageUrl ? (
+              <img src={headerSettings.logoImageUrl} alt="Logo" className="w-8 h-8 object-contain rounded bg-white p-0.5 shrink-0" />
+            ) : (
+              <div className="w-8 h-8 rounded bg-blue-600 text-white font-black text-lg flex items-center justify-center shadow-md shrink-0">
+                {headerSettings.logoText || 'P'}
+              </div>
+            )}
+            <div className="min-w-0">
+              <h4 className="text-sm font-black text-white uppercase tracking-wider truncate">{brandForm.siteName}</h4>
+              <span className="text-[10px] text-blue-400 lowercase font-mono block truncate">WordPress Engine emulator</span>
             </div>
           </div>
 
