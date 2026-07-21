@@ -45,6 +45,13 @@ const defaultWasabiPhotos = [
   "https://images.unsplash.com/photo-1502005229762-fc1b2b812ca5?auto=format&fit=crop&w=600&q=80"
 ];
 
+const cleanTitle = (title: string) => {
+  if (!title) return '';
+  return title
+    .replace(/^(hệ thống lọc tổng|hệ thống lọc nước)\s+/i, '')
+    .trim();
+};
+
 const SPACE_TYPES = [
   { value: 'all', label: 'Tất cả không gian', icon: Filter },
   { value: 'villa', label: 'Biệt thự', icon: Home },
@@ -191,6 +198,39 @@ export default function PerspectivePageView({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isLightboxOpen, listLightboxOpen, albumList, listLightboxImages]);
+
+  // Mobile swipe gestures state
+  const [touchStartX, setTouchStartX] = React.useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = React.useState<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchEndX(null);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = (isListLightbox: boolean) => {
+    if (touchStartX === null || touchEndX === null) return;
+    const diff = touchStartX - touchEndX;
+    const minSwipeDistance = 50;
+
+    if (diff > minSwipeDistance) {
+      if (isListLightbox) {
+        setListLightboxIndex((prev) => (prev + 1) % listLightboxImages.length);
+      } else {
+        setLightboxIndex((prev) => (prev + 1) % albumList.length);
+      }
+    } else if (diff < -minSwipeDistance) {
+      if (isListLightbox) {
+        setListLightboxIndex((prev) => (prev - 1 + listLightboxImages.length) % listLightboxImages.length);
+      } else {
+        setLightboxIndex((prev) => (prev - 1 + albumList.length) % albumList.length);
+      }
+    }
+  };
 
   const handleSubquote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -426,17 +466,19 @@ export default function PerspectivePageView({
               <div dangerouslySetInnerHTML={{ __html: activePerspective.content || '<p>Chi tiết thiết kế thi công phối cảnh hệ lọc này đang được cập nhật chuyên sâu...</p>' }} />
             </div>
 
-            {/* Dynamic Immersive Fullscreen Lightbox Modal Overlay code */}
             {isLightboxOpen && (
               <div 
                 className="fixed inset-0 bg-black/95 z-55 flex flex-col justify-between p-4 md:p-8 select-none animate-fadeIn font-sans"
                 id="lightbox-popup-overlay"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={() => handleTouchEnd(false)}
               >
                 {/* 1. Header of modal space */}
                 <div className="flex items-center justify-between text-white border-b border-white/10 pb-4">
                   <div className="space-y-1">
                     <span className="text-[10px] uppercase font-mono tracking-widest text-blue-400 block font-bold leading-none">PENTAIR IMAGE ALBUM</span>
-                    <h4 className="text-xs font-black uppercase text-white tracking-tight line-clamp-1">{activePerspective.title}</h4>
+                    <h4 className="text-xs font-black uppercase text-white tracking-tight line-clamp-1">{cleanTitle(activePerspective.title)}</h4>
                   </div>
                   <button 
                     onClick={() => setIsLightboxOpen(false)}
@@ -762,12 +804,15 @@ export default function PerspectivePageView({
         <div 
           className="fixed inset-0 bg-black/95 z-55 flex flex-col justify-between p-4 md:p-8 select-none animate-fadeIn font-sans"
           id="list-view-lightbox-overlay"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={() => handleTouchEnd(true)}
         >
           {/* Modal Header */}
           <div className="flex items-center justify-between text-white border-b border-white/10 pb-4">
             <div className="space-y-1">
               <span className="text-[10px] uppercase font-mono tracking-widest text-blue-400 block font-bold leading-none">PENTAIR DIRECT BLUEPRINT VIEW</span>
-              <h4 className="text-xs font-black uppercase text-white tracking-tight line-clamp-1">{listLightboxActiveP.title}</h4>
+              <h4 className="text-xs font-black uppercase text-white tracking-tight line-clamp-1">{cleanTitle(listLightboxActiveP.title)}</h4>
             </div>
             <button 
               onClick={() => setListLightboxOpen(false)}
@@ -795,8 +840,8 @@ export default function PerspectivePageView({
                 referrerPolicy="no-referrer"
               />
               <div className="text-center space-y-1">
-                <p className="text-md font-extrabold text-white uppercase tracking-wider">
-                  {listLightboxImages[listLightboxIndex]?.title}
+                <p className="text-sm font-bold text-white uppercase tracking-wide">
+                  {cleanTitle(listLightboxImages[listLightboxIndex]?.title)}
                 </p>
                 <p className="text-xs text-gray-400 font-sans tracking-wide max-w-xl font-light">
                   {listLightboxImages[listLightboxIndex]?.desc}
