@@ -166,4 +166,51 @@ html {
   cursor: default;
 }
 
+/* ==========================================================================
+   Scale up Admin CMS typography to 14px for improved readability
+   ========================================================================== */
+#cms-authorized-wrapper {
+  font-size: 14px !important;
+}
+
+/* Override Tailwind utilities within admin workspace for proportional sizes */
+#cms-authorized-wrapper .text-\[9px\] {
+  font-size: 11px !important;
+}
+#cms-authorized-wrapper .text-\[10px\] {
+  font-size: 12px !important;
+}
+#cms-authorized-wrapper .text-\[11px\] {
+  font-size: 13px !important;
+}
+#cms-authorized-wrapper .text-xs {
+  font-size: 14px !important;
+}
+#cms-authorized-wrapper .text-sm {
+  font-size: 15px !important;
+}
+#cms-authorized-wrapper .text-base {
+  font-size: 16px !important;
+}
+#cms-authorized-wrapper .text-lg {
+  font-size: 18px !important;
+}
+#cms-authorized-wrapper .text-xl {
+  font-size: 20px !important;
+}
+#cms-authorized-wrapper .text-2xl {
+  font-size: 24px !important;
+}
+#cms-authorized-wrapper .text-3xl {
+  font-size: 28px !important;
+}
+
+/* Ensure inputs, textareas, selects, and options use 14px */
+#cms-authorized-wrapper input,
+#cms-authorized-wrapper textarea,
+#cms-authorized-wrapper select,
+#cms-authorized-wrapper button {
+  font-size: 14px !important;
+}
+
 
