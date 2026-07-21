@@ -3906,14 +3906,16 @@ app.delete("/api/terms/:id", authMiddleware, async (req, res) => {
 // API Endpoints: FORM SUBMISSIONS
 app.post("/api/submissions", async (req, res) => {
   const { name, email, phone, message, productInterest, productQuantity, address, sourceUrl, formName } = req.body;
-  if (!name || !email || !phone) {
-    return res.status(400).json({ error: "Vui lòng nhập Họ tên, Email và Số điện thoại." });
+  if (!name || !phone) {
+    return res.status(400).json({ error: "Vui lòng nhập Họ tên và Số điện thoại." });
   }
 
   // Back-end regex validation for safer operation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email.trim())) {
-    return res.status(400).json({ error: "Địa chỉ email không đúng định dạng. Ví dụ: khachhang@gmail.com" });
+  if (email && email.trim()) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({ error: "Địa chỉ email không đúng định dạng. Ví dụ: khachhang@gmail.com" });
+    }
   }
 
   const phoneRegex = /^[0-9\-\+\s]{8,15}$/;
@@ -3924,7 +3926,7 @@ app.post("/api/submissions", async (req, res) => {
   const newSubmission = {
     id: "sub-" + Date.now(),
     name: sanitizeString(name),
-    email: sanitizeString(email.trim()),
+    email: email ? sanitizeString(email.trim()) : "",
     phone: sanitizeString(phone.trim()),
     message: sanitizeString(message || ''),
     productInterest: productInterest ? sanitizeString(productInterest) : undefined,
