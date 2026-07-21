@@ -19,6 +19,32 @@ interface PerspectivePageViewProps {
   brandSettings: any;
 }
 
+const defaultRusticPhotos = [
+  "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1542013936-8848e574047a?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1584622781564-1d987f7333c1?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1533090161767-e6ffed986c88?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=600&q=80"
+];
+
+const defaultWasabiPhotos = [
+  "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1565183997392-2f6f122e5912?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1588854337221-4cf9fa96059c?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1502005229762-fc1b2b812ca5?auto=format&fit=crop&w=600&q=80"
+];
+
 const SPACE_TYPES = [
   { value: 'all', label: 'Tất cả không gian', icon: Filter },
   { value: 'villa', label: 'Biệt thự', icon: Home },
@@ -90,6 +116,82 @@ export default function PerspectivePageView({
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
   };
 
+  // Album lists for details view computed at the top level
+  const albumList = React.useMemo(() => {
+    if (!activePerspective) return [];
+    const rusticList = (activePerspective.gallery && activePerspective.gallery.length > 0)
+      ? [...activePerspective.gallery, ...defaultRusticPhotos.slice(activePerspective.gallery.length)].slice(0, 10)
+      : defaultRusticPhotos;
+
+    const wasabiList = (activePerspective.productGallery && activePerspective.productGallery.length > 0)
+      ? [...activePerspective.productGallery, ...defaultWasabiPhotos.slice(activePerspective.productGallery.length)].slice(0, 10)
+      : defaultWasabiPhotos;
+
+    return [
+      ...rusticList.map((url, i) => ({
+        url,
+        type: 'drawings',
+        title: `Rustic - Dark Brown Concept #${i + 1}`,
+        desc: "Sự kết hợp hoàn hảo giữa thiết bị vòi lọc nước Pentair và chất gỗ óc chó gam tối trầm tĩnh phong nhã."
+      })),
+      ...wasabiList.map((url, i) => ({
+        url,
+        type: 'products',
+        title: `Wasabi - Green Concept #${i + 1}`,
+        desc: "Tone xanh sage ngọc nhạt và tủ bếp tự nhiên sồi ấm áp thanh thản của phong cách Wasabi."
+      }))
+    ];
+  }, [activePerspective]);
+
+  const filteredAlbumList = React.useMemo(() => {
+    return albumFilter === 'all'
+      ? albumList
+      : albumList.filter(x => x.type === albumFilter);
+  }, [albumList, albumFilter]);
+
+  // Autoplay effect
+  React.useEffect(() => {
+    let tid: any = null;
+    if (isAutoplay && isDetail && filteredAlbumList.length > 0) {
+      tid = setInterval(() => {
+        setActivePhotoIndex((prev) => (prev + 1) % filteredAlbumList.length);
+      }, 4000);
+    }
+    return () => {
+      if (tid) clearInterval(tid);
+    };
+  }, [isAutoplay, isDetail, filteredAlbumList.length]);
+
+  // Keyboard navigation for lightbox modals (Arrow keys & Escape)
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isLightboxOpen && albumList.length > 0) {
+        if (e.key === 'ArrowLeft') {
+          setLightboxIndex((prev) => (prev - 1 + albumList.length) % albumList.length);
+        } else if (e.key === 'ArrowRight') {
+          setLightboxIndex((prev) => (prev + 1) % albumList.length);
+        } else if (e.key === 'Escape') {
+          setIsLightboxOpen(false);
+        }
+      }
+
+      if (listLightboxOpen && listLightboxImages.length > 0) {
+        if (e.key === 'ArrowLeft') {
+          setListLightboxIndex((prev) => (prev - 1 + listLightboxImages.length) % listLightboxImages.length);
+        } else if (e.key === 'ArrowRight') {
+          setListLightboxIndex((prev) => (prev + 1) % listLightboxImages.length);
+        } else if (e.key === 'Escape') {
+          setListLightboxOpen(false);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isLightboxOpen, listLightboxOpen, albumList, listLightboxImages]);
+
   const handleSubquote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!leadForm.name || !leadForm.phone || !leadForm.email) {
@@ -143,76 +245,6 @@ export default function PerspectivePageView({
         </div>
       );
     }
-
-    // Fallback luxury dark brown (Rustic) concept photos matching the design exactly
-    const defaultRusticPhotos = [
-      "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1542013936-8848e574047a?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1584622781564-1d987f7333c1?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1533090161767-e6ffed986c88?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=600&q=80"
-    ];
-
-    // Fallback luxury light wood & mint green (Wasabi) concept photos matching the design exactly
-    const defaultWasabiPhotos = [
-      "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1565183997392-2f6f122e5912?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1588854337221-4cf9fa96059c?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1540518614846-7eded433c457?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1502005229762-fc1b2b812ca5?auto=format&fit=crop&w=600&q=80"
-    ];
-
-    // Ensure we have custom gallery images first, then fill/append default photos
-    const rusticConceptList = (activePerspective.gallery && activePerspective.gallery.length > 0)
-      ? [...activePerspective.gallery, ...defaultRusticPhotos.slice(activePerspective.gallery.length)].slice(0, 10)
-      : defaultRusticPhotos;
-
-    const wasabiConceptList = (activePerspective.productGallery && activePerspective.productGallery.length > 0)
-      ? [...activePerspective.productGallery, ...defaultWasabiPhotos.slice(activePerspective.productGallery.length)].slice(0, 10)
-      : defaultWasabiPhotos;
-
-    // Create a flat array for the lightbox viewer
-    const albumList = [
-      ...rusticConceptList.map((url, i) => ({
-        url,
-        type: 'drawings',
-        title: `Rustic - Dark Brown Concept #${i + 1}`,
-        desc: "Sự kết hợp hoàn hảo giữa thiết bị vòi lọc nước Pentair và chất gỗ óc chó gam tối trầm tĩnh phong nhã."
-      })),
-      ...wasabiConceptList.map((url, i) => ({
-        url,
-        type: 'products',
-        title: `Wasabi - Green Concept #${i + 1}`,
-        desc: "Tone xanh sage ngọc nhạt và tủ bếp tự nhiên sồi ấm áp thanh thản của phong cách Wasabi."
-      }))
-    ];
-
-    const filteredAlbumList = albumFilter === 'all' 
-      ? albumList 
-      : albumList.filter(x => x.type === albumFilter);
-
-    // Auto-advance photos when autoplay mode is on
-    React.useEffect(() => {
-      let tid: any = null;
-      if (isAutoplay && isDetail && filteredAlbumList.length > 0) {
-        tid = setInterval(() => {
-          setActivePhotoIndex((prev) => (prev + 1) % filteredAlbumList.length);
-        }, 4000);
-      }
-      return () => {
-        if (tid) clearInterval(tid);
-      };
-    }, [isAutoplay, isDetail, filteredAlbumList.length, albumFilter]);
 
     const currentPhoto = filteredAlbumList[activePhotoIndex] || filteredAlbumList[0] || albumList[0];
 
