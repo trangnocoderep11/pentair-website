@@ -1039,7 +1039,8 @@ export default function AdminCMS({
     metaTitle: 'Pentair Việt Nam | Máy lọc nước tổng cao cấp nhập khẩu Mỹ',
     metaDescription: 'Phân phối chính hãng màng sợi rỗng, van điều khiển fleck sừng sỏ',
     canonicalUrl: 'https://pentairvietnam.vn',
-    robotsTxt: ''
+    robotsTxt: '',
+    googleTagManagerId: ''
   });
 
   // SHOWROOMS SETTING LIST
@@ -1250,7 +1251,8 @@ export default function AdminCMS({
         metaTitle: seo.metaTitle || '',
         metaDescription: seo.metaDescription || '',
         canonicalUrl: seo.canonicalUrl || '',
-        robotsTxt: seo.robotsTxt || ''
+        robotsTxt: seo.robotsTxt || '',
+        googleTagManagerId: seo.googleTagManagerId || ''
       });
 
       setShowroomList(shows);
@@ -3894,13 +3896,34 @@ export default function AdminCMS({
 
                   <div className="space-y-0.5">
                     <label className="text-[10px] font-bold text-gray-500 uppercase">Cấu hình robots.txt (Cho robot index bài viết)</label>
-                    <textarea 
+                    <textarea
                       rows={4}
                       value={seoForm.robotsTxt}
                       onChange={e => setSeoForm({ ...seoForm, robotsTxt: e.target.value })}
                       className="w-full p-2 text-[10px] font-mono rounded bg-gray-50 border focus:outline-none leading-relaxed"
                       placeholder="User-agent: *..."
                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* Google Tag Manager integration */}
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                <h3 className="text-sm font-black uppercase text-pentair border-b pb-2">Google Tag Manager</h3>
+
+                <div className="space-y-3.5">
+                  <div className="space-y-0.5">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase">Container ID (GTM-XXXXXXX)</label>
+                    <input
+                      type="text"
+                      value={seoForm.googleTagManagerId}
+                      onChange={e => setSeoForm({ ...seoForm, googleTagManagerId: e.target.value.trim() })}
+                      className="w-full p-2 text-xs rounded bg-gray-50 border focus:outline-none font-mono"
+                      placeholder="GTM-XXXXXXX"
+                    />
+                    <p className="text-[10px] text-gray-400 pt-1">
+                      Lấy tại Google Tag Manager → Admin → Container ID. Dán vào đây và bấm lưu, script sẽ tự động được nhúng vào toàn bộ website (không cần sửa code).
+                    </p>
                   </div>
                 </div>
               </div>

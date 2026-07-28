@@ -369,6 +369,44 @@ export default function App() {
 
   }, [currentPath, options, posts]);
 
+  // 3b. GOOGLE TAG MANAGER — injected/replaced from CMS SEO settings (no code changes needed)
+  React.useEffect(() => {
+    const seoSettingsOption = options?.find(o => o.optionName === 'seo_settings')?.optionValue;
+    const gtmId = seoSettingsOption?.googleTagManagerId?.trim();
+
+    const existingScript = document.getElementById('gtm-script');
+    const existingNoscript = document.getElementById('gtm-noscript');
+
+    if (!gtmId) {
+      existingScript?.remove();
+      existingNoscript?.remove();
+      return;
+    }
+
+    // Already loaded with the same container id, nothing to do
+    if (existingScript?.getAttribute('data-gtm-id') === gtmId) return;
+
+    existingScript?.remove();
+    existingNoscript?.remove();
+
+    const script = document.createElement('script');
+    script.id = 'gtm-script';
+    script.setAttribute('data-gtm-id', gtmId);
+    script.innerHTML = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${gtmId}');`;
+    document.head.insertBefore(script, document.head.firstChild);
+
+    const noscript = document.createElement('noscript');
+    noscript.id = 'gtm-noscript';
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://www.googletagmanager.com/ns.html?id=${gtmId}`;
+    iframe.height = '0';
+    iframe.width = '0';
+    iframe.style.display = 'none';
+    iframe.style.visibility = 'hidden';
+    noscript.appendChild(iframe);
+    document.body.insertBefore(noscript, document.body.firstChild);
+  }, [options]);
+
   // LOGIN SESSION HANDLERS
   const handleNewLogin = (user: any, token: string) => {
     setCurrentUser(user);

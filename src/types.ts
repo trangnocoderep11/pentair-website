@@ -79,6 +79,7 @@ export interface SEOSettings {
   canonicalUrl: string;
   robotsTxt: string;
   googleAnalyticsId?: string;
+  googleTagManagerId?: string;
   ogImage?: string;
 }
 

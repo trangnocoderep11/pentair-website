@@ -742,7 +742,8 @@ export const initialData = {
         "robotsTxt": "User-agent: *\nDisallow: /admin/\nAllow: /\n\nSitemap: https://pentairvietnam.vn/sitemap.xml",
         "canonicalUrl": "https://pentairvietnam.vn/",
         "metaDescription": "Pentair VN là đơn vị phân phối giải pháp lọc nước Pentair Hoa Kỳ cao cấp cho lâu đài, biệt thự sang trọng. Hotline: 1800 8134.",
-        "googleAnalyticsId": "G-PENTAIR123"
+        "googleAnalyticsId": "G-PENTAIR123",
+        "googleTagManagerId": ""
       }
     },
     {
