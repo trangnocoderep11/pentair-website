@@ -1521,6 +1521,28 @@ async function saveDbToSupabase() {
   }
 }
 
+async function migrateOldCertificates() {
+  try {
+    const pageAbout = db.posts.find((p: any) => p.id === 'page-about');
+    if (pageAbout && pageAbout.meta && pageAbout.meta.certificates) {
+      const certs = pageAbout.meta.certificates;
+      const hasOldCert = certs.some((c: string) => c.includes("NSF/ANSI Standard 53 về lọc giảm thiểu vi nhựa") || c.includes("NSF/ANSI Standard 44"));
+      if (hasOldCert) {
+        console.log("[MIGRATION] Phát hiện bài viết 'Về Pentair' chứa chứng nhận cũ. Đang tự động cập nhật lên database...");
+        pageAbout.meta.certificates = [
+          "Đạt các chứng nhận kiểm định chất lượng nước từ NSF International (Hoa Kỳ).",
+          "Đạt chứng nhận WQA Gold Seal (Con dấu Vàng từ Hiệp hội Chất lượng Nước).",
+          "Đáp ứng tiêu chuẩn quốc tế nghiêm ngặt về độ an toàn và hiệu suất lọc."
+        ];
+        await dbSavePost(pageAbout);
+        console.log("[MIGRATION] ✅ Đã cập nhật xong bài viết 'Về Pentair' lên database.");
+      }
+    }
+  } catch (err: any) {
+    console.error("[MIGRATION ERROR] Lỗi tự động cập nhật chứng nhận:", err.message);
+  }
+}
+
 async function loadDbFromSupabase() {
   if (!postgresPool) {
     console.warn("[POSTGRES SYNC] Chưa cấu hình DATABASE_URL. Server chạy với dữ liệu bootstrap trong bộ nhớ (không lưu trữ).");
@@ -1668,6 +1690,7 @@ async function loadDbFromSupabase() {
           await saveDbToSupabase();
         }
       }
+      await migrateOldCertificates();
       dbLoaded = true;
       dbLastLoadedAt = Date.now();
       dbLoadFailed = false;
@@ -1721,6 +1744,7 @@ async function loadDbFromBlob() {
     if (!result || result.statusCode !== 200) return;
     const text = await new Response(result.stream).text();
     applyDbSnapshot(JSON.parse(text));
+    await migrateOldCertificates();
     console.log(`[BLOB SYNC] Đã khôi phục dữ liệu từ Vercel Blob: ${db.posts.length} posts, ${(db as any).mediaItems.length} media items`);
   } catch (err: any) {
     console.error('[BLOB SYNC] ❌ Lỗi tải dữ liệu từ Vercel Blob:', err.message);
