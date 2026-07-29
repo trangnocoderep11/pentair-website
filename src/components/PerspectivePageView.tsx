@@ -123,9 +123,8 @@ export default function PerspectivePageView({
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
   };
 
-  // Album lists for details view computed at the top level
-  const albumList = React.useMemo(() => {
-    if (!activePerspective) return [];
+  const { rusticConceptList, wasabiConceptList } = React.useMemo(() => {
+    if (!activePerspective) return { rusticConceptList: defaultRusticPhotos, wasabiConceptList: defaultWasabiPhotos };
     const rusticList = (activePerspective.gallery && activePerspective.gallery.length > 0)
       ? [...activePerspective.gallery, ...defaultRusticPhotos.slice(activePerspective.gallery.length)].slice(0, 10)
       : defaultRusticPhotos;
@@ -134,21 +133,26 @@ export default function PerspectivePageView({
       ? [...activePerspective.productGallery, ...defaultWasabiPhotos.slice(activePerspective.productGallery.length)].slice(0, 10)
       : defaultWasabiPhotos;
 
+    return { rusticConceptList: rusticList, wasabiConceptList: wasabiList };
+  }, [activePerspective]);
+
+  // Album lists for details view computed at the top level
+  const albumList = React.useMemo(() => {
     return [
-      ...rusticList.map((url, i) => ({
+      ...rusticConceptList.map((url, i) => ({
         url,
         type: 'drawings',
         title: `Rustic - Dark Brown Concept #${i + 1}`,
         desc: "Sự kết hợp hoàn hảo giữa thiết bị vòi lọc nước Pentair và chất gỗ óc chó gam tối trầm tĩnh phong nhã."
       })),
-      ...wasabiList.map((url, i) => ({
+      ...wasabiConceptList.map((url, i) => ({
         url,
         type: 'products',
         title: `Wasabi - Green Concept #${i + 1}`,
         desc: "Tone xanh sage ngọc nhạt và tủ bếp tự nhiên sồi ấm áp thanh thản của phong cách Wasabi."
       }))
     ];
-  }, [activePerspective]);
+  }, [rusticConceptList, wasabiConceptList]);
 
   const filteredAlbumList = React.useMemo(() => {
     return albumFilter === 'all'

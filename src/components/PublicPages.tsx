@@ -36,6 +36,7 @@ interface PublicPagesProps {
     facebook: string;
     youtube: string;
     mapIframeUrl?: string;
+    formSuccessMsg?: string;
   };
   showrooms: { name: string; address: string; phone: string; mapUrl?: string; coordinates?: string }[];
   posts: Post[];
@@ -531,7 +532,7 @@ export default function PublicPages({
                   ))}
                   {[
                     { name: "Thương hiệu", value: "Pentair (Hoa Kỳ)" },
-                    { name: "Tiêu chuẩn kiểm định", value: "NSF/ANSI 44 & 53, WQA Gold Seal" },
+                    { name: "Tiêu chuẩn kiểm định", value: "Đạt chuẩn NSF & WQA quốc tế" },
                     { name: "Chế độ bảo hành", value: "5 năm chính hãng (Bảo hành kép)" },
                     { name: "Hỗ trợ lắp đặt", value: "Khảo sát nguồn nước & lắp ráp trọn gói" },
                     { name: "Dịch vụ sau bán hàng", value: "Bảo trì định kỳ, linh kiện chính hãng" }
@@ -1612,9 +1613,9 @@ export default function PublicPages({
               </h4>
               <ul className="space-y-4">
                 {(certificates && certificates.length > 0 ? certificates : [
-                  "NSF/ANSI Standard 44 – Tiêu chuẩn kiểm định làm mềm nước của NSF International, Hoa Kỳ.",
-                  "NSF/ANSI Standard 53 – Tiêu chuẩn lọc giảm chất gây hại sức khỏe, được công nhận toàn cầu.",
-                  "WQA Gold Seal – Con dấu chất lượng vàng của Hiệp hội Chất lượng Nước Quốc tế (Water Quality Association)."
+                  "Tiêu chuẩn kiểm định chất lượng nghiêm ngặt từ tổ chức quốc tế NSF International (Hoa Kỳ).",
+                  "Chứng nhận Con dấu Vàng Gold Seal danh giá của Hiệp hội Chất lượng Nước (WQA).",
+                  "Đáp ứng các tiêu chuẩn khắt khe về độ an toàn vật liệu và hiệu quả xử lý nước sạch."
                 ]).map((cert: string, i: number) => (
                   <li key={i} className="flex gap-2.5 text-xs md:text-sm text-gray-650 font-sans leading-relaxed">
                     <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />

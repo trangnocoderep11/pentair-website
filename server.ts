@@ -175,9 +175,9 @@ const bootstrapData = {
           "Top 50 Doanh Nghiệp Phát Triển Bền Vững Nhất của Forbes"
         ],
         certificates: [
-          "NSF/ANSI Standard 44 cho khả năng làm mềm nước cứng vượt trội.",
-          "NSF/ANSI Standard 53 về lọc giảm thiểu vi nhựa và kim loại nặng.",
-          "Chứng nhận WQA Gold Seal quý giá nhất trong ngành xử lý nước toàn quốc tế."
+          "Đạt các chứng nhận kiểm định chất lượng nước từ NSF International (Hoa Kỳ).",
+          "Đạt chứng nhận WQA Gold Seal (Con dấu Vàng từ Hiệp hội Chất lượng Nước).",
+          "Đáp ứng tiêu chuẩn quốc tế nghiêm ngặt về độ an toàn và hiệu suất lọc."
         ]
       },
       terms: []

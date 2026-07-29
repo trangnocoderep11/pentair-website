@@ -381,9 +381,9 @@ export const initialData = {
         "vision": "Mang nguồn nước an toàn, bền vững đến mọi ngóc ngách của cuộc sống. Giảm thiểu rác thải nhựa thông qua hệ thống lọc trung tâm cao cấp không cần thay thế lõi liên tục.",
         "history": "Thành lập năm 1966, Pentair khởi đầu từ một nhóm nhỏ các nhà sáng chế tại Minneapolis, Mỹ. Với triết lý nước sạch là mạch sống của thế giới, Pentair không ngừng thâu tóm các công nghệ lọc danh tiếng như Fleck (van điều khiển hàng đầu), Pentek (lõi lọc tiêu chuẩn công nghiệp), Everpure (thương hiệu số 1 trong ngành F&B toàn cầu). Đến nay, chúng tôi hiện diện trên 150 quốc gia với doanh thu hàng tỷ USD.",
         "certificates": [
-          "NSF/ANSI Standard 44 cho khả năng làm mềm nước cứng vượt trội.",
-          "NSF/ANSI Standard 53 về lọc giảm thiểu vi nhựa và kim loại nặng.",
-          "Chứng nhận WQA Gold Seal quý giá nhất trong ngành xử lý nước toàn quốc tế."
+          "Đạt các chứng nhận kiểm định chất lượng nước từ NSF International (Hoa Kỳ).",
+          "Đạt chứng nhận WQA Gold Seal (Con dấu Vàng từ Hiệp hội Chất lượng Nước).",
+          "Đáp ứng tiêu chuẩn quốc tế nghiêm ngặt về độ an toàn và hiệu suất lọc."
         ]
       },
       "terms": [],
